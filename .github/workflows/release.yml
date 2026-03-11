@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+          - goos: windows
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Set binary name
+        id: bin
+        run: |
+          NAME=beacon-${{ matrix.goos }}-${{ matrix.goarch }}
+          if [ "${{ matrix.goos }}" = "windows" ]; then NAME="${NAME}.exe"; fi
+          echo "name=${NAME}" >> $GITHUB_OUTPUT
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          set -x
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+          GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "none")
+          mkdir -p dist
+          ls -la ./cmd/
+          go build -v -trimpath \
+            -ldflags="-s -w \
+              -X github.com/keshon/buildinfo.Version=dev \
+              -X github.com/keshon/buildinfo.Commit=${GIT_COMMIT} \
+              -X github.com/keshon/buildinfo.BuildTime=${BUILD_DATE} \
+              -X github.com/keshon/buildinfo.Project=beacon \
+              -X 'github.com/keshon/buildinfo.Description=Beacon - uptime monitoring service in Go'" \
+            -o dist/${{ steps.bin.outputs.name }} \
+            ./cmd/beacon/
+          ls -la dist/
+
+      - name: Prepare release bundle
+        run: |
+          set -x
+          PKG_ROOT="beacon-${{ matrix.goos }}-${{ matrix.goarch }}"
+          mkdir -p "${PKG_ROOT}"
+
+          # Binary (renamed to beacon / beacon.exe inside the package)
+          BIN_SRC="dist/${{ steps.bin.outputs.name }}"
+          BIN_DST="beacon"
+          if [ "${{ matrix.goos }}" = "windows" ]; then BIN_DST="beacon.exe"; fi
+          cp "${BIN_SRC}" "${PKG_ROOT}/${BIN_DST}"
+
+          # README and LICENSE
+          cp README.md LICENSE "${PKG_ROOT}/"
+
+          # .env from example
+          if [ -f .env.example ]; then
+            cp .env.example "${PKG_ROOT}/.env"
+          fi
+
+          # data directory (empty, datastore.json will be created on first run)
+          mkdir -p "${PKG_ROOT}/data"
+
+          # templates directory
+          if [ -d templates ]; then
+            cp -R templates "${PKG_ROOT}/"
+          fi
+
+          # Create zip archive with everything needed to run the bot
+          mkdir -p dist
+          zip -r "dist/${PKG_ROOT}.zip" "${PKG_ROOT}"
+          ls -R "${PKG_ROOT}"
+          ls -la dist/
+
+      - name: Upload release templates
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/beacon-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
