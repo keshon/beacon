@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Monitors – Beacon{% endblock %}
+{% block content %}
+<div class="container theme-page">
+
+    <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
+        <h1 class="page-title mb-0">Monitors</h1>
+    </div>
+
+    <!-- Add monitor form -->
+    <div class="theme-card mb-3 anim-fadeup anim-delay-1">
+        <div class="card-body">
+            <p class="section-label">Add monitor</p>
+            <form id="addForm">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small">Name</label>
+                        <input type="text" class="form-control form-control-sm" name="name" placeholder="e.g. Google" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Type</label>
+                        <select class="form-select form-select-sm" name="type">
+                            <option value="http">HTTP</option>
+                            <option value="tcp">TCP</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Target</label>
+                        <input type="text" class="form-control form-control-sm" name="target" placeholder="https://example.com or host:443" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Interval (sec)</label>
+                        <input type="number" class="form-control form-control-sm" name="interval" min="0" placeholder="default">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-uptime w-100" style="justify-content: center;">Add</button>
+                    </div>
+                </div>
+                <!-- Advanced toggle -->
+                <div class="mt-3">
+                    <button type="button" class="btn-ghost" style="font-size: 0.75rem;" data-bs-toggle="collapse" data-bs-target="#addAdvanced">
+                        <i class="bi bi-chevron-down" style="font-size: 0.625rem;"></i> Notification overrides
+                    </button>
+                    <div class="collapse mt-2" id="addAdvanced">
+                        <div class="row g-2" style="padding-top: 4px;">
+                            <div class="col-md-4">
+                                <label class="form-label small">Telegram token</label>
+                                <input type="text" class="form-control form-control-sm" name="tg_token" placeholder="Leave empty for global">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Telegram chat ID</label>
+                                <input type="text" class="form-control form-control-sm" name="tg_chat_id" placeholder="Leave empty for global">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Discord webhook</label>
+                                <input type="text" class="form-control form-control-sm" name="discord_webhook" placeholder="Leave empty for global">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Monitors list -->
+    {% if monitors %}
+    <div class="theme-card anim-fadeup anim-delay-2">
+        <div style="padding: 0;">
+            {% for m in monitors %}
+            <div class="monitor-row" style="padding: 13px 24px 13px 16px; border-bottom: 1px solid var(--c-border); {% if loop.last %}border-bottom: none;{% endif %}">
+                <div class="d-flex justify-content-between align-items-center gap-3">
+                    <div style="min-width: 0; flex: 1;">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span style="font-weight: 500; font-size: 0.875rem;">{{ m.Name }}</span>
+                            {% if not m.Enabled %}
+                            <span class="status-badge status-paused" style="font-size: 0.625rem; padding: 2px 7px;">Paused</span>
+                            {% endif %}
+                        </div>
+                        <div style="font-size: 0.8125rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <a href="{{ m.Target }}" target="_blank" style="color: var(--c-text-2);text-decoration: none;">{{ m.Target }}</a> · <code>{{ m.Type }}</code>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <div class="btn-group" role="group" aria-label="Basic example">
+                            <button class="btn btn-ghost btn-edit" data-id="{{ m.ID }}" data-name="{{ m.Name }}" data-type="{{ m.Type }}" data-target="{{ m.Target }}" data-interval="{{ m.IntervalSec }}" data-tg-token="{{ m.TgToken }}" data-tg-chat="{{ m.TgChatID }}" data-discord="{{ m.DiscordWebhook }}">
+                                <i class="bi bi-pencil" style="font-size:0.7rem;"></i>Edit
+                            </button>
+                            <button class="btn btn-ghost {% if m.Enabled %}warning{% else %}success{% endif %} btn-toggle" data-id="{{ m.ID }}" data-enabled="{% if m.Enabled %}true{% else %}false{% endif %}">
+                                {% if m.Enabled %}
+                                <i class="bi bi-pause" style="font-size:0.7rem;"></i>Pause
+                                {% else %}
+                                <i class="bi bi-play" style="font-size:0.7rem;"></i>Resume
+                                {% endif %}
+                            </button>
+                            <button class="btn btn-ghost danger btn-del" data-id="{{ m.ID }}">
+                                <i class="bi bi-trash" style="font-size:0.7rem;"></i>Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit form (hidden) -->
+                <div class="edit-form d-none" data-id="{{ m.ID }}" style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--c-border);">
+                    <form class="edit-form-fields">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label small">Name</label>
+                                <input type="text" class="form-control form-control-sm" name="name" placeholder="Name">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Type</label>
+                                <select class="form-select form-select-sm" name="type">
+                                    <option value="http">HTTP</option>
+                                    <option value="tcp">TCP</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Target</label>
+                                <input type="text" class="form-control form-control-sm" name="target" placeholder="Target">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Interval (sec)</label>
+                                <input type="number" class="form-control form-control-sm" name="interval" min="0" placeholder="default">
+                            </div>
+                            <div class="col-md-1">
+                                <button type="submit" class="btn btn-uptime w-100" style="justify-content: center;">Save</button>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <button type="button" class="btn-ghost" style="font-size:0.75rem;" data-bs-toggle="collapse" data-bs-target="#editAdvanced-{{ m.ID }}">
+                                <i class="bi bi-chevron-down" style="font-size:0.625rem;"></i> Notification overrides
+                            </button>
+                            <div class="collapse mt-2" id="editAdvanced-{{ m.ID }}">
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Telegram token</label>
+                                        <input type="text" class="form-control form-control-sm" name="tg_token" placeholder="Override token">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Telegram chat ID</label>
+                                        <input type="text" class="form-control form-control-sm" name="tg_chat_id" placeholder="Override chat ID">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Discord webhook</label>
+                                        <input type="text" class="form-control form-control-sm" name="discord_webhook" placeholder="Override webhook">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="theme-card anim-fadeup anim-delay-2">
+        <div class="empty-state">
+            <div class="empty-icon"><i class="bi bi-broadcast"></i></div>
+            <p>No monitors yet. Add one above to get started.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.getElementById('addForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const payload = { name: fd.get('name'), type: fd.get('type'), target: fd.get('target') };
+        const iv = parseInt(fd.get('interval'));
+        if (!isNaN(iv) && iv > 0) payload.interval = iv;
+        const no = buildNotifyOverride(fd);
+        if (no) payload.notify_override = no;
+        const res = await fetch('/api/monitors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) location.reload();
+    };
+
+    document.querySelectorAll('.btn-del').forEach(b => {
+        b.onclick = async () => {
+            if (!confirm('Delete this monitor?')) return;
+            const r = await fetch('/api/monitors/' + b.dataset.id, { method: 'DELETE' });
+            if (r.ok) b.closest('.monitor-row').remove();
+        };
+    });
+
+    document.querySelectorAll('.btn-toggle').forEach(b => {
+        b.onclick = async () => {
+            const enabled = b.dataset.enabled === 'true';
+            const r = await fetch('/api/monitors/' + b.dataset.id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: !enabled })
+            });
+            if (r.ok) location.reload();
+        };
+    });
+
+    document.querySelectorAll('.btn-edit').forEach(b => {
+        b.onclick = () => {
+            const id = b.dataset.id;
+            const form = document.querySelector('.edit-form[data-id="' + id + '"]');
+            document.querySelectorAll('.edit-form').forEach(f => f.classList.add('d-none'));
+            form.classList.toggle('d-none');
+            if (!form.classList.contains('d-none')) {
+                const f = form.querySelector('form');
+                f.querySelector('[name="name"]').value = b.dataset.name || '';
+                f.querySelector('[name="type"]').value = b.dataset.type || 'http';
+                f.querySelector('[name="target"]').value = b.dataset.target || '';
+                f.querySelector('[name="interval"]').value = b.dataset.interval || '';
+                f.querySelector('[name="tg_token"]').value = b.dataset.tgToken || '';
+                f.querySelector('[name="tg_chat_id"]').value = b.dataset.tgChat || '';
+                f.querySelector('[name="discord_webhook"]').value = b.dataset.discord || '';
+                f.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(f);
+                    const patch = { name: fd.get('name'), type: fd.get('type'), target: fd.get('target') };
+                    const iv = parseInt(fd.get('interval'));
+                    if (!isNaN(iv) && iv > 0) patch.interval = iv; else if (!isNaN(iv)) patch.interval = 0;
+                    const no = buildNotifyOverride(fd);
+                    patch.notify_override = no || {};
+                    const r = await fetch('/api/monitors/' + id, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(patch)
+                    });
+                    if (r.ok) location.reload();
+                };
+            }
+        };
+    });
+
+    function buildNotifyOverride(fd) {
+        const tgToken = (fd.get('tg_token') || '').trim();
+        const tgChat = (fd.get('tg_chat_id') || '').trim();
+        const discord = (fd.get('discord_webhook') || '').trim();
+        if (!tgToken && !tgChat && !discord) return null;
+        const o = {};
+        if (tgToken && tgChat) o.telegram = { token: tgToken, chat_id: tgChat };
+        if (discord) o.discord = { webhook: discord };
+        return Object.keys(o).length ? o : null;
+    }
+</script>
+{% endblock %}
