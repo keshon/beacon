@@ -15,7 +15,7 @@ RUN go mod download
 COPY src .
 
 # 4. Build the binary
-RUN go build -o app ./cmd/uptime/main.go
+RUN go build -o app ./cmd/beacon/main.go
 
 # ---- Runtime stage ----
 FROM alpine:3.22
