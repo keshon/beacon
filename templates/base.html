@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="d-flex flex-column h-100">
     <style>
         :root {
             --c-bg: #f7f8fa;
@@ -208,15 +208,18 @@
             letter-spacing: -0.02em;
             color: var(--c-text);
             margin-bottom: 1.5rem;
+            line-height: 2rem;
         }
 
         /* ── Cards ── */
         .theme-card {
             background: var(--c-surface);
-            border: 1px solid var(--c-border);
+            /* border: 1px solid var(--c-border); */
+            border: medium none;
             border-radius: var(--r-lg);
             box-shadow: var(--shadow-sm);
             overflow: hidden;
+            text-wrap-mode: nowrap;
         }
 
         .theme-card .card-body {
@@ -299,6 +302,11 @@
             color: var(--c-text-2);
             margin-bottom: 5px;
             display: block;
+        }
+
+        .theme-main .form-control:disabled {
+            background-color: var(--c-bg);
+            opacity: 1;
         }
 
         /* ── Tables ── */
@@ -401,9 +409,19 @@
             color: var(--c-success);
         }
 
+        .status-live .dot {
+            background: var(--c-success);
+            box-shadow: 0 0 5px var(--c-success);
+        }
+
         .status-dead {
             background: var(--c-danger-light);
             color: var(--c-danger);
+        }
+
+        .status-dead .dot {
+            background: var(--c-danger);
+            box-shadow: 0 0 5px var(--c-danger);
         }
 
         .status-paused {
@@ -472,12 +490,12 @@
 
         /* ── Outline buttons ── */
         .btn-ghost {
-            background: transparent;
+            background: var(--c-bg);
             border: 1px solid var(--c-border-strong);
             color: var(--c-text-2);
             font-size: 0.75rem;
             font-weight: 500;
-            padding: 5px 11px;
+            padding: 5px 11px 3px;
             border-radius: var(--r);
             transition: all 0.15s;
             display: inline-flex;
@@ -571,7 +589,13 @@
     <main class="theme-main">
         {% block content %}{% endblock %}
     </main>
-
+    <footer class="footer mt-auto py-3">
+        <div class="container text-center">
+            <span class="text-muted small">
+                © Beacon. {{ version }}
+            </span>
+        </div>
+    </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
 </body>

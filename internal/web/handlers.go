@@ -130,6 +130,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	networkNodes := s.buildNetworkNodes()
 	s.render(w, "dashboard.html", pongo2.Context{
+		"version":        getBuildVersion(),
 		"rows":           rows,
 		"networkNodes":   networkNodes,
 		"networkEnabled": s.cfg.Network.Enabled,
@@ -246,7 +247,7 @@ func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
 			DiscordWebhook: discord,
 		})
 	}
-	s.render(w, "monitors.html", pongo2.Context{"monitors": rows})
+	s.render(w, "monitors.html", pongo2.Context{"version": getBuildVersion(), "monitors": rows})
 }
 
 func (s *Server) runCommand(w http.ResponseWriter, r *http.Request, name string) {
@@ -306,7 +307,7 @@ func (s *Server) apiConfigSet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "settings.html", pongo2.Context{})
+	s.render(w, "settings.html", pongo2.Context{"version": getBuildVersion()})
 }
 
 func (s *Server) apiHealth(w http.ResponseWriter, r *http.Request) {

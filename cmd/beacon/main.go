@@ -110,7 +110,7 @@ func main() {
 	httpServer := &http.Server{Addr: cfg.Listen, Handler: srv.Routes()}
 
 	go func() {
-		log.Printf("listening on %s", cfg.Listen)
+		log.Printf("listening on http://localhost%s", cfg.Listen)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}

@@ -1,120 +1,224 @@
 {% extends "base.html" %} {% block title %}Settings – Beacon{% endblock %} {% block content %}
-<div class="container py-4">
-    <h1 class="h3 mb-4">Settings</h1>
+<div class="container theme-page">
+    <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
+        <h1 class="page-title mb-0">Settings</h1>
+    </div>
+
     <form id="configForm">
-        <div class="row g-4">
+        <div class="row g-3">
             <div class="col-12">
-                <div class="theme-card border-0 shadow-sm">
+                <div class="theme-card anim-fadeup anim-delay-1">
                     <div class="card-body">
-                        <h2 class="h6 text-muted mb-3">Server</h2>
+                        <p class="section-label">Server</p>
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <label class="form-label small">Listen address</label>
-                                <input type="text" class="form-control form-control-sm" name="listen" placeholder=":8080" />
+                                <input
+                                    type="text"
+                                    class="form-control form-control-sm"
+                                    name="listen"
+                                    placeholder=":8080"
+                                />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small">Workers</label>
-                                <input type="number" class="form-control form-control-sm" name="workers" min="1" placeholder="10" />
+                                <input
+                                    type="number"
+                                    class="form-control form-control-sm"
+                                    name="workers"
+                                    min="1"
+                                    placeholder="10"
+                                />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small">Default check interval (sec)</label>
-                                <input type="number" class="form-control form-control-sm" name="default_interval" min="0" placeholder="30" />
+                                <input
+                                    type="number"
+                                    class="form-control form-control-sm"
+                                    name="default_interval"
+                                    min="0"
+                                    placeholder="30"
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-12">
-                <div class="theme-card border-0 shadow-sm">
+                <div class="theme-card anim-fadeup anim-delay-1">
                     <div class="card-body">
-                        <h2 class="h6 text-muted mb-3">Auth</h2>
+                        <p class="section-label">Auth</p>
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <label class="form-label small">Username</label>
-                                <input type="text" class="form-control form-control-sm" name="username" />
+                                <input
+                                    type="text"
+                                    class="form-control form-control-sm"
+                                    name="username"
+                                />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">Password</label>
-                                <input type="password" class="form-control form-control-sm" name="password" />
+                                <input
+                                    type="password"
+                                    class="form-control form-control-sm"
+                                    name="password"
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-12">
-                <div class="theme-card border-0 shadow-sm">
+                <div class="theme-card anim-fadeup anim-delay-1">
                     <div class="card-body">
-                        <h2 class="h6 text-muted mb-3">Telegram</h2>
+                        <p class="section-label">Telegram</p>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="telegram_enabled" id="telegram_enabled" />
-                            <label class="form-check-label" for="telegram_enabled">Enabled</label>
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="telegram_enabled"
+                                id="telegram_enabled"
+                            />
+                            <label
+                                class="form-check-label small"
+                                for="telegram_enabled"
+                                >Enabled</label
+                            >
                         </div>
                         <div class="row g-2">
                             <div class="col-12">
                                 <label class="form-label small">Bot token</label>
-                                <input type="text" class="form-control form-control-sm" name="telegram_token" placeholder="Bot token" />
+                                <input
+                                    type="text"
+                                    class="form-control form-control-sm"
+                                    name="telegram_token"
+                                    placeholder="Bot token"
+                                />
                             </div>
                             <div class="col-12">
                                 <label class="form-label small">Chat ID</label>
-                                <input type="text" class="form-control form-control-sm" name="telegram_chat_id" placeholder="Chat ID" />
+                                <input
+                                    type="text"
+                                    class="form-control form-control-sm"
+                                    name="telegram_chat_id"
+                                    placeholder="Chat ID"
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-12">
-                <div class="theme-card border-0 shadow-sm">
+                <div class="theme-card anim-fadeup anim-delay-1">
                     <div class="card-body">
-                        <h2 class="h6 text-muted mb-3">Discord</h2>
+                        <p class="section-label">Discord</p>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="discord_enabled" id="discord_enabled" />
-                            <label class="form-check-label" for="discord_enabled">Enabled</label>
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="discord_enabled"
+                                id="discord_enabled"
+                            />
+                            <label
+                                class="form-check-label small"
+                                for="discord_enabled"
+                                >Enabled</label
+                            >
                         </div>
                         <div>
                             <label class="form-label small">Webhook URL</label>
-                            <input type="text" class="form-control form-control-sm" name="discord_webhook" placeholder="Webhook URL" />
+                            <input
+                                type="text"
+                                class="form-control form-control-sm"
+                                name="discord_webhook"
+                                placeholder="Webhook URL"
+                            />
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-12">
-                <div class="theme-card border-0 shadow-sm">
+                <div class="theme-card anim-fadeup anim-delay-1">
                     <div class="card-body">
-                        <h2 class="h6 text-muted mb-3">Network (federation)</h2>
+                        <p class="section-label">Network (federation)</p>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="network_enabled" id="network_enabled" />
-                            <label class="form-check-label" for="network_enabled">Enable peer sync</label>
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="network_enabled"
+                                id="network_enabled"
+                            />
+                            <label
+                                class="form-check-label small"
+                                for="network_enabled"
+                                >Enable peer sync</label
+                            >
                         </div>
                         <div class="row g-2">
                             <div class="col-12">
                                 <label class="form-label small">Self URL</label>
-                                <input type="text" class="form-control form-control-sm" name="network_self_url" placeholder="https://beacon1.example.com" />
+                                <input
+                                    type="text"
+                                    class="form-control form-control-sm"
+                                    name="network_self_url"
+                                    placeholder="https://beacon1.example.com"
+                                />
                             </div>
                             <div class="col-12">
                                 <label class="form-label small">Peers (one URL per line)</label>
-                                <textarea class="form-control form-control-sm" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
+                                <textarea
+                                    class="form-control form-control-sm"
+                                    name="network_peers"
+                                    rows="3"
+                                    placeholder="https://beacon2.example.com"
+                                ></textarea>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small">Sync interval (sec)</label>
-                                <input type="number" class="form-control form-control-sm" name="network_sync_interval" min="10" placeholder="60" />
+                                <input
+                                    type="number"
+                                    class="form-control form-control-sm"
+                                    name="network_sync_interval"
+                                    min="10"
+                                    placeholder="60"
+                                />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small">Dead timeout (sec)</label>
-                                <input type="number" class="form-control form-control-sm" name="network_dead_timeout" min="60" placeholder="300" />
+                                <input
+                                    type="number"
+                                    class="form-control form-control-sm"
+                                    name="network_dead_timeout"
+                                    min="60"
+                                    placeholder="300"
+                                />
                             </div>
                             <div class="col-12">
                                 <label class="form-label small text-muted">Node ID</label>
-                                <input type="text" class="form-control form-control-sm bg-light" name="network_node_id" readonly placeholder="Generated when enabled" />
+                                <input
+                                    type="text"
+                                    class="form-control form-control-sm bg-light"
+                                    name="network_node_id"
+                                    readonly
+                                    placeholder="Generated when enabled"
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-12 d-flex align-items-center gap-2">
-                <button type="submit" class="btn btn-uptime">
+                <button
+                    type="submit"
+                    class="btn btn-uptime"
+                >
                     Save settings
                 </button>
-                <span id="msg" class="small"></span>
+                <span
+                    id="msg"
+                    class="small"
+                ></span>
             </div>
         </div>
     </form>
@@ -144,6 +248,10 @@
                 el(f, 'network_sync_interval').value = cfg.network?.sync_interval || '';
                 el(f, 'network_dead_timeout').value = cfg.network?.dead_timeout || '';
                 el(f, 'network_node_id').value = cfg.network?.node_id || '';
+
+                bindToggle('telegram_enabled');
+                bindToggle('discord_enabled');
+                bindToggle('network_enabled');
             });
     })();
     document.getElementById('configForm').onsubmit = async (e) => {
@@ -155,7 +263,11 @@
         const msg = document.getElementById('msg');
         msg.textContent = 'Saving…';
         msg.className = 'small text-muted';
-        const peersRaw = (el('network_peers').value || '').trim().split('\n').map(s => s.trim()).filter(Boolean);
+        const peersRaw = (el('network_peers').value || '')
+            .trim()
+            .split('\n')
+            .map((s) => s.trim())
+            .filter(Boolean);
         const cfg = {
             listen: el('listen').value || ':8080',
             workers: parseInt(el('workers').value) || 10,
@@ -169,8 +281,8 @@
                 peers: peersRaw,
                 sync_interval: parseInt(el('network_sync_interval').value) || 60,
                 dead_timeout: parseInt(el('network_dead_timeout').value) || 300,
-                node_id: el('network_node_id').value.trim()
-            }
+                node_id: el('network_node_id').value.trim(),
+            },
         };
         const res = await fetch('/api/config', {
             method: 'PUT',
@@ -180,12 +292,43 @@
         if (res.ok) {
             const saved = await res.json();
             if (saved.network?.node_id) el('network_node_id').value = saved.network.node_id;
-            msg.textContent = 'Saved. Note: listen/workers require restart.';
+            msg.textContent = 'Saved';
             msg.className = 'small text-success';
         } else {
             msg.textContent = 'Error.';
             msg.className = 'small text-danger';
         }
     };
+    function bindToggle(sectionCheckboxName) {
+        const f = document.getElementById('configForm');
+        const checkbox = f.querySelector('[name="' + sectionCheckboxName + '"]');
+        if (!checkbox) {
+            return;
+        }
+
+        const card = checkbox.closest('.theme-card');
+        if (!card) {
+            return;
+        }
+
+        function update() {
+            const fields = card.querySelectorAll('input, textarea, select');
+
+            fields.forEach(function (field) {
+                if (field === checkbox) {
+                    return;
+                }
+
+                if (checkbox.checked) {
+                    field.disabled = false;
+                } else {
+                    field.disabled = true;
+                }
+            });
+        }
+
+        checkbox.addEventListener('change', update);
+        update();
+    }
 </script>
 {% endblock %}
