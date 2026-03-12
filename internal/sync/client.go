@@ -31,23 +31,44 @@ func NewClient(st *store.Store, cfg *config.Config) *Client {
 }
 
 // Run starts the sync loop. It fetches from each peer and stores the result.
+// The loop keeps running even when network is disabled, re-checking config periodically
+// so that enabling network in Settings takes effect without restart.
 func (c *Client) Run(ctx context.Context) {
-	if !c.cfg.Network.Enabled || len(c.cfg.Network.Peers) == 0 {
-		return
-	}
-	interval := time.Duration(c.cfg.Network.SyncInterval) * time.Second
-	if interval < 10*time.Second {
-		interval = 10 * time.Second
-	}
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
+	checkInterval := 10 * time.Second
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			c.syncFromPeers()
+		// Re-check config: if disabled or no peers, sleep and re-check
+		if !c.cfg.Network.Enabled || len(c.cfg.Network.Peers) == 0 {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(checkInterval):
+				continue
+			}
+		}
+
+		interval := time.Duration(c.cfg.Network.SyncInterval) * time.Second
+		if interval < 10*time.Second {
+			interval = 10 * time.Second
+		}
+		ticker := time.NewTicker(interval)
+
+		// Immediate first sync when network becomes enabled
+		c.syncFromPeers()
+
+		// Ticker loop
+	inner:
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				if !c.cfg.Network.Enabled || len(c.cfg.Network.Peers) == 0 {
+					ticker.Stop()
+					break inner
+				}
+				c.syncFromPeers()
+			}
 		}
 	}
 }
