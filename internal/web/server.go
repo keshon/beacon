@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"beacon/internal/config"
-	"beacon/internal/store"
+	"github.com/keshon/beacon/internal/config"
+	"github.com/keshon/beacon/internal/store"
 
 	"github.com/flosch/pongo2/v6"
 )

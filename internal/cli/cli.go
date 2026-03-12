@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"beacon/internal/commands"
-	"beacon/internal/store"
+	"github.com/keshon/beacon/internal/commands"
+	"github.com/keshon/beacon/internal/store"
 
 	"github.com/keshon/commandkit"
 )

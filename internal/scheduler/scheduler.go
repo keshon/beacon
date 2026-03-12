@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"beacon/internal/checks"
-	"beacon/internal/config"
-	"beacon/internal/monitor"
-	"beacon/internal/store"
+	"github.com/keshon/beacon/internal/checks"
+	"github.com/keshon/beacon/internal/config"
+	"github.com/keshon/beacon/internal/monitor"
+	"github.com/keshon/beacon/internal/store"
 )
 
 type CheckJob struct {

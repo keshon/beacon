@@ -1,8 +1,8 @@
 package notify
 
 import (
-	"beacon/internal/config"
-	"beacon/internal/monitor"
+	"github.com/keshon/beacon/internal/config"
+	"github.com/keshon/beacon/internal/monitor"
 )
 
 // BuildNotifiers returns notifiers for the given monitor, merging global config with per-monitor overrides.

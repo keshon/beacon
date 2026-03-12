@@ -7,16 +7,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/keshon/beacon/internal/monitor"
 	"github.com/keshon/datastore"
-	"beacon/internal/monitor"
 )
 
 const (
-	keyMonitors  = "monitors"
-	keyState     = "state"
-	keyEvents    = "events"
-	keyConfig    = "config"
-	keyPeerData  = "peer_data"
+	keyMonitors = "monitors"
+	keyState    = "state"
+	keyEvents   = "events"
+	keyConfig   = "config"
+	keyPeerData = "peer_data"
 )
 
 type Event struct {

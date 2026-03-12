@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keshon/commandkit"
 	"github.com/google/uuid"
-	"beacon/internal/config"
-	"beacon/internal/monitor"
-	"beacon/internal/store"
+	"github.com/keshon/beacon/internal/config"
+	"github.com/keshon/beacon/internal/monitor"
+	"github.com/keshon/beacon/internal/store"
+	"github.com/keshon/commandkit"
 )
 
 // HTTPData carries the HTTP request context for command execution.
@@ -93,12 +93,12 @@ func (c *MonitorAddCmd) Run(ctx context.Context, inv *commandkit.Invocation) err
 	var m *monitor.Monitor
 	if d := getHTTPData(inv); d != nil {
 		var req struct {
-			Name           string                 `json:"name"`
-			Type           string                 `json:"type"`
-			Target         string                 `json:"target"`
-			Interval       int                    `json:"interval"`
-			Timeout        int                    `json:"timeout"`
-			Retries        int                    `json:"retries"`
+			Name           string                  `json:"name"`
+			Type           string                  `json:"type"`
+			Target         string                  `json:"target"`
+			Interval       int                     `json:"interval"`
+			Timeout        int                     `json:"timeout"`
+			Retries        int                     `json:"retries"`
 			NotifyOverride *monitor.NotifyOverride `json:"notify_override"`
 		}
 		if err := json.NewDecoder(d.R.Body).Decode(&req); err != nil {

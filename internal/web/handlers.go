@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"beacon/internal/commands"
-	"beacon/internal/monitor"
-	"beacon/internal/store"
-	"beacon/internal/sync"
+	"github.com/keshon/beacon/internal/commands"
+	"github.com/keshon/beacon/internal/monitor"
+	"github.com/keshon/beacon/internal/store"
+	"github.com/keshon/beacon/internal/sync"
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/keshon/commandkit"

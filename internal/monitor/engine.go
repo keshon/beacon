@@ -1,13 +1,13 @@
 package monitor
 
 import (
-	"beacon/internal/checks"
+	"github.com/keshon/beacon/internal/checks"
 )
 
 type StateHandler func(result checks.CheckResult, state *MonitorState, m *Monitor)
 
 type Engine struct {
-	onDown   func(m *Monitor, state *MonitorState, result checks.CheckResult)
+	onDown    func(m *Monitor, state *MonitorState, result checks.CheckResult)
 	onRecover func(m *Monitor, state *MonitorState, result checks.CheckResult)
 }
 

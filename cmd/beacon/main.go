@@ -9,16 +9,16 @@ import (
 	"syscall"
 	"time"
 
-	"beacon/internal/checks"
-	"beacon/internal/cli"
-	"beacon/internal/commands"
-	"beacon/internal/config"
-	"beacon/internal/monitor"
-	"beacon/internal/notify"
-	"beacon/internal/scheduler"
-	"beacon/internal/store"
-	"beacon/internal/sync"
-	"beacon/internal/web"
+	"github.com/keshon/beacon/internal/checks"
+	"github.com/keshon/beacon/internal/cli"
+	"github.com/keshon/beacon/internal/commands"
+	"github.com/keshon/beacon/internal/config"
+	"github.com/keshon/beacon/internal/monitor"
+	"github.com/keshon/beacon/internal/notify"
+	"github.com/keshon/beacon/internal/scheduler"
+	"github.com/keshon/beacon/internal/store"
+	"github.com/keshon/beacon/internal/sync"
+	"github.com/keshon/beacon/internal/web"
 )
 
 func isCLISubcommand(s string) bool {

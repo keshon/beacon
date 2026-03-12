@@ -1,4 +1,4 @@
-module beacon
+module github.com/keshon/beacon
 
 go 1.24.10
 
@@ -9,4 +9,4 @@ require (
 	github.com/keshon/datastore v0.1.1
 )
 
-require github.com/keshon/buildinfo v0.1.0 // indirect
+require github.com/keshon/buildinfo v0.1.0
