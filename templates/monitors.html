@@ -14,7 +14,7 @@
                         <label class="form-label small">Name</label>
                         <input
                             type="text"
-                            class="form-control form-control-sm"
+                            class="form-control"
                             name="name"
                             placeholder="e.g. Google"
                             required
@@ -23,7 +23,7 @@
                     <div class="col-md-2">
                         <label class="form-label small">Type</label>
                         <select
-                            class="form-select form-select-sm"
+                            class="form-select"
                             name="type"
                         >
                             <option value="http">HTTP</option>
@@ -34,7 +34,7 @@
                         <label class="form-label small">Target</label>
                         <input
                             type="text"
-                            class="form-control form-control-sm"
+                            class="form-control"
                             name="target"
                             placeholder="https://example.com or host:443"
                             required
@@ -44,7 +44,7 @@
                         <label class="form-label small">Interval (sec)</label>
                         <input
                             type="number"
-                            class="form-control form-control-sm"
+                            class="form-control"
                             name="interval"
                             min="0"
                             placeholder="default"
@@ -54,7 +54,6 @@
                         <button
                             type="submit"
                             class="btn btn-uptime w-100"
-                            style="justify-content: center"
                         >
                             Add
                         </button>
@@ -62,32 +61,17 @@
                 </div>
                 <!-- Advanced toggle -->
                 <div class="mt-3">
-                    <button
-                        type="button"
-                        class="btn-ghost"
-                        style="font-size: 0.75rem"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#addAdvanced"
-                    >
-                        <i
-                            class="bi bi-chevron-down"
-                            style="font-size: 0.625rem"
-                        ></i>
+                    <button type="button" class="btn-ghost" data-bs-toggle="collapse" data-bs-target="#addAdvanced">
+                        <i class="bi bi-chevron-down" style="font-size: 0.625rem"></i>
                         Notification overrides
                     </button>
-                    <div
-                        class="collapse mt-2"
-                        id="addAdvanced"
-                    >
-                        <div
-                            class="row g-2"
-                            style="padding-top: 4px"
-                        >
+                    <div class="collapse mt-2" id="addAdvanced">
+                        <div class="row g-2 pt-1">
                             <div class="col-md-4">
                                 <label class="form-label small">Telegram token</label>
                                 <input
                                     type="text"
-                                    class="form-control form-control-sm"
+                                    class="form-control"
                                     name="tg_token"
                                     placeholder="Leave empty for global"
                                 />
@@ -96,7 +80,7 @@
                                 <label class="form-label small">Telegram chat ID</label>
                                 <input
                                     type="text"
-                                    class="form-control form-control-sm"
+                                    class="form-control"
                                     name="tg_chat_id"
                                     placeholder="Leave empty for global"
                                 />
@@ -105,7 +89,7 @@
                                 <label class="form-label small">Discord webhook</label>
                                 <input
                                     type="text"
-                                    class="form-control form-control-sm"
+                                    class="form-control"
                                     name="discord_webhook"
                                     placeholder="Leave empty for global"
                                 />
@@ -122,29 +106,17 @@
     <div class="theme-card anim-fadeup anim-delay-2">
         <div style="padding: 0">
             {% for m in monitors %}
-            <div
-                class="monitor-row"
-                style="padding: 13px 24px 13px 16px; border-bottom: 1px solid var(--c-border); {% if loop.last %}border-bottom: none;{% endif %}"
-            >
+            <div class="monitor-row">
                 <div class="d-flex justify-content-between align-items-center gap-3">
                     <div style="min-width: 0; flex: 1">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span style="font-weight: 500; font-size: 0.875rem">{{ m.Name }}</span>
+                            <span class="monitor-title">{{ m.Name }}</span>
                             {% if not m.Enabled %}
-                            <span
-                                class="status-badge status-paused"
-                                style="font-size: 0.625rem; padding: 2px 7px"
-                                >Paused</span
-                            >
+                            <span class="status-badge status-badge-xs status-paused">Paused</span>
                             {% endif %}
                         </div>
-                        <div style="font-size: 0.8125rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-                            <a
-                                href="{{ m.Target }}"
-                                target="_blank"
-                                style="color: var(--c-text-2); text-decoration: none"
-                                >{{ m.Target }}</a
-                            >
+                        <div class="monitor-meta">
+                            <a href="{{ m.Target }}" target="_blank" class="link-secondary">{{ m.Target }}</a>
                             · <code>{{ m.Type }}</code>
                         </div>
                     </div>
@@ -169,7 +141,7 @@
                                     class="bi bi-pencil"
                                     style="font-size: 0.7rem"
                                 ></i
-                                ><span class="d-sm-block d-none">Edit</span>
+                                ><span class="show-from-sm">Edit</span>
                             </button>
                             <button
                                 class="btn btn-ghost {% if m.Enabled %}warning{% else %}success{% endif %} btn-toggle"
@@ -181,13 +153,13 @@
                                     class="bi bi-pause"
                                     style="font-size: 0.7rem"
                                 ></i
-                                ><span class="d-sm-block d-none">Pause</span>
+                                ><span class="show-from-sm">Pause</span>
                                 {% else %}
                                 <i
                                     class="bi bi-play"
                                     style="font-size: 0.7rem"
                                 ></i
-                                ><span class="d-sm-block d-none">Resume</span>
+                                ><span class="show-from-sm">Resume</span>
                                 {% endif %}
                             </button>
                             <button
@@ -198,25 +170,21 @@
                                     class="bi bi-trash"
                                     style="font-size: 0.7rem"
                                 ></i
-                                ><span class="d-sm-block d-none">Delete</span>
+                                ><span class="show-from-sm">Delete</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Edit form (hidden) -->
-                <div
-                    class="edit-form d-none"
-                    data-id="{{ m.ID }}"
-                    style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--c-border)"
-                >
+                <div class="edit-form d-none" data-id="{{ m.ID }}">
                     <form class="edit-form-fields">
                         <div class="row g-2 align-items-end">
                             <div class="col-md-3">
                                 <label class="form-label small">Name</label>
                                 <input
                                     type="text"
-                                    class="form-control form-control-sm"
+                                    class="form-control"
                                     name="name"
                                     placeholder="Name"
                                 />
@@ -224,7 +192,7 @@
                             <div class="col-md-2">
                                 <label class="form-label small">Type</label>
                                 <select
-                                    class="form-select form-select-sm"
+                                    class="form-select"
                                     name="type"
                                 >
                                     <option value="http">HTTP</option>
@@ -235,7 +203,7 @@
                                 <label class="form-label small">Target</label>
                                 <input
                                     type="text"
-                                    class="form-control form-control-sm"
+                                    class="form-control"
                                     name="target"
                                     placeholder="Target"
                                 />
@@ -244,34 +212,19 @@
                                 <label class="form-label small">Interval (sec)</label>
                                 <input
                                     type="number"
-                                    class="form-control form-control-sm"
+                                    class="form-control"
                                     name="interval"
                                     min="0"
                                     placeholder="default"
                                 />
                             </div>
                             <div class="col-md-1">
-                                <button
-                                    type="submit"
-                                    class="btn btn-uptime w-100"
-                                    style="justify-content: center"
-                                >
-                                    Save
-                                </button>
+                                <button type="submit" class="btn btn-uptime w-100">Save</button>
                             </div>
                         </div>
                         <div class="mt-2">
-                            <button
-                                type="button"
-                                class="btn-ghost"
-                                style="font-size: 0.75rem"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#editAdvanced-{{ m.ID }}"
-                            >
-                                <i
-                                    class="bi bi-chevron-down"
-                                    style="font-size: 0.625rem"
-                                ></i>
+                            <button type="button" class="btn-ghost" data-bs-toggle="collapse" data-bs-target="#editAdvanced-{{ m.ID }}">
+                                <i class="bi bi-chevron-down" style="font-size: 0.625rem"></i>
                                 Notification overrides
                             </button>
                             <div
@@ -283,7 +236,7 @@
                                         <label class="form-label small">Telegram token</label>
                                         <input
                                             type="text"
-                                            class="form-control form-control-sm"
+                                            class="form-control"
                                             name="tg_token"
                                             placeholder="Override token"
                                         />
@@ -292,7 +245,7 @@
                                         <label class="form-label small">Telegram chat ID</label>
                                         <input
                                             type="text"
-                                            class="form-control form-control-sm"
+                                            class="form-control"
                                             name="tg_chat_id"
                                             placeholder="Override chat ID"
                                         />
@@ -301,7 +254,7 @@
                                         <label class="form-label small">Discord webhook</label>
                                         <input
                                             type="text"
-                                            class="form-control form-control-sm"
+                                            class="form-control"
                                             name="discord_webhook"
                                             placeholder="Override webhook"
                                         />

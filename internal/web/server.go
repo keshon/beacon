@@ -2,8 +2,10 @@ package web
 
 import (
 	"encoding/json"
+	"mime"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/store"
@@ -11,19 +13,25 @@ import (
 	"github.com/flosch/pongo2/v6"
 )
 
-type Server struct {
-	store  *store.Store
-	auth   *Auth
-	cfg    *config.Config
-	tplDir string
+func init() {
+	_ = mime.AddExtensionType(".css", "text/css")
 }
 
-func NewServer(s *store.Store, auth *Auth, cfg *config.Config, tplDir string) *Server {
+type Server struct {
+	store     *store.Store
+	auth      *Auth
+	cfg       *config.Config
+	tplDir    string
+	staticDir string
+}
+
+func NewServer(s *store.Store, auth *Auth, cfg *config.Config, tplDir, staticDir string) *Server {
 	return &Server{
-		store:  s,
-		auth:   auth,
-		cfg:    cfg,
-		tplDir: tplDir,
+		store:     s,
+		auth:      auth,
+		cfg:       cfg,
+		tplDir:    tplDir,
+		staticDir: staticDir,
 	}
 }
 
@@ -59,9 +67,21 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/network/status", s.apiNetworkStatus)
 
 	mux.HandleFunc("GET /settings", s.handleSettings)
+	mux.HandleFunc("GET /uikit", s.handleUikit)
 
 	authMw := s.auth.Middleware(s.cfg.Auth.Username, s.cfg.Auth.Password)
-	return authMw(mux)
+	h := authMw(mux)
+	if s.staticDir != "" {
+		staticHandler := http.StripPrefix("/static", http.FileServer(http.Dir(s.staticDir)))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/static/") {
+				staticHandler.ServeHTTP(w, r)
+				return
+			}
+			h.ServeHTTP(w, r)
+		})
+	}
+	return h
 }
 
 func (s *Server) render(w http.ResponseWriter, name string, ctx pongo2.Context) error {

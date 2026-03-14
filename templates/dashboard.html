@@ -13,14 +13,8 @@
     {% if networkEnabled and networkNodes %}
     <div class="theme-card mb-3 anim-fadeup anim-delay-1">
         <div class="card-body">
-            <div
-                class="table-responsive"
-                style="margin: -1.25rem -1rem -1.25rem; overflow-x: auto"
-            >
-                <table
-                    class="theme-table"
-                    style="border-radius: 0"
-                >
+            <div class="table-responsive card-table-wrap">
+                <table class="theme-table">
                     <thead>
                         <tr>
                             <th>Node</th>
@@ -35,12 +29,7 @@
                         <tr>
                             <td><code>{{ n.NodeID }}</code></td>
                             <td>
-                                <a
-                                    href="{{ n.URL }}"
-                                    target="_blank"
-                                    style="font-size: 0.8125rem; color: var(--c-text-2); text-decoration: none"
-                                    >{{ n.URL }}</a
-                                >
+                                <a href="{{ n.URL }}" target="_blank" class="link-secondary table-cell-secondary">{{ n.URL }}</a>
                             </td>
                             <td>
                                 {% if n.Status == 'self' %}
@@ -53,15 +42,12 @@
                                 <span class="status-badge status-unknown"><span class="dot"></span>Unknown</span>
                                 {% endif %}
                             </td>
-                            <td style="color: var(--c-text-3); font-size: 0.8125rem">{{ n.LastSeen }}</td>
-                            <td style="color: var(--c-text-2)">{{ n.MonitorsCount }}</td>
+                            <td class="table-cell-muted">{{ n.LastSeen }}</td>
+                            <td class="table-cell-secondary">{{ n.MonitorsCount }}</td>
                         </tr>
                         {% if n.LastError %}
                         <tr>
-                            <td
-                                colspan="5"
-                                style="background: var(--c-danger-light); color: var(--c-danger); font-size: 0.8125rem; padding: 8px 16px"
-                            >
+                            <td colspan="5" class="table-alert-cell">
                                 <i class="bi bi-exclamation-circle me-1"></i>{{ n.LastError }}
                             </td>
                         </tr>
@@ -88,34 +74,17 @@
                     {% for row in rows %}
                     <tr>
                         <td>
-                            <div style="font-weight: 500; font-size: 0.875rem">{{ row.Monitor.Name }}</div>
-                            <div style="font-size: 0.8125rem">
-                                <a
-                                    href="{{ row.Monitor.Target }}"
-                                    target="_blank"
-                                    style="color: var(--c-text-2); text-decoration: none"
-                                    >{{ row.Monitor.Target }}</a
-                                >
+                            <div class="monitor-title">{{ row.Monitor.Name }}</div>
+                            <div class="monitor-meta">
+                                <a href="{{ row.Monitor.Target }}" target="_blank" class="link-secondary">{{ row.Monitor.Target }}</a>
                                 · <code>{{ row.Monitor.Type }}</code>
                             </div>
                         </td>
                         <td>
                             {% if row.IsPeer %}
-                            <span class="source-badge source-peer"
-                                ><i
-                                    class="bi bi-diagram-3"
-                                    style="font-size: 0.625rem"
-                                ></i
-                                >{{ row.SourceLabel }}</span
-                            >
+                            <span class="source-badge source-peer"><i class="bi bi-diagram-3"></i>{{ row.SourceLabel }}</span>
                             {% else %}
-                            <span class="source-badge source-self"
-                                ><i
-                                    class="bi bi-person"
-                                    style="font-size: 0.625rem"
-                                ></i
-                                >{{ row.SourceLabel }}</span
-                            >
+                            <span class="source-badge source-self"><i class="bi bi-person"></i>{{ row.SourceLabel }}</span>
                             {% endif %}
                         </td>
                         <td>
@@ -127,8 +96,8 @@
                             <span class="status-badge status-unknown"><span class="dot"></span>Unknown</span>
                             {% endif %}
                         </td>
-                        <td style="font-size: 0.8125rem; color: var(--c-text-2)">{{ row.LatencyMs }}</td>
-                        <td style="font-size: 0.8125rem; color: var(--c-text-3)">{{ row.LastCheck }}</td>
+                        <td class="table-cell-secondary">{{ row.LatencyMs }}</td>
+                        <td class="table-cell-muted">{{ row.LastCheck }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

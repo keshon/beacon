@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}UI Kit – Beacon{% endblock %}
+{% block content %}
+<div class="container theme-page">
+    <h1 class="page-title mb-4">Beacon UI Kit</h1>
+    <p class="table-cell-secondary mb-4">Reference for all UI components and tokens. Use these classes in your templates.</p>
+
+    <!-- Typography -->
+    <section class="theme-card mb-4">
+        <div class="card-body">
+            <p class="section-label">Typography</p>
+            <h1 class="page-title">Page title</h1>
+            <p class="mb-2">Body text — default size and color.</p>
+            <p class="table-cell-secondary">Secondary text (table-cell-secondary).</p>
+            <p class="table-cell-muted">Muted text (table-cell-muted).</p>
+            <p><code>Monospace / code</code></p>
+        </div>
+    </section>
+
+    <!-- Buttons -->
+    <section class="theme-card mb-4">
+        <div class="card-body">
+            <p class="section-label">Buttons</p>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <button type="button" class="btn btn-uptime"><i class="bi bi-plus"></i> Primary (btn-uptime)</button>
+                <button type="button" class="btn btn-uptime btn-lg">Large</button>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-ghost">Ghost</button>
+                <button type="button" class="btn btn-ghost danger">Danger</button>
+                <button type="button" class="btn btn-ghost warning">Warning</button>
+                <button type="button" class="btn btn-ghost success">Success</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Form controls (default = small) -->
+    <section class="theme-card mb-4">
+        <div class="card-body">
+            <p class="section-label">Form controls</p>
+            <p class="table-cell-muted small mb-2">Inputs and selects use compact size by default (no -sm class).</p>
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label small">Label</label>
+                    <input type="text" class="form-control" placeholder="Text input" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Select</label>
+                    <select class="form-select">
+                        <option>Option A</option>
+                        <option>Option B</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Disabled</label>
+                    <input type="text" class="form-control" placeholder="Disabled" disabled />
+                </div>
+            </div>
+            <div class="row g-2">
+                <div class="col-12">
+                    <label class="form-label small">Textarea</label>
+                    <textarea class="form-control" rows="2" placeholder="Textarea"></textarea>
+                </div>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="chk1" />
+                <label class="form-check-label small" for="chk1">Checkbox label</label>
+            </div>
+        </div>
+    </section>
+
+    <!-- Status badges -->
+    <section class="theme-card mb-4">
+        <div class="card-body">
+            <p class="section-label">Status badges</p>
+            <div class="d-flex flex-wrap gap-2 mb-2">
+                <span class="status-badge status-up"><span class="dot"></span>Up</span>
+                <span class="status-badge status-down"><span class="dot"></span>Down</span>
+                <span class="status-badge status-unknown"><span class="dot"></span>Unknown</span>
+                <span class="status-badge status-self"><span class="dot"></span>Self</span>
+                <span class="status-badge status-live"><span class="dot"></span>Live</span>
+                <span class="status-badge status-dead"><span class="dot"></span>Dead</span>
+                <span class="status-badge status-paused">Paused</span>
+            </div>
+            <span class="status-badge status-badge-xs status-paused">XS badge</span>
+        </div>
+    </section>
+
+    <!-- Source badges -->
+    <section class="theme-card mb-4">
+        <div class="card-body">
+            <p class="section-label">Source badges</p>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="source-badge source-self"><i class="bi bi-person"></i>Self</span>
+                <span class="source-badge source-peer"><i class="bi bi-diagram-3"></i>Peer</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Table -->
+    <section class="theme-card mb-4">
+        <div class="card-body">
+            <p class="section-label">Table (theme-table)</p>
+            <div class="table-responsive">
+                <table class="theme-table">
+                    <thead>
+                        <tr>
+                            <th>Column A</th>
+                            <th>Column B</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Row 1</td>
+                            <td class="table-cell-secondary">Secondary cell</td>
+                            <td><span class="status-badge status-up"><span class="dot"></span>Up</span></td>
+                        </tr>
+                        <tr>
+                            <td>Row 2</td>
+                            <td class="table-cell-muted">Muted cell</td>
+                            <td><span class="status-badge status-down"><span class="dot"></span>Down</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Card with table (full bleed) -->
+    <section class="theme-card mb-4">
+        <div class="card-body">
+            <p class="section-label">Card with full-bleed table (card-table-wrap)</p>
+            <div class="table-responsive card-table-wrap">
+                <table class="theme-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Item 1</td>
+                            <td class="table-cell-secondary">Value 1</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Empty state -->
+    <section class="theme-card mb-4">
+        <div class="empty-state">
+            <div class="empty-icon"><i class="bi bi-inbox"></i></div>
+            <p>No items yet. <a href="#">Add one</a> to get started.</p>
+        </div>
+    </section>
+
+    <!-- Button label visibility (show-from-sm) -->
+    <section class="theme-card mb-4">
+        <div class="card-body">
+            <p class="section-label">Responsive button labels (show-from-sm)</p>
+            <p class="table-cell-muted small mb-2">Labels inside buttons are hidden on xs, visible from sm breakpoint.</p>
+            <div class="btn-group">
+                <button type="button" class="btn btn-ghost"><i class="bi bi-pencil"></i><span class="show-from-sm">Edit</span></button>
+                <button type="button" class="btn btn-ghost warning"><i class="bi bi-pause"></i><span class="show-from-sm">Pause</span></button>
+                <button type="button" class="btn btn-ghost danger"><i class="bi bi-trash"></i><span class="show-from-sm">Delete</span></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Monitor row sample -->
+    <section class="theme-card mb-4">
+        <div style="padding: 0">
+            <p class="section-label m-3 mb-0">Monitor row (monitor-row)</p>
+            <div class="monitor-row">
+                <div class="d-flex justify-content-between align-items-center gap-3">
+                    <div style="min-width: 0; flex: 1">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="monitor-title">Example monitor</span>
+                            <span class="status-badge status-badge-xs status-paused">Paused</span>
+                        </div>
+                        <div class="monitor-meta">
+                            <a href="#" class="link-secondary" target="_blank">https://example.com</a> · <code>http</code>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <button type="button" class="btn btn-ghost"><i class="bi bi-pencil"></i><span class="show-from-sm">Edit</span></button>
+                        <button type="button" class="btn btn-ghost danger"><i class="bi bi-trash"></i><span class="show-from-sm">Delete</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Design tokens -->
+    <section class="theme-card mb-4">
+        <div class="card-body">
+            <p class="section-label">Design tokens (CSS variables)</p>
+            <ul class="mb-0 table-cell-secondary" style="font-size: 0.8125rem; list-style: none; padding-left: 0">
+                <li><code>--c-bg</code> <code>--c-surface</code> <code>--c-surface-2</code></li>
+                <li><code>--c-border</code> <code>--c-border-strong</code></li>
+                <li><code>--c-text</code> <code>--c-text-2</code> <code>--c-text-3</code></li>
+                <li><code>--c-accent</code> <code>--c-accent-hover</code> <code>--c-accent-light</code></li>
+                <li><code>--c-success</code> <code>--c-danger</code> <code>--c-warning</code> (+ -light)</li>
+                <li><code>--r</code> <code>--r-lg</code> <code>--r-pill</code></li>
+                <li><code>--shadow-sm</code> <code>--shadow-md</code></li>
+                <li><code>--font</code> <code>--font-mono</code></li>
+            </ul>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -106,7 +106,7 @@ func main() {
 	go syncClient.Run(ctx)
 
 	auth := web.NewAuth()
-	srv := web.NewServer(st, auth, cfg, "templates")
+	srv := web.NewServer(st, auth, cfg, "templates", "static")
 	httpServer := &http.Server{Addr: cfg.Listen, Handler: srv.Routes()}
 
 	go func() {

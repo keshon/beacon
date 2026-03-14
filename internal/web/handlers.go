@@ -310,6 +310,10 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "settings.html", pongo2.Context{"version": getBuildVersion()})
 }
 
+func (s *Server) handleUikit(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "uikit.html", pongo2.Context{"version": getBuildVersion()})
+}
+
 func (s *Server) apiHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
