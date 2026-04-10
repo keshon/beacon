@@ -9,6 +9,32 @@
             <div class="col-12">
                 <div class="card anim-fadeup anim-delay-1">
                     <div class="card-body">
+                        <p class="section-label">Appearance</p>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label small" for="ui_font_size">Base font size</label>
+                                <select class="form-select" id="ui_font_size">
+                                    <option value="0.8125rem">13px</option>
+                                    <option value="0.875rem">14px</option>
+                                    <option value="0.9375rem">15px</option>
+                                    <option value="1rem">16px</option>
+                                    <option value="1.0625rem">17px</option>
+                                    <option value="1.125rem">18px</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="button" class="btn btn-outline-secondary" id="ui_font_reset">Reset</button>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="small text-muted" id="ui_font_hint">Applies instantly, saved in this browser.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card anim-fadeup anim-delay-1">
+                    <div class="card-body">
                         <p class="section-label">Server</p>
                         <div class="row g-2">
                             <div class="col-md-6">
@@ -225,6 +251,46 @@
 </div>
 <script>
     (function () {
+        (function initUiFontSize() {
+            var select = document.getElementById('ui_font_size');
+            var reset = document.getElementById('ui_font_reset');
+            if (!select || !reset) return;
+
+            function apply(v) {
+                document.documentElement.style.setProperty('--ui-font-size', v);
+            }
+
+            function getDefault() {
+                return '0.9375rem';
+            }
+
+            try {
+                var saved = localStorage.getItem('uiFontSize') || getDefault();
+                select.value = saved;
+                apply(saved);
+            } catch (e) {
+                select.value = getDefault();
+                apply(getDefault());
+            }
+
+            select.addEventListener('change', function () {
+                var v = select.value || getDefault();
+                apply(v);
+                try {
+                    localStorage.setItem('uiFontSize', v);
+                } catch (e) {}
+            });
+
+            reset.addEventListener('click', function () {
+                var v = getDefault();
+                select.value = v;
+                apply(v);
+                try {
+                    localStorage.setItem('uiFontSize', v);
+                } catch (e) {}
+            });
+        })();
+
         function el(f, name) {
             return f.querySelector('[name="' + name + '"]');
         }

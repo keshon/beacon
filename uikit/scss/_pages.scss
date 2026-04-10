@@ -14,49 +14,49 @@
   .bg-blob {
     position: fixed;
     border-radius: 50%;
-    filter: blur(80px);
+    filter: blur(5rem);
     pointer-events: none;
     z-index: 0;
   }
 
   .bg-blob-1 {
-    width: 500px; height: 500px;
+    width: 31.25rem; height: 31.25rem;
     background: rgba(99, 102, 241, 0.18);
-    top: -100px; left: -100px;
+    top: -6.25rem; left: -6.25rem;
   }
 
   .bg-blob-2 {
-    width: 350px; height: 350px;
+    width: 21.875rem; height: 21.875rem;
     background: rgba(16, 185, 129, 0.12);
-    bottom: -50px; right: -50px;
+    bottom: -3.125rem; right: -3.125rem;
   }
 
   .login-wrap {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 380px;
+    max-width: 23.75rem;
     animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   .login-logo {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem;
     margin-bottom: 2rem;
     justify-content: center;
   }
 
   .logo-icon {
-    width: 38px; height: 38px;
+    width: 2.375rem; height: 2.375rem;
     background: var(--bs-primary);
-    border-radius: 10px;
+    border-radius: 0.625rem;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.1rem;
     color: #fff;
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0.25rem 1rem rgba(99, 102, 241, 0.4);
   }
 
   .logo-name {
@@ -68,10 +68,10 @@
 
   .login-card {
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 16px;
+    border: 0.0625rem solid rgba(255, 255, 255, 0.09);
+    border-radius: 1rem;
     padding: 2rem;
-    backdrop-filter: blur(16px);
+    backdrop-filter: blur(1rem);
 
     h1 {
       font-size: 1.125rem;
@@ -94,16 +94,16 @@
     font-weight: 500;
     color: rgba(255, 255, 255, 0.55);
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 0.375rem;
   }
 
   .form-control {
     width: 100%;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 0.0625rem solid rgba(255, 255, 255, 0.1);
     color: #fff;
     font-size: 0.875rem;
-    padding: 10px 14px;
+    padding: 0.625rem 0.875rem;
     transition: border-color 0.15s, box-shadow 0.15s;
     outline: none;
 
@@ -112,7 +112,7 @@
     &:focus {
       color: #fff;
       border-color: var(--bs-primary);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+      box-shadow: 0 0 0 0.1875rem rgba(99, 102, 241, 0.2);
       background: rgba(255, 255, 255, 0.08);
     }
   }
@@ -120,13 +120,13 @@
   // Override Bootstrap .alert.alert-danger for dark context
   .alert.alert-danger {
     background: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.25);
+    border: 0.0625rem solid rgba(239, 68, 68, 0.25);
     color: #fca5a5;
     font-size: 0.8125rem;
-    padding: 10px 14px;
+    padding: 0.625rem 0.875rem;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
 
     i { opacity: 0.9; }
   }
@@ -137,14 +137,14 @@
     width: 100%;
     font-size: 0.875rem;
     font-weight: 600;
-    padding: 11px;
+    padding: 0.6875rem;
     margin-top: 1.5rem;
     letter-spacing: 0.01em;
     transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
 
     &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
+      transform: translateY(-0.0625rem);
+      box-shadow: 0 0.375rem 1.25rem rgba(99, 102, 241, 0.35);
     }
     &:active { transform: none; }
   }

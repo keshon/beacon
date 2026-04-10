@@ -3,17 +3,17 @@
 
 .dash-nav {
   background: var(--c-nav-bg);
-  border-bottom: 1px solid var(--c-nav-border);
+  border-bottom: 0.0625rem solid var(--c-nav-border);
   padding: 0;
   position: sticky;
   top: 0;
   z-index: 1000;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(0.75rem);
 
   .container {
     display: flex;
     align-items: center;
-    height: 56px;
+    height: 3.5rem;
   }
 
   .navbar-brand {
@@ -23,15 +23,15 @@
     letter-spacing: -0.01em;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
     text-decoration: none;
     padding: 0;
   }
 
   .navbar-toggler {
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    padding: 4px 8px;
-    border-radius: 6px;
+    border: 0.0625rem solid rgba(255, 255, 255, 0.15);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
   }
 
   .navbar-toggler-icon {
@@ -44,7 +44,7 @@
   }
 
   .navbar-nav {
-    gap: 2px;
+    gap: 0.125rem;
     flex-direction: row;
     align-items: center;
   }
@@ -53,12 +53,12 @@
     color: rgba(255, 255, 255, 0.55) !important;
     font-size: 0.8125rem;
     font-weight: 500;
-    padding: 6px 10px !important;
-    border-radius: 7px;
+    padding: 0.375rem 0.625rem !important;
+    border-radius: 0.4375rem;
     transition: color 0.15s, background 0.15s;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 0.375rem;
     text-decoration: none;
 
     i { font-size: 0.875rem; }
@@ -84,11 +84,11 @@
 }
 
 .brand-dot {
-  width: 8px;
-  height: 8px;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
   background: var(--bs-primary);
   display: inline-block;
-  box-shadow: 0 0 8px rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0.5rem rgba(99, 102, 241, 0.7);
   animation: pulse-dot 2.5s ease-in-out infinite;
 }
