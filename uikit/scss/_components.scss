@@ -1,208 +1,248 @@
-.theme-card {
-  background: var(--c-surface);
-  border: none;
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  text-wrap-mode: nowrap;
+// Component overrides on top of Bootstrap.
+// Card, Table, Buttons, Badges, Forms — all use standard BS class names.
+// Domain-specific classes (monitor-row, empty-state, etc.) kept as-is.
+
+// Vertical separator
+.vr {
+    min-height: 1em;
+    background-color: var(--bs-border-color);
+    opacity: 0.25;
 }
 
-.theme-card .card-body { padding: 1.25rem 1rem; }
+// ── Card tweaks ──
+// $card-* variables handle border/radius/shadow/spacing.
+// Only extra properties that have no $variable go here.
+.card {
+  --bs-card-spacer-y: 1rem;
+  overflow: hidden;
+  text-wrap-mode: nowrap;
+  // Default card background + shadow to match old UI kit look.
+  background-color: var(--bs-card-bg);
+  box-shadow: var(--bs-card-box-shadow);
+}
 
 .card-table-wrap {
-  margin: -1.25rem -1rem -1.25rem;
+  margin: -$card-spacer-y (-$card-spacer-x);
   overflow-x: auto;
 }
 
-.card-table-wrap .theme-table { border-radius: 0; }
+.card-table-wrap .table { border-radius: 0; }
 
 .section-label {
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--c-text-3);
+  color: var(--bs-body-color);
+  opacity: 0.45;
   margin-bottom: 1rem;
 }
 
-/* ── Buttons ── */
-.btn-uptime {
-  background: var(--c-accent);
-  border: none;
-  color: #fff;
+// ── Primary button (was .btn-uptime) ──
+.btn-primary {
+  // Keep Beacon look (white text on primary background),
+  // regardless of Bootstrap color-contrast defaults.
+  --bs-btn-color: #fff;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-color: #fff;
+  --bs-btn-disabled-color: #fff;
+
   font-weight: 500;
   font-size: 0.8125rem;
-  padding: 7px 14px;
-  border-radius: var(--r);
-  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   line-height: 1.4;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  }
+  &:active { transform: translateY(0); }
 }
 
-.btn-uptime:hover {
-  background: var(--c-accent-hover);
-  color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-}
-
-.btn-uptime:active { transform: translateY(0); }
-
-.btn-uptime.btn-lg {
-  padding: 9px 18px;
-  font-size: 0.875rem;
-}
-
-.btn-uptime.w-100 {
-  justify-content: center;
-}
-
-/* Form controls: small by default (no -sm class needed) */
-.theme-main .form-control,
-.theme-main .form-select {
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--r);
-  font-family: var(--font);
-  font-size: 0.8125rem;
-  color: var(--c-text);
-  background: var(--c-surface);
-  padding: 6px 10px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.theme-main .form-control:focus,
-.theme-main .form-select:focus {
-  border-color: var(--c-accent);
-  box-shadow: 0 0 0 3px var(--c-accent-light);
-  outline: none;
-}
-
-.theme-main .form-label.small,
-.theme-main .form-label {
+// ── Outline buttons (was .btn-ghost) ──
+.btn-outline-secondary,
+.btn-outline-success,
+.btn-outline-warning,
+.btn-outline-danger,
+.btn-outline-info {
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--c-text-2);
-  margin-bottom: 5px;
-  display: block;
+  padding: 5px 11px 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1.4;
+  transition: all 0.15s;
+
+  i { font-size: 0.7rem; }
+
+  background: var(--c-hover-bg);
+  border-color: var(--c-border-strong);
+  color: var(--bs-body-color);
 }
 
-.theme-main .form-control:disabled {
-  background-color: var(--c-bg);
-  opacity: 1;
+.btn-outline-secondary:hover {
+  background: var(--c-hover-bg);
+  border-color: var(--c-border-strong);
+  color: var(--bs-body-color);
 }
 
-.theme-main .form-check-label.small,
-.theme-main .form-check-label {
+.btn-outline-danger:hover {
+  background: var(--c-danger-light);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: var(--bs-danger);
+}
+
+.btn-outline-warning:hover {
+  background: var(--c-warning-light);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: var(--bs-warning);
+}
+
+.btn-outline-success:hover {
+  background: var(--c-success-light);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: var(--bs-success);
+}
+
+.btn-outline-info:hover {
+  background: var(--c-info-light);
+  border-color: rgba(13, 202, 240, 0.25);
+  color: var(--bs-info);
+}
+
+// ── Form controls (scoped to for dashboard pages) ──
+.form-control,
+.form-select {
   font-size: 0.8125rem;
-  color: var(--c-text-2);
+  padding: 6px 10px;
+  background-color: var(--bs-card-bg);
 }
 
-/* Form control large variant when needed */
-.theme-main .form-control.form-control-lg,
-.theme-main .form-select.form-select-lg {
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 3px var(--c-accent-light);
+}
+
+.form-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+  opacity: 0.8;
+  margin-bottom: 5px;
+}
+
+.form-check-label {
+  font-size: 0.8125rem;
+  color: var(--bs-secondary-color);
+  opacity: 0.8;
+}
+
+.form-control.form-control-lg,
+.form-select.form-select-lg {
   padding: 9px 13px;
   font-size: 0.875rem;
 }
 
-/* ── Tables ── */
-.theme-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
+// ── Table (was .theme-table) ──
+.table {
+  > :not(caption) {
+    > * {
+      > * {
+        padding: 0.625rem 1rem;
+        background-color: unset;
+        border-bottom: unset;
+      }
+    }
+  }
+
+  thead th {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--bs-body-color);
+    opacity: 0.45;
+    border-bottom: 1px solid var(--c-border);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    transition: background 0.1s;
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  // tbody tr:hover { background: var(--c-hover-bg); }
+}
+.table-hover {
+  tbody {
+    tr:hover > * {
+      --bs-table-bg-state: var(--c-hover-bg);
+    }
+  }
 }
 
-.theme-table thead th {
-  font-size: 0.6875rem;
-  font-weight: 600;
+
+// ── Badges (was .status-badge / .source-badge) ──
+// Use Bootstrap .badge .rounded-pill as base, then domain modifiers.
+.badge {
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--c-text-3);
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--c-border);
-  background: var(--c-surface);
-  white-space: nowrap;
-}
-
-.theme-table tbody tr {
-  transition: background 0.1s;
-  border-bottom: 1px solid var(--c-border);
-}
-
-.theme-table tbody tr:last-child { border-bottom: none; }
-.theme-table tbody tr:hover { background: var(--c-surface-2); }
-.theme-table tbody td { padding: 13px 16px; vertical-align: middle; }
-
-.table-cell-muted { font-size: 0.8125rem; color: var(--c-text-3); }
-.table-cell-secondary { font-size: 0.8125rem; color: var(--c-text-2); }
-
-/* ── Status badges ── */
-.status-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
-  border-radius: var(--r-pill);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+
+  .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
 }
 
-.status-badge .dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.status-up { background: var(--c-success-light); color: var(--c-success); }
-.status-up .dot { background: var(--c-success); box-shadow: 0 0 5px var(--c-success); }
-
-.status-down { background: var(--c-danger-light); color: var(--c-danger); }
-.status-down .dot { background: var(--c-danger); }
-
-.status-unknown { background: var(--c-surface-2); color: var(--c-text-3); }
-.status-unknown .dot { background: var(--c-text-3); }
-
-.status-self { background: var(--c-accent-light); color: var(--c-accent); }
-.status-self .dot { background: var(--c-accent); box-shadow: 0 0 5px var(--c-accent); }
-
-.status-live { background: var(--c-success-light); color: var(--c-success); }
-.status-live .dot { background: var(--c-success); box-shadow: 0 0 5px var(--c-success); }
-
-.status-dead { background: var(--c-danger-light); color: var(--c-danger); }
-.status-dead .dot { background: var(--c-danger); box-shadow: 0 0 5px var(--c-danger); }
-
-.status-paused { background: var(--c-surface-2); color: var(--c-text-2); }
-
-.status-badge.status-badge-xs {
+.badge-xs {
   font-size: 0.625rem;
   padding: 2px 7px;
 }
 
-/* ── Source badge ── */
-.source-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: var(--r-pill);
-  font-size: 0.6875rem;
-  font-weight: 500;
-}
+// Status variants
+.badge-up       { background: var(--c-success-light) !important; color: var(--bs-success) !important; }
+.badge-up .dot  { background: var(--bs-success); box-shadow: 0 0 5px var(--bs-success); }
 
-.source-badge i { font-size: 0.625rem; }
+.badge-down       { background: var(--c-danger-light) !important; color: var(--bs-danger) !important; }
+.badge-down .dot  { background: var(--bs-danger); }
 
-.source-self { background: var(--c-accent-light); color: var(--c-accent); }
-.source-peer { background: var(--c-surface-2); color: var(--c-text-2); }
+.badge-unknown       { background: var(--c-hover-bg) !important; color: var(--bs-body-color) !important; opacity: 0.5; }
+.badge-unknown .dot  { background: currentColor; }
 
-/* ── Empty state ── */
+.badge-self       { background: var(--c-accent-light) !important; color: var(--bs-primary) !important; }
+.badge-self .dot  { background: var(--bs-primary); box-shadow: 0 0 5px var(--bs-primary); }
+
+.badge-live       { background: var(--c-success-light) !important; color: var(--bs-success) !important; }
+.badge-live .dot  { background: var(--bs-success); box-shadow: 0 0 5px var(--bs-success); }
+
+.badge-dead       { background: var(--c-danger-light) !important; color: var(--bs-danger) !important; }
+.badge-dead .dot  { background: var(--bs-danger); box-shadow: 0 0 5px var(--bs-danger); }
+
+.badge-paused { background: var(--c-hover-bg) !important; color: var(--bs-secondary-color) !important; }
+
+// Source variants
+.badge-source-self { background: var(--c-accent-light) !important; color: var(--bs-primary) !important; font-weight: 500; }
+.badge-source-peer { background: var(--c-hover-bg) !important; color: var(--bs-secondary-color) !important; font-weight: 500; }
+.badge-source-self i,
+.badge-source-peer i { font-size: 0.625rem; }
+
+// ── Empty state ──
 .empty-state {
   padding: 4rem 1.5rem;
   text-align: center;
-  color: var(--c-text-3);
+  color: var(--bs-body-color);
+  opacity: 0.45;
 }
 
 .empty-state .empty-icon {
@@ -212,70 +252,17 @@
 }
 
 .empty-state p { font-size: 0.875rem; margin: 0; }
-.empty-state a { color: var(--c-accent); text-decoration: none; font-weight: 500; }
+.empty-state a { color: var(--bs-primary); text-decoration: none; font-weight: 500; }
 .empty-state a:hover { text-decoration: underline; }
 
-/* ── Mono / code ── */
+// ── Mono / code ──
 code {
-  font-family: var(--font-mono);
-  font-size: 0.8em;
-  background: var(--c-surface-2);
+  background: var(--c-hover-bg);
   padding: 1px 5px;
   border-radius: 4px;
-  color: var(--c-text);
 }
 
-/* ── Ghost (outline) buttons ── */
-.btn-ghost {
-  background: var(--c-bg);
-  border: 1px solid var(--c-border-strong);
-  color: var(--c-text-2);
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 5px 11px 3px;
-  border-radius: var(--r);
-  transition: all 0.15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  font-family: var(--font);
-  line-height: 1.4;
-}
-
-.btn-ghost:hover {
-  background: var(--c-surface-2);
-  border-color: var(--c-border-strong);
-  color: var(--c-text);
-}
-
-.btn-ghost i { font-size: 0.7rem; }
-
-.btn-ghost.danger:hover {
-  background: var(--c-danger-light);
-  border-color: rgba(239, 68, 68, 0.25);
-  color: var(--c-danger);
-}
-
-.btn-ghost.warning:hover {
-  background: var(--c-warning-light);
-  border-color: rgba(245, 158, 11, 0.25);
-  color: var(--c-warning);
-}
-
-.btn-ghost.success:hover {
-  background: var(--c-success-light);
-  border-color: rgba(16, 185, 129, 0.25);
-  color: var(--c-success);
-}
-
-/* Show label from sm breakpoint (replaces d-sm-block d-none on spans) */
-.show-from-sm { display: none !important; }
-@media (min-width: 576px) {
-  .show-from-sm { display: inline !important; }
-}
-
-/* ── Monitor list row & edit form ── */
+// ── Monitor list row & edit form ──
 .monitor-row {
   padding: 13px 24px 13px 16px;
   border-bottom: 1px solid var(--c-border);
@@ -283,40 +270,25 @@ code {
 
 .monitor-row:last-child { border-bottom: none; }
 
-.monitor-row .monitor-title {
-  font-weight: 500;
-  font-size: 0.875rem;
-}
-
-.monitor-row .monitor-meta {
-  font-size: 0.8125rem;
-  margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.monitor-row .link-secondary {
-  color: var(--c-text-2);
-  text-decoration: none;
-}
-
-.monitor-row .link-secondary:hover { color: var(--c-text); }
-
 .edit-form {
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px dashed var(--c-border);
 }
 
-/* Alert row (e.g. error in table) */
+// Alert row (e.g. error in table)
 .table-alert-cell {
   background: var(--c-danger-light);
-  color: var(--c-danger);
+  color: var(--bs-danger);
   font-size: 0.8125rem;
   padding: 8px 16px;
 }
 
-/* Override Bootstrap */
-.theme-main .badge { font-weight: 500; }
+// ── Utilities ──
+.anim-fadeup { animation: fadeUp 0.3s ease both; }
+.anim-delay-1 { animation-delay: 0.05s; }
+.anim-delay-2 { animation-delay: 0.1s; }
+.anim-delay-3 { animation-delay: 0.15s; }
 
+// Override Bootstrap badge weight
+.badge { font-weight: 500; }

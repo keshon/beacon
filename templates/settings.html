@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% block title %}Settings – Beacon{% endblock %} {% block content %}
-<div class="container theme-page">
+<div class="container">
     <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
         <h1 class="page-title mb-0">Settings</h1>
     </div>
@@ -7,7 +7,7 @@
     <form id="configForm">
         <div class="row g-3">
             <div class="col-12">
-                <div class="theme-card anim-fadeup anim-delay-1">
+                <div class="card anim-fadeup anim-delay-1">
                     <div class="card-body">
                         <p class="section-label">Server</p>
                         <div class="row g-2">
@@ -45,7 +45,7 @@
                 </div>
             </div>
             <div class="col-12">
-                <div class="theme-card anim-fadeup anim-delay-1">
+                <div class="card anim-fadeup anim-delay-1">
                     <div class="card-body">
                         <p class="section-label">Auth</p>
                         <div class="row g-2">
@@ -70,7 +70,7 @@
                 </div>
             </div>
             <div class="col-12">
-                <div class="theme-card anim-fadeup anim-delay-1">
+                <div class="card anim-fadeup anim-delay-1">
                     <div class="card-body">
                         <p class="section-label">Telegram</p>
                         <div class="form-check mb-2">
@@ -110,7 +110,7 @@
                 </div>
             </div>
             <div class="col-12">
-                <div class="theme-card anim-fadeup anim-delay-1">
+                <div class="card anim-fadeup anim-delay-1">
                     <div class="card-body">
                         <p class="section-label">Discord</p>
                         <div class="form-check mb-2">
@@ -139,7 +139,7 @@
                 </div>
             </div>
             <div class="col-12">
-                <div class="theme-card anim-fadeup anim-delay-1">
+                <div class="card anim-fadeup anim-delay-1">
                     <div class="card-body">
                         <p class="section-label">Network (federation)</p>
                         <div class="form-check mb-2">
@@ -211,7 +211,7 @@
             <div class="col-12 d-flex align-items-center gap-2">
                 <button
                     type="submit"
-                    class="btn btn-uptime"
+                    class="btn btn-primary"
                 >
                     Save settings
                 </button>
@@ -306,7 +306,7 @@
             return;
         }
 
-        const card = checkbox.closest('.theme-card');
+        const card = checkbox.closest('.card');
         if (!card) {
             return;
         }

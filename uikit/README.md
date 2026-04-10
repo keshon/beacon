@@ -1,50 +1,65 @@
-# Beacon UI kit (SCSS)
+# Beacon UI kit (SCSS + Bootstrap 5.3)
 
-This folder contains the source-of-truth styles for Beacon.
-
-The application still serves CSS from `static/uikit.css`, but that file should be treated as a generated artifact from these SCSS sources.
+This folder contains the source-of-truth styles for Beacon. Bootstrap 5.3.3 SCSS source is compiled together with Beacon overrides into a single `static/uikit.css`.
 
 ## Requirements
-- `sass` (Dart Sass) available in your `PATH`
+
+- `sass` (Dart Sass) in your PATH
+- Bootstrap SCSS source in `uikit/vendor/bootstrap/scss/` (see setup below)
+
+## First-time setup
+
+Download Bootstrap SCSS source (no npm required):
+
+```bash
+bash scripts/bootstrap-download.sh
+```
+
+Windows:
+
+```bat
+scripts\bootstrap-download.bat
+```
 
 ## Commands
 
-### One-shot build (SCSS → CSS)
-
-Linux:
+### One-shot build
 
 ```bash
 bash scripts/uikit-build.sh
 ```
 
-Windows:
-
-```bat
-scripts\uikit-build.bat
-```
-
-### Watch mode (rebuild on changes)
-
-Linux:
+### Watch mode
 
 ```bash
 bash scripts/uikit-watch.sh
 ```
 
-Windows:
+## Dev workflow
 
-```bat
-scripts\uikit-watch.bat
+1. Run `scripts/bootstrap-download.sh` once (if `uikit/vendor/` is empty).
+2. Start the app.
+3. In a second terminal start the SCSS watcher.
+4. Edit files in `uikit/scss/`.
+5. Refresh the page to see changes.
+
+## File structure
+
+```
+uikit/
+  scss/
+    uikit.scss          # Entrypoint: variables -> bootstrap -> tokens -> custom
+    _variables.scss     # Bootstrap $variable overrides (colors, fonts, radii, card)
+    _tokens.scss        # CSS custom properties not covered by Bootstrap
+    _base.scss          # Scrollbar, animations
+    _layout.scss        # Container, layout wrappers, page-title
+    _nav.scss           # .dash-nav navbar override
+    _components.scss    # Card, table, badge, button, form overrides + domain classes
+    _pages.scss         # Login page
+  vendor/
+    bootstrap/scss/     # Bootstrap 5.3.3 SCSS source (not committed, download via script)
 ```
 
-## Dev workflow
-1. Start the app (as you do now).
-2. In a second terminal start the SCSS watcher.
-3. Edit files in `uikit/scss/`.
-4. Refresh the page to see changes.
+## Class naming
 
-## Files
-- `uikit/scss/uikit.scss`: SCSS entrypoint
-- `uikit/scss/_*.scss`: partials (tokens, base, layout, nav, components, pages)
-- `static/uikit.css`: generated output consumed by templates
-
+Standard Bootstrap class names are used wherever possible (`.card`, `.table`, `.btn-primary`, `.btn-outline-*`, `.badge`, `.alert`, etc.). Domain-specific classes (`.dash-nav`, `.monitor-row`, `.empty-state`, `.section-label`, etc.) are kept where Bootstrap has no equivalent.

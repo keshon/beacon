@@ -1,3 +1,6 @@
+// Dark navbar override. .dash-nav is a modifier applied alongside
+// Bootstrap's .navbar .navbar-expand-lg on the <nav> element.
+
 .dash-nav {
   background: var(--c-nav-bg);
   border-bottom: 1px solid var(--c-nav-border);
@@ -6,93 +9,86 @@
   top: 0;
   z-index: 1000;
   backdrop-filter: blur(12px);
-}
 
-.dash-nav .container {
-  display: flex;
-  align-items: center;
-  height: 56px;
-}
+  .container {
+    display: flex;
+    align-items: center;
+    height: 56px;
+  }
 
-.dash-nav .navbar-brand {
-  color: #fff !important;
-  font-weight: 600;
-  font-size: 0.9375rem;
-  letter-spacing: -0.01em;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  padding: 0;
+  .navbar-brand {
+    color: #fff !important;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    padding: 0;
+  }
+
+  .navbar-toggler {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+
+  .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255,255,255,0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+  }
+
+  .navbar-collapse {
+    flex-grow: 0;
+    margin-left: auto;
+  }
+
+  .navbar-nav {
+    gap: 2px;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .nav-link {
+    color: rgba(255, 255, 255, 0.55) !important;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    padding: 6px 10px !important;
+    border-radius: 7px;
+    transition: color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+
+    i { font-size: 0.875rem; }
+
+    &:hover {
+      color: #fff !important;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &.active {
+      color: #fff !important;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    &.nav-logout {
+      color: rgba(255, 255, 255, 0.35) !important;
+      &:hover {
+        color: rgba(255, 255, 255, 0.7) !important;
+        background: rgba(255, 255, 255, 0.05);
+      }
+    }
+  }
 }
 
 .brand-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--c-accent);
+  background: var(--bs-primary);
   display: inline-block;
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.7);
   animation: pulse-dot 2.5s ease-in-out infinite;
 }
-
-.dash-nav .navbar-toggler {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.dash-nav .navbar-toggler-icon {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255,255,255,0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-}
-
-.dash-nav .navbar-collapse {
-  flex-grow: 0;
-  margin-left: auto;
-}
-
-.dash-nav .navbar-nav {
-  gap: 2px;
-  flex-direction: row;
-  align-items: center;
-}
-
-.dash-nav .nav-link {
-  color: rgba(255, 255, 255, 0.55) !important;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  padding: 6px 10px !important;
-  border-radius: 7px;
-  transition: color 0.15s, background 0.15s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: none;
-}
-
-.dash-nav .nav-link i { font-size: 0.875rem; }
-
-.dash-nav .nav-link:hover {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.dash-nav .nav-link.active {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.dash-nav .nav-link.nav-logout { color: rgba(255, 255, 255, 0.35) !important; }
-
-.dash-nav .nav-link.nav-logout:hover {
-  color: rgba(255, 255, 255, 0.7) !important;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.nav-divider {
-  width: 1px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 0 4px;
-}
-

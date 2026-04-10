@@ -1,11 +1,18 @@
-/* UI kit entrypoint (SCSS).
-   Compiled output: static/uikit.css
-*/
+// Beacon UI kit entrypoint.
+// Compiled output: static/uikit.css
 
-@use "tokens";
-@use "base";
-@use "layout";
-@use "nav";
-@use "components";
-@use "pages";
+// 1. Bootstrap variable overrides (BEFORE importing Bootstrap)
+@import "variables";
 
+// 2. Bootstrap
+@import "../vendor/bootstrap/scss/bootstrap";
+
+// 3. Custom tokens (CSS vars not covered by Bootstrap)
+@import "tokens";
+
+// 4. Custom styles & overrides
+@import "base";
+@import "layout";
+@import "nav";
+@import "components";
+@import "pages";

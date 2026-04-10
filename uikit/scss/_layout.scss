@@ -5,14 +5,11 @@
 }
 
 /* ── Main & page ── */
-.theme-main { padding: 2rem 0 3rem; }
-.theme-page { padding-top: 0.25rem; }
-
 .page-title {
   font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: var(--c-text);
+  color: var(--bs-body-color);
   margin-bottom: 1.5rem;
   line-height: 2rem;
 }

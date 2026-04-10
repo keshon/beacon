@@ -1,20 +1,20 @@
 {% extends "base.html" %} {% block title %}Dashboard – Beacon{% endblock %} {% block content %}
-<div class="container theme-page">
+<div class="container">
     <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
         <h1 class="page-title mb-0">Dashboard</h1>
         <a
             href="/monitors"
-            class="btn btn-uptime"
+            class="btn btn-primary"
         >
             <i class="bi bi-plus"></i>Add monitor
         </a>
     </div>
 
     {% if networkEnabled and networkNodes %}
-    <div class="theme-card mb-3 anim-fadeup anim-delay-1">
+    <div class="card mb-3 anim-fadeup anim-delay-1">
         <div class="card-body">
             <div class="table-responsive card-table-wrap">
-                <table class="theme-table">
+                <table class="table table-hover">
                     <thead>
                         <tr>
                             <th>Node</th>
@@ -27,23 +27,23 @@
                     <tbody>
                         {% for n in networkNodes %}
                         <tr>
-                            <td><code>{{ n.NodeID }}</code></td>
+                            <td><code class="text-secondary">{{ n.NodeID }}</code></td>
                             <td>
-                                <a href="{{ n.URL }}" target="_blank" class="link-secondary table-cell-secondary">{{ n.URL }}</a>
+                                <a href="{{ n.URL }}" target="_blank" class="link-secondary text-body-secondary small">{{ n.URL }}</a>
                             </td>
                             <td>
                                 {% if n.Status == 'self' %}
-                                <span class="status-badge status-self"><span class="dot"></span>Self</span>
+                                <span class="badge rounded-pill badge-self"><span class="dot"></span>Self</span>
                                 {% elif n.Status == 'live' %}
-                                <span class="status-badge status-live"><span class="dot"></span>Live</span>
+                                <span class="badge rounded-pill badge-live"><span class="dot"></span>Live</span>
                                 {% elif n.Status == 'dead' %}
-                                <span class="status-badge status-dead"><span class="dot"></span>Dead</span>
+                                <span class="badge rounded-pill badge-dead"><span class="dot"></span>Dead</span>
                                 {% else %}
-                                <span class="status-badge status-unknown"><span class="dot"></span>Unknown</span>
+                                <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
                                 {% endif %}
                             </td>
-                            <td class="table-cell-muted">{{ n.LastSeen }}</td>
-                            <td class="table-cell-secondary">{{ n.MonitorsCount }}</td>
+                            <td class="text-body-tertiary small">{{ n.LastSeen }}</td>
+                            <td class="text-body-secondary small">{{ n.MonitorsCount }}</td>
                         </tr>
                         {% if n.LastError %}
                         <tr>
@@ -58,9 +58,9 @@
         </div>
     </div>
     {% endif %} {% if rows %}
-    <div class="theme-card anim-fadeup anim-delay-2">
+    <div class="card anim-fadeup anim-delay-2">
         <div class="table-responsive">
-            <table class="theme-table">
+            <table class="table table-hover mb-0">
                 <thead>
                     <tr>
                         <th>Monitor</th>
@@ -74,30 +74,30 @@
                     {% for row in rows %}
                     <tr>
                         <td>
-                            <div class="monitor-title">{{ row.Monitor.Name }}</div>
-                            <div class="monitor-meta">
-                                <a href="{{ row.Monitor.Target }}" target="_blank" class="link-secondary">{{ row.Monitor.Target }}</a>
-                                · <code>{{ row.Monitor.Type }}</code>
+                            <div>{{ row.Monitor.Name }}</div>
+                            <div>
+                                <a href="{{ row.Monitor.Target }}" target="_blank" class="link-secondary text-decoration-none small">{{ row.Monitor.Target }}</a>
+                                · <code class="text-secondary">{{ row.Monitor.Type }}</code>
                             </div>
                         </td>
                         <td>
                             {% if row.IsPeer %}
-                            <span class="source-badge source-peer"><i class="bi bi-diagram-3"></i>{{ row.SourceLabel }}</span>
+                            <span class="badge rounded-pill badge-source-peer"><i class="bi bi-diagram-3"></i>{{ row.SourceLabel }}</span>
                             {% else %}
-                            <span class="source-badge source-self"><i class="bi bi-person"></i>{{ row.SourceLabel }}</span>
+                            <span class="badge rounded-pill badge-source-self"><i class="bi bi-person"></i>{{ row.SourceLabel }}</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if row.Status == 'up' %}
-                            <span class="status-badge status-up"><span class="dot"></span>Up</span>
+                            <span class="badge rounded-pill badge-up"><span class="dot"></span>Up</span>
                             {% elif row.Status == 'down' %}
-                            <span class="status-badge status-down"><span class="dot"></span>Down</span>
+                            <span class="badge rounded-pill badge-down"><span class="dot"></span>Down</span>
                             {% else %}
-                            <span class="status-badge status-unknown"><span class="dot"></span>Unknown</span>
+                            <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
                             {% endif %}
                         </td>
-                        <td class="table-cell-secondary">{{ row.LatencyMs }}</td>
-                        <td class="table-cell-muted">{{ row.LastCheck }}</td>
+                        <td class="text-body-secondary small">{{ row.LatencyMs }}</td>
+                        <td class="text-body-tertiary small">{{ row.LastCheck }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -105,7 +105,7 @@
         </div>
     </div>
     {% else %}
-    <div class="theme-card anim-fadeup anim-delay-2">
+    <div class="card anim-fadeup anim-delay-2">
         <div class="empty-state">
             <div class="empty-icon"><i class="bi bi-activity"></i></div>
             <p>No monitors yet. <a href="/monitors">Add one</a> to get started.</p>

@@ -14,5 +14,4 @@ fi
 
 mkdir -p "$(dirname "$OUTPUT")"
 
-sass --watch "$INPUT":"$OUTPUT" --style=expanded --no-source-map
-
+sass --watch "$INPUT":"$OUTPUT" --style=expanded --source-map --embed-sources --quiet-deps

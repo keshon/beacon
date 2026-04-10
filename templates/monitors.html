@@ -1,11 +1,11 @@
 {% extends "base.html" %} {% block title %}Monitors – Beacon{% endblock %} {% block content %}
-<div class="container theme-page">
+<div class="container">
     <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
         <h1 class="page-title mb-0">Monitors</h1>
     </div>
 
     <!-- Add monitor form -->
-    <div class="theme-card mb-3 anim-fadeup anim-delay-1">
+    <div class="card mb-3 anim-fadeup anim-delay-1">
         <div class="card-body">
             <p class="section-label">Add monitor</p>
             <form id="addForm">
@@ -53,7 +53,7 @@
                     <div class="col-md-1">
                         <button
                             type="submit"
-                            class="btn btn-uptime w-100"
+                            class="btn btn-primary w-100 d-grid"
                         >
                             Add
                         </button>
@@ -61,7 +61,7 @@
                 </div>
                 <!-- Advanced toggle -->
                 <div class="mt-3">
-                    <button type="button" class="btn-ghost" data-bs-toggle="collapse" data-bs-target="#addAdvanced">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#addAdvanced">
                         <i class="bi bi-chevron-down" style="font-size: 0.625rem"></i>
                         Notification overrides
                     </button>
@@ -103,31 +103,30 @@
 
     <!-- Monitors list -->
     {% if monitors %}
-    <div class="theme-card anim-fadeup anim-delay-2">
+    <div class="card anim-fadeup anim-delay-2">
         <div style="padding: 0">
             {% for m in monitors %}
             <div class="monitor-row">
                 <div class="d-flex justify-content-between align-items-center gap-3">
                     <div style="min-width: 0; flex: 1">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span class="monitor-title">{{ m.Name }}</span>
+                            <span>{{ m.Name }}</span>
                             {% if not m.Enabled %}
-                            <span class="status-badge status-badge-xs status-paused">Paused</span>
+                            <span class="badge rounded-pill badge-xs badge-paused">Paused</span>
                             {% endif %}
                         </div>
-                        <div class="monitor-meta">
-                            <a href="{{ m.Target }}" target="_blank" class="link-secondary">{{ m.Target }}</a>
-                            · <code>{{ m.Type }}</code>
+                        <div>
+                            <a href="{{ m.Target }}" target="_blank" class="link-secondary text-decoration-none small">{{ m.Target }}</a>
+                            · <code class="text-secondary">{{ m.Type }}</code>
                         </div>
                     </div>
                     <div class="d-flex gap-1 flex-shrink-0">
                         <div
                             class="btn-group"
                             role="group"
-                            aria-label="Basic example"
                         >
                             <button
-                                class="btn btn-ghost btn-edit"
+                                class="btn btn-outline-info btn-edit"
                                 data-id="{{ m.ID }}"
                                 data-name="{{ m.Name }}"
                                 data-type="{{ m.Type }}"
@@ -141,10 +140,10 @@
                                     class="bi bi-pencil"
                                     style="font-size: 0.7rem"
                                 ></i
-                                ><span class="show-from-sm">Edit</span>
+                                ><span class="d-none d-sm-inline">Edit</span>
                             </button>
                             <button
-                                class="btn btn-ghost {% if m.Enabled %}warning{% else %}success{% endif %} btn-toggle"
+                                class="btn {% if m.Enabled %}btn-outline-warning{% else %}btn-outline-success{% endif %} btn-toggle"
                                 data-id="{{ m.ID }}"
                                 data-enabled="{% if m.Enabled %}true{% else %}false{% endif %}"
                             >
@@ -153,24 +152,24 @@
                                     class="bi bi-pause"
                                     style="font-size: 0.7rem"
                                 ></i
-                                ><span class="show-from-sm">Pause</span>
+                                ><span class="d-none d-sm-inline">Pause</span>
                                 {% else %}
                                 <i
                                     class="bi bi-play"
                                     style="font-size: 0.7rem"
                                 ></i
-                                ><span class="show-from-sm">Resume</span>
+                                ><span class="d-none d-sm-inline">Resume</span>
                                 {% endif %}
                             </button>
                             <button
-                                class="btn btn-ghost danger btn-del"
+                                class="btn btn-outline-danger btn-del"
                                 data-id="{{ m.ID }}"
                             >
                                 <i
                                     class="bi bi-trash"
                                     style="font-size: 0.7rem"
                                 ></i
-                                ><span class="show-from-sm">Delete</span>
+                                ><span class="d-none d-sm-inline">Delete</span>
                             </button>
                         </div>
                     </div>
@@ -219,11 +218,11 @@
                                 />
                             </div>
                             <div class="col-md-1">
-                                <button type="submit" class="btn btn-uptime w-100">Save</button>
+                                <button type="submit" class="btn btn-primary w-100">Save</button>
                             </div>
                         </div>
                         <div class="mt-2">
-                            <button type="button" class="btn-ghost" data-bs-toggle="collapse" data-bs-target="#editAdvanced-{{ m.ID }}">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#editAdvanced-{{ m.ID }}">
                                 <i class="bi bi-chevron-down" style="font-size: 0.625rem"></i>
                                 Notification overrides
                             </button>
@@ -269,7 +268,7 @@
         </div>
     </div>
     {% else %}
-    <div class="theme-card anim-fadeup anim-delay-2">
+    <div class="card anim-fadeup anim-delay-2">
         <div class="empty-state">
             <div class="empty-icon"><i class="bi bi-broadcast"></i></div>
             <p>No monitors yet. Add one above to get started.</p>

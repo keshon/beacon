@@ -16,6 +16,6 @@ if errorlevel 1 (
 
 if not exist "%ROOT_DIR%\static" mkdir "%ROOT_DIR%\static"
 
-sass "%INPUT%":"%OUTPUT%" --style=expanded --no-source-map
+sass "%INPUT%":"%OUTPUT%" --style=expanded --source-map --embed-sources --quiet-deps
 if errorlevel 1 exit /b 1
 

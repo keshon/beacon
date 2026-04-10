@@ -1,34 +1,17 @@
+// CSS custom properties for things Bootstrap does not cover.
+// Colors, fonts, radii, and base shadows are now set via
+// Bootstrap $variables in _variables.scss.
+
 :root {
-  /* Colors */
-  --c-bg: #f7f8fa;
-  --c-surface: #ffffff;
-  --c-surface-2: #f0f2f5;
+  --c-hover-bg: #f0f2f5;
   --c-border: rgba(0, 0, 0, 0.07);
   --c-border-strong: rgba(0, 0, 0, 0.12);
-  --c-text: #0f1117;
-  --c-text-2: #6b7280;
-  --c-text-3: #9ca3af;
-  --c-accent: #6366f1;
   --c-accent-light: rgba(99, 102, 241, 0.1);
-  --c-accent-hover: #4f52e0;
-  --c-success: #10b981;
   --c-success-light: rgba(16, 185, 129, 0.1);
-  --c-danger: #ef4444;
   --c-danger-light: rgba(239, 68, 68, 0.1);
-  --c-warning: #f59e0b;
   --c-warning-light: rgba(245, 158, 11, 0.1);
+  --c-info-light: rgba(13, 202, 240, 0.1);
   --c-nav-bg: #0f1117;
   --c-nav-border: rgba(255, 255, 255, 0.06);
-
-  /* Radii & shadow */
-  --r: 10px;
-  --r-lg: 16px;
-  --r-pill: 100px;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.04);
-
-  /* Typography */
-  --font: 'DM Sans', sans-serif;
-  --font-mono: 'DM Mono', monospace;
 }
-

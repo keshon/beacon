@@ -16,5 +16,5 @@ if errorlevel 1 (
 
 if not exist "%ROOT_DIR%\static" mkdir "%ROOT_DIR%\static"
 
-sass --watch "%INPUT%":"%OUTPUT%" --style=expanded --no-source-map
+sass --watch "%INPUT%":"%OUTPUT%" --style=expanded --source-map --embed-sources --quiet-deps
 

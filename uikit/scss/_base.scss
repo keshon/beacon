@@ -1,19 +1,11 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+// Base overrides on top of Bootstrap reboot.
+// box-sizing, body font/color/bg are handled by Bootstrap + _variables.scss.
 
 body {
-  font-family: var(--font);
-  font-size: 0.9375rem;
-  background: var(--c-bg);
-  color: var(--c-text);
-  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Scrollbar ── */
+// ── Scrollbar ──
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -24,7 +16,7 @@ body {
   border-radius: 99px;
 }
 
-/* ── Animations ── */
+// ── Animations ──
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.85); }
@@ -39,4 +31,3 @@ body {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
