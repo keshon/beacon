@@ -1,4 +1,4 @@
-FROM golang:1.25.7-alpine3.22 AS mybuildstage
+FROM golang:1.26-alpine AS mybuildstage
 
 # Set Go proxy
 ENV GOPROXY=https://proxy.golang.org,direct
@@ -25,5 +25,6 @@ WORKDIR /usr/project
 # Copy binary and assets/templates if needed
 COPY --from=mybuildstage /usr/project/app /usr/project/app
 COPY --from=mybuildstage /usr/project/templates /usr/project/templates
+COPY --from=mybuildstage /usr/project/static /usr/project/static
 
 ENTRYPOINT ["/usr/project/app"]
