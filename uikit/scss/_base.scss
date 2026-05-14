@@ -1,10 +1,7 @@
 // Base overrides on top of Bootstrap reboot.
 // box-sizing, body font/color/bg are handled by Bootstrap + _variables.scss.
 
-:root {
-  // Single global scaling lever: everything should be in rem.
-  --ui-font-size: 0.9375rem;
-}
+// --ui-font-size default lives in _tokens.scss (:root); head_common may override on <html>.
 
 html {
   font-size: var(--ui-font-size);

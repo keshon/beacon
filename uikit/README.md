@@ -48,14 +48,14 @@ bash scripts/uikit-watch.sh
 ```
 uikit/
   scss/
-    uikit.scss          # Entrypoint: variables -> bootstrap -> tokens -> custom
-    _variables.scss     # Bootstrap $variable overrides (colors, fonts, radii, card)
-    _tokens.scss        # CSS custom properties not covered by Bootstrap
-    _base.scss          # Scrollbar, animations
-    _layout.scss        # Container, layout wrappers, page-title
-    _nav.scss           # .dash-nav navbar override
-    _components.scss    # Card, table, badge, button, form overrides + domain classes
-    _pages.scss         # Login page
+    uikit.scss          # Entrypoint: variables → bootstrap → tokens → layers below
+    _variables.scss     # Bootstrap $variable overrides (colors, $input-btn-*, card, …)
+    _tokens.scss        # CSS variables: --app-* scale, --ui-font-size, html[data-bs-theme] chroma (--c-*)
+    _base.scss          # html font-size, body smoothing, scrollbar, @keyframes
+    _nav.scss           # .dash-nav + light-theme navbar overrides
+    _components.scss    # Bootstrap bridges (.btn, .form-*, .table) + Beacon domain (badges, uptime, .monitor-row)
+    _shell.scss         # .beacon-app chrome, .app-page, .app-panel, dashboard layouts
+    _pages.scss         # Login page (.login-page)
   vendor/
     bootstrap/scss/     # Bootstrap 5.3.3 SCSS source (not committed, download via script)
 ```

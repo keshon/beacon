@@ -1,6 +1,11 @@
-// Component overrides on top of Bootstrap.
-// Card, Table, Buttons, Badges, Forms — all use standard BS class names.
-// Domain-specific classes (monitor-row, empty-state, etc.) kept as-is.
+// ─────────────────────────────────────────────────────────────
+// Bootstrap bridges — overrides to standard .card / .table / .btn / .form-*.
+// Shared sizing: $input-btn-* in _variables.scss (do not fight it with ad-hoc padding here).
+// ─────────────────────────────────────────────────────────────
+//
+// ─────────────────────────────────────────────────────────────
+// Beacon domain — status, uptime strip, monitor list, empty states, motion helpers.
+// ─────────────────────────────────────────────────────────────
 
 // Vertical separator
 .vr {

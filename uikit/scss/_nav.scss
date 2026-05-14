@@ -107,3 +107,46 @@
   box-shadow: 0 0 0.5rem rgba(99, 102, 241, 0.7);
   animation: pulse-dot 2.5s ease-in-out infinite;
 }
+
+// Light theme: same component as dark default in .dash-nav above.
+html[data-bs-theme="light"] .dash-nav {
+  .navbar-brand {
+    color: #12131a !important;
+  }
+
+  .nav-link {
+    color: rgba(0, 0, 0, 0.55) !important;
+
+    &:hover {
+      color: #000 !important;
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    &.active {
+      color: #000 !important;
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    &.nav-logout {
+      color: rgba(0, 0, 0, 0.38) !important;
+
+      &:hover {
+        color: rgba(0, 0, 0, 0.65) !important;
+        background: rgba(0, 0, 0, 0.04);
+      }
+    }
+  }
+
+  .navbar-toggler {
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+
+  .navbar-toggler-icon {
+    filter: brightness(0) opacity(0.55);
+  }
+
+  .vr {
+    background-color: rgba(0, 0, 0, 0.12);
+    opacity: 1;
+  }
+}

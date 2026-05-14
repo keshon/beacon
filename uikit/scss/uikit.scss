@@ -1,5 +1,8 @@
 // Beacon UI kit entrypoint.
 // Compiled output: static/uikit.css
+//
+// Order: Bootstrap overrides → Bootstrap → tokens (CSS vars) → base → nav →
+// component bridges + domain → app shell surfaces → login page.
 
 // 1. Bootstrap variable overrides (BEFORE importing Bootstrap)
 @import "variables";
@@ -12,8 +15,7 @@
 
 // 4. Custom styles & overrides
 @import "base";
-@import "layout";
 @import "nav";
 @import "components";
-@import "app_shell";
+@import "shell";
 @import "pages";

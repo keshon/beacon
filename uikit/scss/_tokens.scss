@@ -1,19 +1,13 @@
-// CSS custom properties for things Bootstrap does not cover.
-// Colors, fonts, radii, and base shadows are now set via
-// Bootstrap $variables in _variables.scss.
+// Beacon design tokens: CSS custom properties only (no component rules).
+//
+// Layers:
+// 1) :root — typography scale + radii + global UI font default (rem-based; scales with Settings).
+// 2) html[data-bs-theme] — chroma tokens used across app components (--c-*, panel chrome, etc.).
+//    Requires data-bs-theme on <html> (see templates/beacon_head_theme.html on all pages).
 
 :root {
-  --c-hover-bg: #f0f2f5;
-  --c-border: rgba(0, 0, 0, 0.07);
-  --c-border-strong: rgba(0, 0, 0, 0.12);
-  --c-accent-light: rgba(99, 102, 241, 0.1);
-  --c-success-light: rgba(16, 185, 129, 0.1);
-  --c-danger-light: rgba(239, 68, 68, 0.1);
-  --c-warning-light: rgba(245, 158, 11, 0.1);
-  --c-info-light: rgba(13, 202, 240, 0.1);
-  --c-nav-bg: #0f1117;
-  --c-nav-border: rgba(255, 255, 255, 0.06);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.04);
+  // Global default until head_common.html applies saved --ui-font-size from localStorage.
+  --ui-font-size: 0.9375rem;
 
   // Typography (rem): scales with html font-size (Settings → Base font size).
   --app-text-page-title: 1rem;
@@ -24,8 +18,40 @@
   --app-text-meta: 0.8125rem;
   --app-text-footer: 0.75rem;
 
-  // Tool shell radii (see .beacon-app control overrides in _app_shell.scss).
+  // Tool shell radii (control rounding lives in _shell.scss under .beacon-app).
   --app-radius-panel: 0.5rem;
   --app-radius-control: 0.375rem;
   --app-radius-control-sm: 0.3125rem;
+}
+
+html[data-bs-theme="dark"] {
+  --c-hover-bg: rgba(255, 255, 255, 0.06);
+  --c-border: rgba(255, 255, 255, 0.08);
+  --c-border-strong: rgba(255, 255, 255, 0.14);
+  --c-accent-light: rgba(99, 102, 241, 0.22);
+  --c-success-light: rgba(16, 185, 129, 0.15);
+  --c-danger-light: rgba(239, 68, 68, 0.15);
+  --c-warning-light: rgba(245, 158, 11, 0.12);
+  --c-info-light: rgba(14, 165, 233, 0.15);
+  --c-nav-bg: #0c0e12;
+  --c-nav-border: rgba(255, 255, 255, 0.08);
+  --app-panel-header-bg: rgba(255, 255, 255, 0.04);
+  --app-footer-fg: rgba(255, 255, 255, 0.35);
+  --shadow-md: none;
+}
+
+html[data-bs-theme="light"] {
+  --c-hover-bg: rgba(0, 0, 0, 0.045);
+  --c-border: rgba(0, 0, 0, 0.09);
+  --c-border-strong: rgba(0, 0, 0, 0.14);
+  --c-accent-light: rgba(99, 102, 241, 0.12);
+  --c-success-light: rgba(16, 185, 129, 0.12);
+  --c-danger-light: rgba(239, 68, 68, 0.1);
+  --c-warning-light: rgba(245, 158, 11, 0.1);
+  --c-info-light: rgba(14, 165, 233, 0.1);
+  --c-nav-bg: #e6e7eb;
+  --c-nav-border: rgba(0, 0, 0, 0.1);
+  --app-panel-header-bg: rgba(0, 0, 0, 0.035);
+  --app-footer-fg: rgba(0, 0, 0, 0.45);
+  --shadow-md: none;
 }

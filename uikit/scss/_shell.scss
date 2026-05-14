@@ -1,37 +1,5 @@
-// Authenticated app shell: tooling UI for dark + light (login page is separate).
-
-// ── Shared custom props (Bootstrap fills --bs-* per theme) ──
-html[data-bs-theme="dark"] {
-  --c-hover-bg: rgba(255, 255, 255, 0.06);
-  --c-border: rgba(255, 255, 255, 0.08);
-  --c-border-strong: rgba(255, 255, 255, 0.14);
-  --c-accent-light: rgba(99, 102, 241, 0.22);
-  --c-success-light: rgba(16, 185, 129, 0.15);
-  --c-danger-light: rgba(239, 68, 68, 0.15);
-  --c-warning-light: rgba(245, 158, 11, 0.12);
-  --c-info-light: rgba(14, 165, 233, 0.15);
-  --c-nav-bg: #0c0e12;
-  --c-nav-border: rgba(255, 255, 255, 0.08);
-  --app-panel-header-bg: rgba(255, 255, 255, 0.04);
-  --app-footer-fg: rgba(255, 255, 255, 0.35);
-  --shadow-md: none;
-}
-
-html[data-bs-theme="light"] {
-  --c-hover-bg: rgba(0, 0, 0, 0.045);
-  --c-border: rgba(0, 0, 0, 0.09);
-  --c-border-strong: rgba(0, 0, 0, 0.14);
-  --c-accent-light: rgba(99, 102, 241, 0.12);
-  --c-success-light: rgba(16, 185, 129, 0.12);
-  --c-danger-light: rgba(239, 68, 68, 0.1);
-  --c-warning-light: rgba(245, 158, 11, 0.1);
-  --c-info-light: rgba(14, 165, 233, 0.1);
-  --c-nav-bg: #e6e7eb;
-  --c-nav-border: rgba(0, 0, 0, 0.1);
-  --app-panel-header-bg: rgba(0, 0, 0, 0.035);
-  --app-footer-fg: rgba(0, 0, 0, 0.45);
-  --shadow-md: none;
-}
+// Authenticated app shell layout & surfaces (panels, dashboard, page chrome).
+// Tokens + theme variables: _tokens.scss. Bootstrap bridges: _components.scss.
 
 .beacon-app {
   background-color: var(--bs-body-bg);
@@ -149,49 +117,6 @@ html[data-bs-theme="light"] .theme-toggle-btn {
   &:hover {
     color: #000 !important;
     background: rgba(0, 0, 0, 0.06);
-  }
-}
-
-// ── Light navbar (overrides _nav.scss) ──
-html[data-bs-theme="light"] .dash-nav {
-  .navbar-brand {
-    color: #12131a !important;
-  }
-
-  .nav-link {
-    color: rgba(0, 0, 0, 0.55) !important;
-
-    &:hover {
-      color: #000 !important;
-      background: rgba(0, 0, 0, 0.06);
-    }
-
-    &.active {
-      color: #000 !important;
-      background: rgba(0, 0, 0, 0.08);
-    }
-
-    &.nav-logout {
-      color: rgba(0, 0, 0, 0.38) !important;
-
-      &:hover {
-        color: rgba(0, 0, 0, 0.65) !important;
-        background: rgba(0, 0, 0, 0.04);
-      }
-    }
-  }
-
-  .navbar-toggler {
-    border-color: rgba(0, 0, 0, 0.12);
-  }
-
-  .navbar-toggler-icon {
-    filter: brightness(0) opacity(0.55);
-  }
-
-  .vr {
-    background-color: rgba(0, 0, 0, 0.12);
-    opacity: 1;
   }
 }
 
@@ -405,7 +330,7 @@ html[data-bs-theme="light"] .dash-list-row:hover {
   }
 }
 
-@media (max-width: 47.98px) {
+@media (max-width: 47.98rem) {
   .dash-list-row {
     grid-template-columns: 1fr;
   }
@@ -467,7 +392,7 @@ html[data-bs-theme="light"] .dash-list-row:hover {
   min-height: 1.125rem;
 }
 
-@media (max-width: 47.98px) {
+@media (max-width: 47.98rem) {
   .dash-list-uptime {
     padding-top: 0.125rem;
   }
