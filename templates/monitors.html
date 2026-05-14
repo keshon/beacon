@@ -11,94 +11,7 @@
         <div class="card-body">
             <p class="section-label">Add monitor</p>
             <form id="addForm">
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label small">Name</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            name="name"
-                            placeholder="e.g. Google"
-                            required
-                        />
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small">Type</label>
-                        <select
-                            class="form-select"
-                            name="type"
-                        >
-                            <option value="http">HTTP</option>
-                            <option value="tcp">TCP</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small">Target</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            name="target"
-                            placeholder="https://example.com or host:443"
-                            required
-                        />
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small">Interval (sec)</label>
-                        <input
-                            type="number"
-                            class="form-control"
-                            name="interval"
-                            min="0"
-                            placeholder="default"
-                        />
-                    </div>
-                    <div class="col-md-1">
-                        <button
-                            type="submit"
-                            class="btn btn-primary w-100 d-grid"
-                        >
-                            Add
-                        </button>
-                    </div>
-                </div>
-                <!-- Advanced toggle -->
-                <div class="mt-3">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#addAdvanced">
-                        <i class="bi bi-chevron-down" style="font-size: 0.625rem"></i>
-                        Notification overrides
-                    </button>
-                    <div class="collapse mt-2" id="addAdvanced">
-                        <div class="row g-2 pt-1">
-                            <div class="col-md-4">
-                                <label class="form-label small">Telegram token</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="tg_token"
-                                    placeholder="Leave empty for global"
-                                />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small">Telegram chat ID</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="tg_chat_id"
-                                    placeholder="Leave empty for global"
-                                />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small">Discord webhook</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="discord_webhook"
-                                    placeholder="Leave empty for global"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {% include "monitor_form_fields.html" with mode="add" %}
             </form>
         </div>
     </div>
@@ -112,12 +25,12 @@
                 <div class="d-flex justify-content-between align-items-center gap-3">
                     <div class="monitor-row-flex">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span>{{ m.Name }}</span>
+                            <span class="monitor-title">{{ m.Name }}</span>
                             {% if not m.Enabled %}
                             <span class="badge rounded-pill badge-xs badge-paused">Paused</span>
                             {% endif %}
                         </div>
-                        <div>
+                        <div class="monitor-meta">
                             <a href="{{ m.Target }}" target="_blank" class="link-secondary text-decoration-none small">{{ m.Target }}</a>
                             · <code class="text-secondary">{{ m.Type }}</code>
                         </div>
@@ -129,6 +42,7 @@
                         >
                             <button
                                 class="btn btn-outline-info btn-edit"
+                                type="button"
                                 data-id="{{ m.ID }}"
                                 data-name="{{ m.Name }}"
                                 data-type="{{ m.Type }}"
@@ -138,40 +52,26 @@
                                 data-tg-chat="{{ m.TgChatID }}"
                                 data-discord="{{ m.DiscordWebhook }}"
                             >
-                                <i
-                                    class="bi bi-pencil"
-                                    style="font-size: 0.7rem"
-                                ></i
-                                ><span class="d-none d-sm-inline">Edit</span>
+                                <i class="bi bi-pencil"></i><span class="d-none d-sm-inline">Edit</span>
                             </button>
                             <button
-                                class="btn {% if m.Enabled %}btn-outline-warning{% else %}btn-outline-success{% endif %} btn-toggle"
+                                type="button"
+                                class="btn {% if m.Enabled %}btn-outline-secondary{% else %}btn-outline-success{% endif %} btn-toggle"
                                 data-id="{{ m.ID }}"
                                 data-enabled="{% if m.Enabled %}true{% else %}false{% endif %}"
                             >
                                 {% if m.Enabled %}
-                                <i
-                                    class="bi bi-pause"
-                                    style="font-size: 0.7rem"
-                                ></i
-                                ><span class="d-none d-sm-inline">Pause</span>
+                                <i class="bi bi-pause"></i><span class="d-none d-sm-inline">Pause</span>
                                 {% else %}
-                                <i
-                                    class="bi bi-play"
-                                    style="font-size: 0.7rem"
-                                ></i
-                                ><span class="d-none d-sm-inline">Resume</span>
+                                <i class="bi bi-play"></i><span class="d-none d-sm-inline">Resume</span>
                                 {% endif %}
                             </button>
                             <button
+                                type="button"
                                 class="btn btn-outline-danger btn-del"
                                 data-id="{{ m.ID }}"
                             >
-                                <i
-                                    class="bi bi-trash"
-                                    style="font-size: 0.7rem"
-                                ></i
-                                ><span class="d-none d-sm-inline">Delete</span>
+                                <i class="bi bi-trash"></i><span class="d-none d-sm-inline">Delete</span>
                             </button>
                         </div>
                     </div>
@@ -180,89 +80,7 @@
                 <!-- Edit form (hidden) -->
                 <div class="edit-form d-none" data-id="{{ m.ID }}">
                     <form class="edit-form-fields">
-                        <div class="row g-2 align-items-end">
-                            <div class="col-md-3">
-                                <label class="form-label small">Name</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="name"
-                                    placeholder="Name"
-                                />
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small">Type</label>
-                                <select
-                                    class="form-select"
-                                    name="type"
-                                >
-                                    <option value="http">HTTP</option>
-                                    <option value="tcp">TCP</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small">Target</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="target"
-                                    placeholder="Target"
-                                />
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label small">Interval (sec)</label>
-                                <input
-                                    type="number"
-                                    class="form-control"
-                                    name="interval"
-                                    min="0"
-                                    placeholder="default"
-                                />
-                            </div>
-                            <div class="col-md-1">
-                                <button type="submit" class="btn btn-primary w-100">Save</button>
-                            </div>
-                        </div>
-                        <div class="mt-2">
-                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#editAdvanced-{{ m.ID }}">
-                                <i class="bi bi-chevron-down" style="font-size: 0.625rem"></i>
-                                Notification overrides
-                            </button>
-                            <div
-                                class="collapse mt-2"
-                                id="editAdvanced-{{ m.ID }}"
-                            >
-                                <div class="row g-2">
-                                    <div class="col-md-4">
-                                        <label class="form-label small">Telegram token</label>
-                                        <input
-                                            type="text"
-                                            class="form-control"
-                                            name="tg_token"
-                                            placeholder="Override token"
-                                        />
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label small">Telegram chat ID</label>
-                                        <input
-                                            type="text"
-                                            class="form-control"
-                                            name="tg_chat_id"
-                                            placeholder="Override chat ID"
-                                        />
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label small">Discord webhook</label>
-                                        <input
-                                            type="text"
-                                            class="form-control"
-                                            name="discord_webhook"
-                                            placeholder="Override webhook"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        {% include "monitor_form_fields.html" with mode="edit" %}
                     </form>
                 </div>
             </div>

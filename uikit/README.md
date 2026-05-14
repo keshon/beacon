@@ -63,3 +63,9 @@ uikit/
 ## Class naming
 
 Standard Bootstrap class names are used wherever possible (`.card`, `.table`, `.btn-primary`, `.btn-outline-*`, `.badge`, `.alert`, etc.). Domain-specific classes (`.dash-nav`, `.monitor-row`, `.empty-state`, `.section-label`, etc.) are kept where Bootstrap has no equivalent.
+
+## Style stack decision
+
+**Current choice (path A):** stay on **Bootstrap 5.3 SCSS + Beacon partials** in `uikit/scss/`, compiled to `static/uikit.css`. Theming and density evolve via CSS variables (`_tokens.scss`, Bootstrap `$variables` overrides) and named domain classes (e.g. `.monitor-title`, `.dash-nav`).
+
+**Not planned in-repo right now (path B):** a migration to **Tailwind** would mean replacing all template utility usage, adding a PostCSS/Tailwind build, and replacing Bootstrap’s JS behaviors (navbar collapse, etc.) — a separate project when product goals justify it.

@@ -77,8 +77,8 @@
                     {% for row in rows %}
                     <tr{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
                         <td>
-                            <div>{{ row.Monitor.Name }}</div>
-                            <div>
+                            <div class="monitor-title">{{ row.Monitor.Name }}</div>
+                            <div class="monitor-meta">
                                 <a href="{{ row.Monitor.Target }}" target="_blank" class="link-secondary text-decoration-none small">{{ row.Monitor.Target }}</a>
                                 · <code class="text-secondary">{{ row.Monitor.Type }}</code>
                             </div>
@@ -132,7 +132,7 @@
 {% block scripts %}
 <script>
     (function () {
-        var MAX = 90;
+        var MAX = 30;
         function barEl(ok) {
             var d = document.createElement("span");
             d.className = "uptime-seg " + (ok ? "uptime-seg-up" : "uptime-seg-down");

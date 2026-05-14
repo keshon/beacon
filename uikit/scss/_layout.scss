@@ -8,3 +8,8 @@
   line-height: 2rem;
 }
 
+@media (min-width: 75em) {
+  .container {
+    max-width: 70rem;
+  }
+}

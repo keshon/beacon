@@ -72,7 +72,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/network/status", s.apiNetworkStatus)
 
 	mux.HandleFunc("GET /settings", s.handleSettings)
-	mux.HandleFunc("GET /uikit", s.handleUikit)
 
 	authMw := s.auth.Middleware(s.cfg.Auth.Username, s.cfg.Auth.Password)
 	h := authMw(mux)

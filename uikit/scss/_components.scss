@@ -14,8 +14,6 @@
 // Only extra properties that have no $variable go here.
 .card {
   --bs-card-spacer-y: 1rem;
-  overflow: hidden;
-  text-wrap-mode: nowrap;
   // Default card background + shadow to match old UI kit look.
   background-color: var(--bs-card-bg);
   box-shadow: var(--bs-card-box-shadow);
@@ -112,6 +110,11 @@
   background: var(--c-info-light);
   border-color: rgba(13, 202, 240, 0.25);
   color: var(--bs-info);
+}
+
+// Collapse toggles — smaller chevron than row action icons
+.btn-outline-secondary[data-bs-toggle="collapse"] i {
+  font-size: 0.625rem;
 }
 
 // ── Form controls (scoped to for dashboard pages) ──
@@ -312,6 +315,15 @@ code {
 
 // Flex child that may shrink (replaces inline min-width: 0; flex: 1)
 .monitor-row-flex { min-width: 0; flex: 1; }
+
+.monitor-title {
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+.monitor-meta {
+  color: var(--bs-secondary-color);
+}
 
 .edit-form {
   margin-top: 0.875rem;
