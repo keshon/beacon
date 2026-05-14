@@ -1,0 +1,40 @@
+{# One table row for dashboard monitor list. Expects: row #}
+<tr{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
+    <td>
+        <div class="monitor-title">{{ row.Monitor.Name }}</div>
+        <div class="monitor-meta">
+            <a href="{{ row.Monitor.Target }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ row.Monitor.Target }}</a>
+            · <code class="text-secondary">{{ row.Monitor.Type }}</code>
+        </div>
+    </td>
+    <td>
+        {% if row.IsPeer %}
+        <span class="badge rounded-pill badge-source-peer"><i class="bi bi-diagram-3"></i>{{ row.SourceLabel }}</span>
+        {% else %}
+        <span class="badge rounded-pill badge-source-self"><i class="bi bi-person"></i>{{ row.SourceLabel }}</span>
+        {% endif %}
+    </td>
+    <td class="uptime-cell">
+        {% if row.IsPeer %}
+        <span class="text-body-tertiary app-metric" title="Check history is recorded on the peer node">—</span>
+        {% else %}
+        <div
+            class="uptime-strip"
+            data-monitor-id="{{ row.Monitor.ID }}"
+            role="img"
+            aria-label="Recent check results for this monitor"
+        ></div>
+        {% endif %}
+    </td>
+    <td class="dashboard-status">
+        {% if row.Status == 'up' %}
+        <span class="badge rounded-pill badge-up"><span class="dot"></span>Up</span>
+        {% elif row.Status == 'down' %}
+        <span class="badge rounded-pill badge-down"><span class="dot"></span>Down</span>
+        {% else %}
+        <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
+        {% endif %}
+    </td>
+    <td class="text-body-secondary app-metric dashboard-latency">{{ row.LatencyMs }}</td>
+    <td class="text-body-tertiary app-metric dashboard-lastcheck">{{ row.LastCheck }}</td>
+</tr>

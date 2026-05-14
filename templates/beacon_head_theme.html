@@ -1,0 +1,30 @@
+{# Apply saved theme + dashboard layout before CSS paint (login page does not include this). #}
+<script>
+    (function () {
+        try {
+            var t = localStorage.getItem('beaconTheme');
+            if (t === 'light' || t === 'dark') {
+                document.documentElement.setAttribute('data-bs-theme', t);
+            } else {
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+            }
+        } catch (e) {
+            document.documentElement.setAttribute('data-bs-theme', 'dark');
+        }
+    })();
+    (function () {
+        try {
+            var dv = localStorage.getItem('beaconDashboardView');
+            if (dv === 'grid') {
+                dv = 'list';
+            }
+            if (dv === 'list' || dv === 'table' || dv === 'cards') {
+                document.documentElement.setAttribute('data-dashboard-view', dv);
+            } else {
+                document.documentElement.setAttribute('data-dashboard-view', 'cards');
+            }
+        } catch (e) {
+            document.documentElement.setAttribute('data-dashboard-view', 'cards');
+        }
+    })();
+</script>

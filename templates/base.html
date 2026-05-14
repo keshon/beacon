@@ -1,45 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    {% include "beacon_head_theme.html" %}
     {% include "head_common.html" %}
     <title>{% block title %}Beacon{% endblock %}</title>
     {% block extra_css %}{% endblock %}
 </head>
-<body class="d-flex flex-column min-vh-100">
+<body class="beacon-app d-flex flex-column min-vh-100">
     <nav class="navbar navbar-expand-lg dash-nav">
-        <div class="container">
+        <div class="container-fluid px-3 px-lg-4">
             <a class="navbar-brand" href="/dashboard">
                 <span class="brand-dot"></span>
                 Beacon
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#dashNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#dashNav" aria-controls="dashNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="dashNav">
                 <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="bi bi-grid-1x2"></i>Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/monitors"><i class="bi bi-activity"></i>Monitors</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/settings"><i class="bi bi-sliders"></i>Settings</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if nav_active == "dashboard" %} active{% endif %}" href="/dashboard"><i class="bi bi-grid-1x2"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if nav_active == "monitors" %} active{% endif %}" href="/monitors"><i class="bi bi-activity"></i>Monitors</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if nav_active == "settings" %} active{% endif %}" href="/settings"><i class="bi bi-sliders"></i>Settings</a>
+                    </li>
                     <li class="nav-item d-none d-lg-flex align-items-center px-1" aria-hidden="true">
                         <div class="vr my-1 mx-1"></div>
                     </li>
-                    <li class="nav-item"><a class="nav-link nav-logout" href="/logout"><i class="bi bi-arrow-right-square"></i>Logout</a></li>
+                    <li class="nav-item">
+                        <button type="button" class="nav-link theme-toggle-btn py-1 px-2 border-0 bg-transparent" id="beaconThemeToggle" aria-label="Toggle color theme" title="Theme">
+                            <i class="bi bi-sun-fill theme-icon-sun" aria-hidden="true"></i>
+                            <i class="bi bi-moon-stars-fill theme-icon-moon d-none" aria-hidden="true"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item d-none d-lg-flex align-items-center px-1" aria-hidden="true">
+                        <div class="vr my-1 mx-1"></div>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-logout" href="/logout"><i class="bi bi-arrow-right-square"></i>Logout</a>
+                    </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <main class="py-5">
+    <main class="app-main">
         {% block content %}{% endblock %}
     </main>
-    <footer class="footer mt-auto py-3">
-        <div class="container text-center">
-            <span class="text-muted small">
-                © Beacon. {{ version }}
+    <footer class="app-footer mt-auto">
+        <div class="container-fluid px-3 px-lg-4 text-center">
+            <span class="text-muted app-footer-text">
+                © Beacon · {{ version }}
             </span>
         </div>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            function currentTheme() {
+                return document.documentElement.getAttribute("data-bs-theme") || "dark";
+            }
+            function syncThemeToggle() {
+                var t = currentTheme();
+                var btn = document.getElementById("beaconThemeToggle");
+                if (!btn) return;
+                btn.setAttribute("aria-pressed", t === "dark" ? "true" : "false");
+                btn.title = t === "dark" ? "Switch to light theme" : "Switch to dark theme";
+                var sun = btn.querySelector(".theme-icon-sun");
+                var moon = btn.querySelector(".theme-icon-moon");
+                if (sun && moon) {
+                    sun.classList.toggle("d-none", t !== "dark");
+                    moon.classList.toggle("d-none", t === "dark");
+                }
+            }
+            document.getElementById("beaconThemeToggle")?.addEventListener("click", function () {
+                var next = currentTheme() === "dark" ? "light" : "dark";
+                document.documentElement.setAttribute("data-bs-theme", next);
+                try {
+                    localStorage.setItem("beaconTheme", next);
+                } catch (e) {}
+                syncThemeToggle();
+            });
+            document.addEventListener("DOMContentLoaded", syncThemeToggle);
+        })();
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -10,7 +10,7 @@
   z-index: 1000;
   backdrop-filter: blur(0.75rem);
 
-  .container {
+  .container-fluid {
     display: flex;
     align-items: center;
     height: 3.5rem;
@@ -92,7 +92,7 @@
 
 @media screen and (max-width: 992px) {
   .dash-nav {
-    .container {
+    .container-fluid {
       height: auto;
     }
   }

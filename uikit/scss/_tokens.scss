@@ -14,4 +14,18 @@
   --c-nav-bg: #0f1117;
   --c-nav-border: rgba(255, 255, 255, 0.06);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.04);
+
+  // Typography (rem): scales with html font-size (Settings → Base font size).
+  --app-text-page-title: 1rem;
+  --app-text-subtitle: 0.875rem;
+  --app-text-panel-title: 0.75rem;
+  --app-text-card-title: 1rem;
+  --app-text-secondary: 0.875rem;
+  --app-text-meta: 0.8125rem;
+  --app-text-footer: 0.75rem;
+
+  // Tool shell radii (see .beacon-app control overrides in _app_shell.scss).
+  --app-radius-panel: 0.5rem;
+  --app-radius-control: 0.375rem;
+  --app-radius-control-sm: 0.3125rem;
 }

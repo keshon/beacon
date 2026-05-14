@@ -1,17 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Settings – Beacon{% endblock %}
 {% block content %}
-<div class="container">
+<div class="container-fluid app-page px-3 px-lg-4 py-3">
     <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
-        <h1 class="page-title mb-0">Settings</h1>
+        <h1 class="app-page-title mb-0">Settings</h1>
     </div>
 
     <form id="configForm">
         <div class="row g-3">
             <div class="col-12">
-                <div class="card anim-fadeup anim-delay-1">
-                    <div class="card-body">
-                        <p class="section-label">Appearance</p>
+                <section class="app-panel anim-fadeup anim-delay-1">
+                    <div class="app-panel-header">
+                        <span class="app-panel-title">Appearance</span>
+                    </div>
+                    <div class="app-panel-body p-3">
                         <div class="row g-2 align-items-end">
                             <div class="col-md-4">
                                 <label class="form-label small" for="ui_font_size">Base font size</label>
@@ -27,226 +29,130 @@
                             <div class="col-md-4">
                                 <button type="button" class="btn btn-outline-secondary" id="ui_font_reset">Reset</button>
                             </div>
-                            <div class="col-md-4">
-                                <div class="small text-muted" id="ui_font_hint">Applies instantly, saved in this browser.</div>
-                            </div>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
             <div class="col-12">
-                <div class="card anim-fadeup anim-delay-1">
-                    <div class="card-body">
-                        <p class="section-label">Server</p>
+                <section class="app-panel anim-fadeup anim-delay-1">
+                    <div class="app-panel-header">
+                        <span class="app-panel-title">Server</span>
+                    </div>
+                    <div class="app-panel-body p-3">
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <label class="form-label small">Listen address</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="listen"
-                                    placeholder=":8080"
-                                />
+                                <input type="text" class="form-control" name="listen" placeholder=":8080" />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small">Workers</label>
-                                <input
-                                    type="number"
-                                    class="form-control"
-                                    name="workers"
-                                    min="1"
-                                    placeholder="10"
-                                />
+                                <input type="number" class="form-control" name="workers" min="1" placeholder="10" />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small">Default check interval (sec)</label>
-                                <input
-                                    type="number"
-                                    class="form-control"
-                                    name="default_interval"
-                                    min="0"
-                                    placeholder="30"
-                                />
+                                <input type="number" class="form-control" name="default_interval" min="0" placeholder="30" />
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
             <div class="col-12">
-                <div class="card anim-fadeup anim-delay-1">
-                    <div class="card-body">
-                        <p class="section-label">Auth</p>
+                <section class="app-panel anim-fadeup anim-delay-1">
+                    <div class="app-panel-header">
+                        <span class="app-panel-title">Auth</span>
+                    </div>
+                    <div class="app-panel-body p-3">
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <label class="form-label small">Username</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="username"
-                                />
+                                <input type="text" class="form-control" name="username" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">Password</label>
-                                <input
-                                    type="password"
-                                    class="form-control"
-                                    name="password"
-                                />
+                                <input type="password" class="form-control" name="password" />
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
             <div class="col-12">
-                <div class="card anim-fadeup anim-delay-1">
-                    <div class="card-body">
-                        <p class="section-label">Telegram</p>
+                <section class="app-panel anim-fadeup anim-delay-1">
+                    <div class="app-panel-header">
+                        <span class="app-panel-title">Telegram</span>
+                    </div>
+                    <div class="app-panel-body p-3">
                         <div class="form-check mb-2">
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                name="telegram_enabled"
-                                id="telegram_enabled"
-                            />
-                            <label
-                                class="form-check-label small"
-                                for="telegram_enabled"
-                                >Enabled</label
-                            >
+                            <input class="form-check-input" type="checkbox" name="telegram_enabled" id="telegram_enabled" />
+                            <label class="form-check-label small" for="telegram_enabled">Enabled</label>
                         </div>
                         <div class="row g-2">
                             <div class="col-12">
                                 <label class="form-label small">Bot token</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="telegram_token"
-                                    placeholder="Bot token"
-                                />
+                                <input type="text" class="form-control" name="telegram_token" placeholder="Bot token" />
                             </div>
                             <div class="col-12">
                                 <label class="form-label small">Chat ID</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="telegram_chat_id"
-                                    placeholder="Chat ID"
-                                />
+                                <input type="text" class="form-control" name="telegram_chat_id" placeholder="Chat ID" />
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
             <div class="col-12">
-                <div class="card anim-fadeup anim-delay-1">
-                    <div class="card-body">
-                        <p class="section-label">Discord</p>
+                <section class="app-panel anim-fadeup anim-delay-1">
+                    <div class="app-panel-header">
+                        <span class="app-panel-title">Discord</span>
+                    </div>
+                    <div class="app-panel-body p-3">
                         <div class="form-check mb-2">
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                name="discord_enabled"
-                                id="discord_enabled"
-                            />
-                            <label
-                                class="form-check-label small"
-                                for="discord_enabled"
-                                >Enabled</label
-                            >
+                            <input class="form-check-input" type="checkbox" name="discord_enabled" id="discord_enabled" />
+                            <label class="form-check-label small" for="discord_enabled">Enabled</label>
                         </div>
                         <div>
                             <label class="form-label small">Webhook URL</label>
-                            <input
-                                type="text"
-                                class="form-control"
-                                name="discord_webhook"
-                                placeholder="Webhook URL"
-                            />
+                            <input type="text" class="form-control" name="discord_webhook" placeholder="Webhook URL" />
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
             <div class="col-12">
-                <div class="card anim-fadeup anim-delay-1">
-                    <div class="card-body">
-                        <p class="section-label">Network (federation)</p>
+                <section class="app-panel anim-fadeup anim-delay-1">
+                    <div class="app-panel-header">
+                        <span class="app-panel-title">Network (federation)</span>
+                    </div>
+                    <div class="app-panel-body p-3">
                         <div class="form-check mb-2">
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                name="network_enabled"
-                                id="network_enabled"
-                            />
-                            <label
-                                class="form-check-label small"
-                                for="network_enabled"
-                                >Enable peer sync</label
-                            >
+                            <input class="form-check-input" type="checkbox" name="network_enabled" id="network_enabled" />
+                            <label class="form-check-label small" for="network_enabled">Enable peer sync</label>
                         </div>
                         <div class="row g-2">
                             <div class="col-12">
                                 <label class="form-label small">Self URL</label>
-                                <input
-                                    type="text"
-                                    class="form-control"
-                                    name="network_self_url"
-                                    placeholder="https://beacon1.example.com"
-                                />
+                                <input type="text" class="form-control" name="network_self_url" placeholder="https://beacon1.example.com" />
                             </div>
                             <div class="col-12">
                                 <label class="form-label small">Peers (one URL per line)</label>
-                                <textarea
-                                    class="form-control"
-                                    name="network_peers"
-                                    rows="3"
-                                    placeholder="https://beacon2.example.com"
-                                ></textarea>
+                                <textarea class="form-control" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small">Sync interval (sec)</label>
-                                <input
-                                    type="number"
-                                    class="form-control"
-                                    name="network_sync_interval"
-                                    min="10"
-                                    placeholder="60"
-                                />
+                                <input type="number" class="form-control" name="network_sync_interval" min="10" placeholder="60" />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small">Dead timeout (sec)</label>
-                                <input
-                                    type="number"
-                                    class="form-control"
-                                    name="network_dead_timeout"
-                                    min="60"
-                                    placeholder="300"
-                                />
+                                <input type="number" class="form-control" name="network_dead_timeout" min="60" placeholder="300" />
                             </div>
                             <div class="col-12">
                                 <label class="form-label small text-muted">Node ID</label>
-                                <input
-                                    type="text"
-                                    class="form-control bg-light"
-                                    name="network_node_id"
-                                    readonly
-                                    placeholder="Generated when enabled"
-                                />
+                                <input type="text" class="form-control app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
             <div class="col-12 d-flex align-items-center gap-2">
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
-                    Save settings
-                </button>
-                <span
-                    id="msg"
-                    class="small"
-                ></span>
+                <button type="submit" class="btn btn-primary">Save settings</button>
+                <span id="msg" class="small"></span>
             </div>
         </div>
     </form>
@@ -376,13 +282,13 @@
             return;
         }
 
-        const card = checkbox.closest('.card');
-        if (!card) {
+        const panel = checkbox.closest('.app-panel');
+        if (!panel) {
             return;
         }
 
         function update() {
-            const fields = card.querySelectorAll('input, textarea, select');
+            const fields = panel.querySelectorAll('input, textarea, select');
 
             fields.forEach(function (field) {
                 if (field === checkbox) {

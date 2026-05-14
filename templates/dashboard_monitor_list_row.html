@@ -1,0 +1,44 @@
+{# Full-width list row — between cards and table. Expects: row #}
+<div class="dash-list-row"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
+    <div class="dash-list-primary">
+        <div class="dash-list-primary-main">
+            <div class="dash-list-line1">
+                <span class="dash-list-name monitor-title">{{ row.Monitor.Name }}</span>
+            </div>
+            <div class="monitor-meta dash-list-target text-truncate">
+                <a href="{{ row.Monitor.Target }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ row.Monitor.Target }}</a>
+                <span class="text-body-tertiary">·</span> <code class="text-secondary">{{ row.Monitor.Type }}</code>
+            </div>
+        </div>
+        <div class="dashboard-status dash-list-status" aria-label="Monitor status">
+            {% if row.Status == 'up' %}
+            <span class="badge rounded-pill badge-up"><span class="dot"></span>Up</span>
+            {% elif row.Status == 'down' %}
+            <span class="badge rounded-pill badge-down"><span class="dot"></span>Down</span>
+            {% else %}
+            <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="dash-list-secondary">
+        {% if row.IsPeer %}
+        <span class="badge rounded-pill badge-source-peer"><i class="bi bi-diagram-3"></i>{{ row.SourceLabel }}</span>
+        {% else %}
+        <span class="badge rounded-pill badge-source-self"><i class="bi bi-person"></i>{{ row.SourceLabel }}</span>
+        {% endif %}
+        <span class="dash-list-metric text-body-secondary dashboard-latency">{{ row.LatencyMs }}</span>
+        <span class="dash-list-metric text-body-tertiary dashboard-lastcheck">{{ row.LastCheck }}</span>
+    </div>
+    <div class="dash-list-uptime">
+        {% if row.IsPeer %}
+        <span class="text-body-tertiary app-metric" title="Check history is recorded on the peer node">—</span>
+        {% else %}
+        <div
+            class="uptime-strip"
+            data-monitor-id="{{ row.Monitor.ID }}"
+            role="img"
+            aria-label="Recent check results for this monitor"
+        ></div>
+        {% endif %}
+    </div>
+</div>

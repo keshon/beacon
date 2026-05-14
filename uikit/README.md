@@ -68,4 +68,8 @@ Standard Bootstrap class names are used wherever possible (`.card`, `.table`, `.
 
 **Current choice (path A):** stay on **Bootstrap 5.3 SCSS + Beacon partials** in `uikit/scss/`, compiled to `static/uikit.css`. Theming and density evolve via CSS variables (`_tokens.scss`, Bootstrap `$variables` overrides) and named domain classes (e.g. `.monitor-title`, `.dash-nav`).
 
+**App theme:** authenticated pages use `data-bs-theme` on `<html>` (`dark` or `light`). Preference is stored in `localStorage` under key `beaconTheme` and applied before paint via [`templates/beacon_head_theme.html`](templates/beacon_head_theme.html). Toggle control lives in the app navbar ([`templates/base.html`](templates/base.html)).
+
+**Dashboard layout:** `localStorage` key `beaconDashboardView` (`cards` | `list` | `table`; legacy `grid` maps to `list`) is mirrored to `data-dashboard-view` on `<html>` in the same early script, so the chosen view paints without a flash. Base font size from Settings (`uiFontSize` → `--ui-font-size` on `<html>` in [`templates/head_common.html`](templates/head_common.html)) scales the UI together with typography tokens `--app-text-*` in [`uikit/scss/_tokens.scss`](scss/_tokens.scss).
+
 **Not planned in-repo right now (path B):** a migration to **Tailwind** would mean replacing all template utility usage, adding a PostCSS/Tailwind build, and replacing Bootstrap’s JS behaviors (navbar collapse, etc.) — a separate project when product goals justify it.

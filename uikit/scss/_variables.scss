@@ -15,10 +15,24 @@ $card-bg:    #fff;
 $body-color: #0f1117;
 
 // ── Typography ──
-$font-family-sans-serif: 'DM Sans', sans-serif;
-$font-family-monospace:  'DM Mono', monospace;
-// Keep Bootstrap base at 1rem so global scaling is driven only by html font-size.
+$font-family-sans-serif: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+
+$font-family-monospace: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+// Keep Bootstrap $font-size-base at 1rem so global scaling is driven by html font-size (--ui-font-size).
 $font-size-base: 1rem;
+
+// Shared metrics for .btn (default), .form-control, .form-select (Bootstrap wires these via $input-btn-*).
+// Do not re-declare conflicting padding/font-size on outline buttons in _components — that breaks pairs like Settings reset + select.
+$input-btn-font-size:   0.8125rem;
+$input-btn-line-height: 1.4;
+$input-btn-padding-y:   0.375rem;
+$input-btn-padding-x:   0.625rem;
+
+// Compact controls (.btn-sm, .form-control-sm): row actions, collapse toggles, toolbar.
+$input-btn-font-size-sm: 0.75rem;
+$input-btn-padding-y-sm: 0.21875rem;
+$input-btn-padding-x-sm: 0.4375rem;
 
 // ── Border radii ──
 $border-radius:      0.625rem; // 10px
