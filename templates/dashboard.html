@@ -1,11 +1,10 @@
-{% extends "base.html" %} {% block title %}Dashboard – Beacon{% endblock %} {% block content %}
+{% extends "base.html" %}
+{% block title %}Dashboard – Beacon{% endblock %}
+{% block content %}
 <div class="container">
     <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
         <h1 class="page-title mb-0">Dashboard</h1>
-        <a
-            href="/monitors"
-            class="btn btn-primary"
-        >
+        <a href="/monitors" class="btn btn-primary">
             <i class="bi bi-plus"></i>Add monitor
         </a>
     </div>
@@ -51,13 +50,16 @@
                                 <i class="bi bi-exclamation-circle me-1"></i>{{ n.LastError }}
                             </td>
                         </tr>
-                        {% endif %} {% endfor %}
+                        {% endif %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
-    {% endif %} {% if rows %}
+    {% endif %}
+
+    {% if rows %}
     <div class="card anim-fadeup anim-delay-2">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -65,6 +67,7 @@
                     <tr>
                         <th>Monitor</th>
                         <th>Source</th>
+                        <th class="uptime-col">Recent</th>
                         <th>Status</th>
                         <th>Latency</th>
                         <th>Last check</th>
@@ -72,7 +75,7 @@
                 </thead>
                 <tbody>
                     {% for row in rows %}
-                    <tr>
+                    <tr{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
                         <td>
                             <div>{{ row.Monitor.Name }}</div>
                             <div>
@@ -87,7 +90,19 @@
                             <span class="badge rounded-pill badge-source-self"><i class="bi bi-person"></i>{{ row.SourceLabel }}</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td class="uptime-cell">
+                            {% if row.IsPeer %}
+                            <span class="text-body-tertiary small" title="Check history is recorded on the peer node">—</span>
+                            {% else %}
+                            <div
+                                class="uptime-strip"
+                                data-monitor-id="{{ row.Monitor.ID }}"
+                                role="img"
+                                aria-label="Recent check results for this monitor"
+                            ></div>
+                            {% endif %}
+                        </td>
+                        <td class="dashboard-status">
                             {% if row.Status == 'up' %}
                             <span class="badge rounded-pill badge-up"><span class="dot"></span>Up</span>
                             {% elif row.Status == 'down' %}
@@ -96,8 +111,8 @@
                             <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
                             {% endif %}
                         </td>
-                        <td class="text-body-secondary small">{{ row.LatencyMs }}</td>
-                        <td class="text-body-tertiary small">{{ row.LastCheck }}</td>
+                        <td class="text-body-secondary small dashboard-latency">{{ row.LatencyMs }}</td>
+                        <td class="text-body-tertiary small dashboard-lastcheck">{{ row.LastCheck }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -113,4 +128,80 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+    (function () {
+        var MAX = 90;
+        function barEl(ok) {
+            var d = document.createElement("span");
+            d.className = "uptime-seg " + (ok ? "uptime-seg-up" : "uptime-seg-down");
+            d.setAttribute("aria-hidden", "true");
+            return d;
+        }
+        function statusBadgeHtml(status) {
+            var labels = { up: "Up", down: "Down", unknown: "Unknown" };
+            var classes = { up: "badge-up", down: "badge-down", unknown: "badge-unknown" };
+            var s = status && classes[status] ? status : "unknown";
+            return (
+                '<span class="badge rounded-pill ' +
+                classes[s] +
+                '"><span class="dot"></span>' +
+                (labels[s] || labels.unknown) +
+                "</span>"
+            );
+        }
+        function trim(strip) {
+            while (strip.children.length > MAX) {
+                strip.removeChild(strip.firstChild);
+            }
+        }
+        function render(strip, points) {
+            strip.textContent = "";
+            for (var i = 0; i < points.length; i++) {
+                strip.appendChild(barEl(points[i].success));
+            }
+            trim(strip);
+        }
+        function updateRowFromSSE(data) {
+            if (!data.monitor_id) return;
+            var tr = document.querySelector('tr[data-dashboard-monitor="' + data.monitor_id + '"]');
+            if (!tr) return;
+            var lat = tr.querySelector(".dashboard-latency");
+            var lc = tr.querySelector(".dashboard-lastcheck");
+            var stCell = tr.querySelector(".dashboard-status");
+            if (lat && data.latency_ms != null) lat.textContent = data.latency_ms;
+            if (lc && data.last_check != null) lc.textContent = data.last_check;
+            if (stCell && data.status) stCell.innerHTML = statusBadgeHtml(data.status);
+            var strip = tr.querySelector('.uptime-strip[data-monitor-id="' + data.monitor_id + '"]');
+            if (strip) {
+                strip.appendChild(barEl(!!data.success));
+                trim(strip);
+            }
+        }
+        var strips = document.querySelectorAll(".uptime-strip[data-monitor-id]");
+        if (!strips.length) return;
+        var loads = Array.prototype.map.call(strips, function (strip) {
+            var id = strip.getAttribute("data-monitor-id");
+            return fetch("/api/monitors/" + encodeURIComponent(id) + "/uptime?limit=" + MAX)
+                .then(function (r) {
+                    if (!r.ok) throw new Error("uptime");
+                    return r.json();
+                })
+                .then(function (pts) {
+                    render(strip, pts);
+                })
+                .catch(function () {});
+        });
+        Promise.all(loads).then(function () {
+            var es = new EventSource("/api/stream/checks");
+            es.onmessage = function (ev) {
+                try {
+                    var data = JSON.parse(ev.data);
+                    updateRowFromSSE(data);
+                } catch (e) {}
+            };
+        });
+    })();
+</script>
 {% endblock %}

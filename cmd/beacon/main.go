@@ -15,6 +15,7 @@ import (
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
 	"github.com/keshon/beacon/internal/notify"
+	"github.com/keshon/beacon/internal/realtime"
 	"github.com/keshon/beacon/internal/scheduler"
 	"github.com/keshon/beacon/internal/store"
 	"github.com/keshon/beacon/internal/sync"
@@ -99,14 +100,15 @@ func main() {
 		},
 	)
 
-	sch := scheduler.New(st, engine, cfg.Workers, cfg.DefaultIntervalDuration(), cfg)
+	hub := realtime.NewHub()
+	sch := scheduler.New(st, engine, cfg.Workers, cfg.DefaultIntervalDuration(), cfg, hub.BroadcastCheck)
 	sch.Run(ctx)
 
 	syncClient := sync.NewClient(st, cfg)
 	go syncClient.Run(ctx)
 
 	auth := web.NewAuth()
-	srv := web.NewServer(st, auth, cfg, "templates", "static")
+	srv := web.NewServer(st, auth, cfg, "templates", "static", hub)
 	httpServer := &http.Server{Addr: cfg.Listen, Handler: srv.Routes()}
 
 	go func() {

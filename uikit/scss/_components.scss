@@ -187,6 +187,43 @@
   }
 }
 
+// ── Dashboard uptime strip (Recent column) ──
+.uptime-col {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.uptime-cell {
+  vertical-align: middle;
+}
+
+.uptime-strip {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 1.125rem;
+  flex-wrap: nowrap;
+  max-width: 14rem;
+  overflow: hidden;
+}
+
+.uptime-seg {
+  display: inline-block;
+  width: 3px;
+  min-height: 1rem;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.uptime-seg-up {
+  background: var(--bs-success);
+  box-shadow: 0 0 0.125rem rgba(var(--bs-success-rgb), 0.35);
+}
+
+.uptime-seg-down {
+  background: var(--bs-danger);
+  box-shadow: 0 0 0.125rem rgba(var(--bs-danger-rgb), 0.35);
+}
 
 // ── Badges (was .status-badge / .source-badge) ──
 // Use Bootstrap .badge .rounded-pill as base, then domain modifiers.
@@ -269,6 +306,12 @@ code {
 }
 
 .monitor-row:last-child { border-bottom: none; }
+
+// Full-bleed monitor list inside .card (replaces inline padding: 0)
+.monitor-list-body { padding: 0; }
+
+// Flex child that may shrink (replaces inline min-width: 0; flex: 1)
+.monitor-row-flex { min-width: 0; flex: 1; }
 
 .edit-form {
   margin-top: 0.875rem;

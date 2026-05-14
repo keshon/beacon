@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/keshon/beacon/internal/config"
+	"github.com/keshon/beacon/internal/realtime"
 	"github.com/keshon/beacon/internal/store"
 
 	"github.com/flosch/pongo2/v6"
@@ -21,15 +22,17 @@ type Server struct {
 	store     *store.Store
 	auth      *Auth
 	cfg       *config.Config
+	hub       *realtime.Hub
 	tplDir    string
 	staticDir string
 }
 
-func NewServer(s *store.Store, auth *Auth, cfg *config.Config, tplDir, staticDir string) *Server {
+func NewServer(s *store.Store, auth *Auth, cfg *config.Config, tplDir, staticDir string, hub *realtime.Hub) *Server {
 	return &Server{
 		store:     s,
 		auth:      auth,
 		cfg:       cfg,
+		hub:       hub,
 		tplDir:    tplDir,
 		staticDir: staticDir,
 	}
@@ -58,6 +61,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/monitors", s.apiCreateMonitor)
 	mux.HandleFunc("DELETE /api/monitors/{id}", s.apiDeleteMonitor)
 	mux.HandleFunc("PATCH /api/monitors/{id}", s.apiUpdateMonitor)
+	mux.HandleFunc("GET /api/monitors/{id}/uptime", s.apiMonitorUptime)
+	mux.HandleFunc("GET /api/stream/checks", s.handleStreamChecks)
 	mux.HandleFunc("GET /api/state", s.apiState)
 	mux.HandleFunc("GET /api/events", s.apiEvents)
 	mux.HandleFunc("GET /api/config", s.apiConfigGet)

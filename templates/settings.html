@@ -1,4 +1,6 @@
-{% extends "base.html" %} {% block title %}Settings – Beacon{% endblock %} {% block content %}
+{% extends "base.html" %}
+{% block title %}Settings – Beacon{% endblock %}
+{% block content %}
 <div class="container">
     <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
         <h1 class="page-title mb-0">Settings</h1>
@@ -249,6 +251,8 @@
         </div>
     </form>
 </div>
+{% endblock %}
+{% block scripts %}
 <script>
     (function () {
         (function initUiFontSize() {
@@ -291,29 +295,29 @@
             });
         })();
 
-        function el(f, name) {
-            return f.querySelector('[name="' + name + '"]');
+        function fieldByName(form, name) {
+            return form.querySelector('[name="' + name + '"]');
         }
         fetch('/api/config')
             .then((r) => r.json())
             .then((cfg) => {
                 const f = document.getElementById('configForm');
-                el(f, 'listen').value = cfg.listen || ':8080';
-                el(f, 'workers').value = cfg.workers || 10;
-                el(f, 'default_interval').value = cfg.default_interval || '';
-                el(f, 'username').value = cfg.auth?.username || '';
-                el(f, 'password').value = cfg.auth?.password || '';
-                el(f, 'telegram_enabled').checked = cfg.telegram?.enabled || false;
-                el(f, 'telegram_token').value = cfg.telegram?.token || '';
-                el(f, 'telegram_chat_id').value = cfg.telegram?.chat_id || '';
-                el(f, 'discord_enabled').checked = cfg.discord?.enabled || false;
-                el(f, 'discord_webhook').value = cfg.discord?.webhook || '';
-                el(f, 'network_enabled').checked = cfg.network?.enabled || false;
-                el(f, 'network_self_url').value = cfg.network?.self_url || '';
-                el(f, 'network_peers').value = (cfg.network?.peers || []).join('\n');
-                el(f, 'network_sync_interval').value = cfg.network?.sync_interval || '';
-                el(f, 'network_dead_timeout').value = cfg.network?.dead_timeout || '';
-                el(f, 'network_node_id').value = cfg.network?.node_id || '';
+                fieldByName(f, 'listen').value = cfg.listen || ':8080';
+                fieldByName(f, 'workers').value = cfg.workers || 10;
+                fieldByName(f, 'default_interval').value = cfg.default_interval || '';
+                fieldByName(f, 'username').value = cfg.auth?.username || '';
+                fieldByName(f, 'password').value = cfg.auth?.password || '';
+                fieldByName(f, 'telegram_enabled').checked = cfg.telegram?.enabled || false;
+                fieldByName(f, 'telegram_token').value = cfg.telegram?.token || '';
+                fieldByName(f, 'telegram_chat_id').value = cfg.telegram?.chat_id || '';
+                fieldByName(f, 'discord_enabled').checked = cfg.discord?.enabled || false;
+                fieldByName(f, 'discord_webhook').value = cfg.discord?.webhook || '';
+                fieldByName(f, 'network_enabled').checked = cfg.network?.enabled || false;
+                fieldByName(f, 'network_self_url').value = cfg.network?.self_url || '';
+                fieldByName(f, 'network_peers').value = (cfg.network?.peers || []).join('\n');
+                fieldByName(f, 'network_sync_interval').value = cfg.network?.sync_interval || '';
+                fieldByName(f, 'network_dead_timeout').value = cfg.network?.dead_timeout || '';
+                fieldByName(f, 'network_node_id').value = cfg.network?.node_id || '';
 
                 bindToggle('telegram_enabled');
                 bindToggle('discord_enabled');
@@ -323,31 +327,31 @@
     document.getElementById('configForm').onsubmit = async (e) => {
         e.preventDefault();
         const f = e.target;
-        function el(name) {
+        function namedField(name) {
             return f.querySelector('[name="' + name + '"]');
         }
         const msg = document.getElementById('msg');
         msg.textContent = 'Saving…';
         msg.className = 'small text-muted';
-        const peersRaw = (el('network_peers').value || '')
+        const peersRaw = (namedField('network_peers').value || '')
             .trim()
             .split('\n')
             .map((s) => s.trim())
             .filter(Boolean);
         const cfg = {
-            listen: el('listen').value || ':8080',
-            workers: parseInt(el('workers').value) || 10,
-            default_interval: parseInt(el('default_interval').value) || 0,
-            auth: { username: el('username').value, password: el('password').value },
-            telegram: { enabled: el('telegram_enabled').checked, token: el('telegram_token').value, chat_id: el('telegram_chat_id').value },
-            discord: { enabled: el('discord_enabled').checked, webhook: el('discord_webhook').value },
+            listen: namedField('listen').value || ':8080',
+            workers: parseInt(namedField('workers').value) || 10,
+            default_interval: parseInt(namedField('default_interval').value) || 0,
+            auth: { username: namedField('username').value, password: namedField('password').value },
+            telegram: { enabled: namedField('telegram_enabled').checked, token: namedField('telegram_token').value, chat_id: namedField('telegram_chat_id').value },
+            discord: { enabled: namedField('discord_enabled').checked, webhook: namedField('discord_webhook').value },
             network: {
-                enabled: el('network_enabled').checked,
-                self_url: el('network_self_url').value.trim(),
+                enabled: namedField('network_enabled').checked,
+                self_url: namedField('network_self_url').value.trim(),
                 peers: peersRaw,
-                sync_interval: parseInt(el('network_sync_interval').value) || 60,
-                dead_timeout: parseInt(el('network_dead_timeout').value) || 300,
-                node_id: el('network_node_id').value.trim(),
+                sync_interval: parseInt(namedField('network_sync_interval').value) || 60,
+                dead_timeout: parseInt(namedField('network_dead_timeout').value) || 300,
+                node_id: namedField('network_node_id').value.trim(),
             },
         };
         const res = await fetch('/api/config', {
@@ -357,7 +361,7 @@
         });
         if (res.ok) {
             const saved = await res.json();
-            if (saved.network?.node_id) el('network_node_id').value = saved.network.node_id;
+            if (saved.network?.node_id) namedField('network_node_id').value = saved.network.node_id;
             msg.textContent = 'Saved';
             msg.className = 'small text-success';
         } else {

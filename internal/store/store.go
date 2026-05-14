@@ -227,6 +227,35 @@ func (s *Store) GetEvents(limit int) []Event {
 	return events[start:]
 }
 
+// GetUptimeSamples returns the last limit check outcomes for monitorID, oldest first.
+// Scans the tail of the event log (variant A: simple, bounded by global event cap).
+func (s *Store) GetUptimeSamples(monitorID string, limit int) []Event {
+	if limit <= 0 {
+		limit = 120
+	}
+	const maxLimit = 500
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	s.eventsMu.Lock()
+	defer s.eventsMu.Unlock()
+	var events []Event
+	ok, _ := s.eventsDS.Get(keyEvents, &events)
+	if !ok || events == nil {
+		return nil
+	}
+	out := make([]Event, 0, limit)
+	for i := len(events) - 1; i >= 0 && len(out) < limit; i-- {
+		if events[i].MonitorID == monitorID {
+			out = append(out, events[i])
+		}
+	}
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
+	return out
+}
+
 func (s *Store) GetConfig(dest any) (bool, error) {
 	return s.configDS.Get(keyConfig, dest)
 }

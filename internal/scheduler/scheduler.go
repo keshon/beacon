@@ -19,31 +19,31 @@ type CheckJob struct {
 }
 
 type Scheduler struct {
-	store           *store.Store
-	engine          *monitor.Engine
-	workers         int
-	defaultInterval time.Duration
-	cfg             *config.Config
-	jobs            chan CheckJob
-	done            chan struct{}
-	wg              sync.WaitGroup
-	inFlight        map[string]struct{}
-	inflMu          sync.Mutex
+	store            *store.Store
+	engine           *monitor.Engine
+	workers          int
+	defaultInterval  time.Duration
+	cfg              *config.Config
+	onCheckRecorded  func(store.Event, *monitor.MonitorState)
+	jobs             chan CheckJob
+	wg               sync.WaitGroup
+	inFlight         map[string]struct{}
+	inflMu           sync.Mutex
 }
 
-func New(s *store.Store, engine *monitor.Engine, workers int, defaultInterval time.Duration, cfg *config.Config) *Scheduler {
+func New(s *store.Store, engine *monitor.Engine, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(store.Event, *monitor.MonitorState)) *Scheduler {
 	if defaultInterval <= 0 {
 		defaultInterval = 30 * time.Second
 	}
 	return &Scheduler{
-		store:           s,
-		engine:          engine,
-		workers:         workers,
-		defaultInterval: defaultInterval,
-		cfg:             cfg,
-		jobs:            make(chan CheckJob, 100),
-		done:            make(chan struct{}),
-		inFlight:        make(map[string]struct{}),
+		store:            s,
+		engine:           engine,
+		workers:          workers,
+		defaultInterval:  defaultInterval,
+		cfg:              cfg,
+		onCheckRecorded:  onCheckRecorded,
+		jobs:             make(chan CheckJob, 100),
+		inFlight:         make(map[string]struct{}),
 	}
 }
 
@@ -213,14 +213,16 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 	result.MonitorID = m.ID
 
 	// Record event
-	sc.store.AppendEvent(store.Event{
+	ev := store.Event{
 		MonitorID: m.ID,
 		Success:   result.Success,
 		Time:      result.Time,
 		Latency:   result.Latency,
 		Error:     result.Error,
-	})
-
+	}
+	if err := sc.store.AppendEvent(ev); err != nil {
+		log.Printf("[scheduler] append event: %v", err)
+	}
 	// Update state via engine
 	st := sc.store.GetState(m.ID)
 	if st == nil {
@@ -229,11 +231,14 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 	sc.engine.Process(result, st, m)
 	sc.store.SetState(st)
 
+	if sc.onCheckRecorded != nil {
+		sc.onCheckRecorded(ev, st)
+	}
+
 	log.Printf("[%s] monitor=%s status=%v latency=%v", result.Time.Format("15:04:05"), m.Name, result.Success, result.Latency)
 }
 
 func (sc *Scheduler) Stop() {
-	close(sc.done)
 	close(sc.jobs)
 	sc.wg.Wait()
 }

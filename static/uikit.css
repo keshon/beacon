@@ -11930,11 +11930,6 @@ body {
     transform: translateY(0);
   }
 }
-@media (min-width: 75em) {
-  .container {
-    max-width: 56.25rem;
-  }
-}
 /* ── Main & page ── */
 .page-title {
   font-size: 1.125rem;
@@ -12177,7 +12172,7 @@ body {
 }
 
 .table > :not(caption) > * > * {
-  padding: 0.625rem 1rem;
+  padding: 1rem;
   background-color: unset;
   border-bottom: unset;
 }
@@ -12201,6 +12196,43 @@ body {
 
 .table-hover tbody tr:hover > * {
   --bs-table-bg-state: var(--c-hover-bg);
+}
+
+.uptime-col {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.uptime-cell {
+  vertical-align: middle;
+}
+
+.uptime-strip {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 1.125rem;
+  flex-wrap: nowrap;
+  max-width: 14rem;
+  overflow: hidden;
+}
+
+.uptime-seg {
+  display: inline-block;
+  width: 3px;
+  min-height: 1rem;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.uptime-seg-up {
+  background: var(--bs-success);
+  box-shadow: 0 0 0.125rem rgba(var(--bs-success-rgb), 0.35);
+}
+
+.uptime-seg-down {
+  background: var(--bs-danger);
+  box-shadow: 0 0 0.125rem rgba(var(--bs-danger-rgb), 0.35);
 }
 
 .badge {
@@ -12344,6 +12376,15 @@ code {
 
 .monitor-row:last-child {
   border-bottom: none;
+}
+
+.monitor-list-body {
+  padding: 0;
+}
+
+.monitor-row-flex {
+  min-width: 0;
+  flex: 1;
 }
 
 .edit-form {

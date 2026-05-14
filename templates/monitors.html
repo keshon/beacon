@@ -1,4 +1,6 @@
-{% extends "base.html" %} {% block title %}Monitors – Beacon{% endblock %} {% block content %}
+{% extends "base.html" %}
+{% block title %}Monitors – Beacon{% endblock %}
+{% block content %}
 <div class="container">
     <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
         <h1 class="page-title mb-0">Monitors</h1>
@@ -104,11 +106,11 @@
     <!-- Monitors list -->
     {% if monitors %}
     <div class="card anim-fadeup anim-delay-2">
-        <div style="padding: 0">
+        <div class="monitor-list-body">
             {% for m in monitors %}
             <div class="monitor-row">
                 <div class="d-flex justify-content-between align-items-center gap-3">
-                    <div style="min-width: 0; flex: 1">
+                    <div class="monitor-row-flex">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span>{{ m.Name }}</span>
                             {% if not m.Enabled %}
@@ -276,7 +278,8 @@
     </div>
     {% endif %}
 </div>
-
+{% endblock %}
+{% block scripts %}
 <script>
     document.getElementById('addForm').onsubmit = async (e) => {
         e.preventDefault();
