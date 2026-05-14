@@ -27,4 +27,7 @@ COPY --from=mybuildstage /usr/project/app /usr/project/app
 COPY --from=mybuildstage /usr/project/templates /usr/project/templates
 COPY --from=mybuildstage /usr/project/static /usr/project/static
 
+# Fail the image build if compiled CSS is missing (avoids silent 404 + wrong MIME in prod).
+RUN test -f /usr/project/static/uikit.css
+
 ENTRYPOINT ["/usr/project/app"]

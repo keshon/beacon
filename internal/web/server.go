@@ -76,10 +76,9 @@ func (s *Server) Routes() http.Handler {
 	authMw := s.auth.Middleware(s.cfg.Auth.Username, s.cfg.Auth.Password)
 	h := authMw(mux)
 	if s.staticDir != "" {
-		staticHandler := http.StripPrefix("/static", http.FileServer(http.Dir(s.staticDir)))
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/static/") {
-				staticHandler.ServeHTTP(w, r)
+				s.serveStatic(w, r)
 				return
 			}
 			h.ServeHTTP(w, r)
