@@ -32,7 +32,7 @@
 .card-table-wrap .table { border-radius: 0; }
 
 .section-label {
-  font-size: 0.6875rem;
+  font-size: var(--app-text-overline);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -54,7 +54,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  transition: background var(--app-duration-medium) var(--app-easing-standard),
+    transform var(--app-duration-fast) var(--app-easing-standard),
+    box-shadow var(--app-duration-medium) var(--app-easing-standard);
 
   &:hover {
     transform: translateY(-0.0625rem);
@@ -73,9 +75,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3125rem;
-  transition: all 0.15s;
+  transition: background var(--app-duration-medium) var(--app-easing-standard),
+    border-color var(--app-duration-medium) var(--app-easing-standard),
+    color var(--app-duration-medium) var(--app-easing-standard),
+    box-shadow var(--app-duration-medium) var(--app-easing-standard);
 
-  i { font-size: 0.7rem; }
+  i { font-size: var(--app-text-footer); }
 
   background: var(--c-hover-bg);
   border-color: var(--c-border-strong);
@@ -114,7 +119,7 @@
 
 // Collapse toggles — smaller chevron than row action icons
 .btn-outline-secondary[data-bs-toggle="collapse"] i {
-  font-size: 0.625rem;
+  font-size: var(--app-text-micro);
 }
 
 // Form metrics come from Bootstrap ($input-btn-* overrides in _variables.scss).
@@ -126,11 +131,11 @@
 .form-control:focus,
 .form-select:focus {
   border-color: var(--bs-primary);
-  box-shadow: 0 0 0 0.1875rem var(--c-accent-light);
+  box-shadow: var(--app-focus-ring);
 }
 
 .form-label {
-  font-size: 0.75rem;
+  font-size: var(--app-text-panel-title);
   font-weight: 500;
   color: var(--bs-secondary-color);
   opacity: 0.8;
@@ -138,7 +143,7 @@
 }
 
 .form-check-label {
-  font-size: 0.8125rem;
+  font-size: var(--app-text-meta);
   color: var(--bs-secondary-color);
   opacity: 0.8;
 }
@@ -146,7 +151,7 @@
 .form-control.form-control-lg,
 .form-select.form-select-lg {
   padding: 0.5625rem 0.8125rem;
-  font-size: 0.875rem;
+  font-size: var(--app-text-secondary);
 }
 
 // ── Table (was .theme-table) ──
@@ -162,7 +167,7 @@
   }
 
   thead th {
-    font-size: 0.6875rem;
+    font-size: var(--app-text-overline);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.07em;
@@ -173,7 +178,7 @@
   }
 
   tbody tr {
-    transition: background 0.1s;
+    transition: background var(--app-duration-fast) var(--app-easing-standard-in-out);
     border-bottom: 0.0625rem solid var(--c-border);
   }
 
@@ -244,7 +249,7 @@
 }
 
 .badge-xs {
-  font-size: 0.625rem;
+  font-size: var(--app-text-micro);
   padding: 0.125rem 0.4375rem;
 }
 
@@ -273,7 +278,7 @@
 .badge-source-self { background: var(--c-accent-light) !important; color: var(--bs-primary) !important; font-weight: 500; }
 .badge-source-peer { background: var(--c-hover-bg) !important; color: var(--bs-secondary-color) !important; font-weight: 500; }
 .badge-source-self i,
-.badge-source-peer i { font-size: 0.625rem; }
+.badge-source-peer i { font-size: var(--app-text-micro); }
 
 // ── Empty state ──
 .empty-state {
@@ -289,7 +294,7 @@
   opacity: 0.4;
 }
 
-.empty-state p { font-size: 0.875rem; margin: 0; }
+.empty-state p { font-size: var(--app-text-secondary); margin: 0; }
 .empty-state a { color: var(--bs-primary); text-decoration: none; font-weight: 500; }
 .empty-state a:hover { text-decoration: underline; }
 
@@ -333,12 +338,12 @@ code {
 .table-alert-cell {
   background: var(--c-danger-light);
   color: var(--bs-danger);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-meta);
   padding: 0.5rem 1rem;
 }
 
 // ── Utilities ──
-.anim-fadeup { animation: fadeUp 0.3s ease both; }
+.anim-fadeup { animation: fadeUp var(--app-duration-reveal) var(--app-easing-standard) both; }
 .anim-delay-1 { animation-delay: 0.05s; }
 .anim-delay-2 { animation-delay: 0.1s; }
 .anim-delay-3 { animation-delay: 0.15s; }

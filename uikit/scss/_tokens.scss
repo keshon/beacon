@@ -1,9 +1,15 @@
 // Beacon design tokens: CSS custom properties only (no component rules).
 //
 // Layers:
-// 1) :root — typography scale + radii + global UI font default (rem-based; scales with Settings).
-// 2) html[data-bs-theme] — chroma tokens used across app components (--c-*, panel chrome, etc.).
+// 1) :root — typography scale + radii + motion + global UI font default (rem-based; scales with Settings).
+// 2) html[data-bs-theme] — chroma tokens, semantic surfaces, focus ring (--c-*, --app-surface-*, etc.).
 //    Requires data-bs-theme on <html> (see templates/beacon_head_theme.html on all pages).
+//
+// Reference (cursor.com marketing Tailwind chunk, summarized for Beacon, not copied verbatim):
+// - Motion: --duration ~0.14s, default transition ~0.15s, slow ~0.25s; easings material + spring cubic-bezier.
+// - Radii: xs 4px … lg 0.5rem … 2xl 1rem (we keep tighter --app-radius-* for dense app UI).
+// - Surfaces: warm near-black page bg + layered card hex steps (mapped to semantic --app-surface-* → Bootstrap --bs-*).
+// - Shadows: mostly flat in Beacon; marketing uses very soft flyout shadows only.
 
 :root {
   // Global default until head_common.html applies saved --ui-font-size from localStorage.
@@ -17,6 +23,19 @@
   --app-text-secondary: 0.875rem;
   --app-text-meta: 0.8125rem;
   --app-text-footer: 0.75rem;
+  // Uppercase section / table header row (fine print).
+  --app-text-overline: 0.6875rem;
+  // Extra-small badges, collapse chevrons.
+  --app-text-micro: 0.625rem;
+
+  // Motion (aligned with cursor.com chunk --duration / --default-transition-duration / easings).
+  --app-duration-fast: 0.14s;
+  --app-duration-medium: 0.15s;
+  --app-duration-slow: 0.25s;
+  --app-duration-reveal: 0.3s;
+  --app-easing-standard: cubic-bezier(0, 0, 0.2, 1);
+  --app-easing-standard-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --app-easing-spring: cubic-bezier(0.25, 1, 0.5, 1);
 
   // Tool shell radii (control rounding lives in _shell.scss under .beacon-app).
   --app-radius-panel: 0.5rem;
@@ -38,6 +57,13 @@ html[data-bs-theme="dark"] {
   --app-panel-header-bg: rgba(255, 255, 255, 0.04);
   --app-footer-fg: rgba(255, 255, 255, 0.35);
   --shadow-md: none;
+
+  // Semantic surfaces (Bootstrap-backed; allows future tuning vs marketing layered cards).
+  --app-surface-page: var(--bs-body-bg);
+  --app-surface-panel: var(--bs-card-bg);
+  --app-surface-inset: rgba(255, 255, 255, 0.045);
+
+  --app-focus-ring: 0 0 0 0.1875rem var(--c-accent-light);
 }
 
 html[data-bs-theme="light"] {
@@ -54,4 +80,10 @@ html[data-bs-theme="light"] {
   --app-panel-header-bg: rgba(0, 0, 0, 0.035);
   --app-footer-fg: rgba(0, 0, 0, 0.45);
   --shadow-md: none;
+
+  --app-surface-page: var(--bs-body-bg);
+  --app-surface-panel: var(--bs-card-bg);
+  --app-surface-inset: rgba(0, 0, 0, 0.03);
+
+  --app-focus-ring: 0 0 0 0.1875rem var(--c-accent-light);
 }

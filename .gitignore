@@ -1,3 +1,4 @@
 /data
 *.exe
 uikit/vendor/
+/tmp
