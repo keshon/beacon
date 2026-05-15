@@ -22,6 +22,12 @@ func BuildNotifiers(cfg *config.Config, m *monitor.Monitor) []Notifier {
 	return out
 }
 
+// telegramTargets resolves Telegram destinations for one monitor.
+//
+// Per-channel rule: if the monitor has at least one saved Telegram override
+// entry, only those entries are used and all global Telegram receivers are
+// ignored. If there is no Telegram override, global settings apply when enabled.
+// Discord is resolved separately (see discordWebhooks).
 func telegramTargets(cfg *config.Config, m *monitor.Monitor) []config.TelegramTarget {
 	if m != nil && m.NotifyOverride != nil && len(m.NotifyOverride.Telegram) > 0 {
 		out := make([]config.TelegramTarget, 0, len(m.NotifyOverride.Telegram))
@@ -32,6 +38,7 @@ func telegramTargets(cfg *config.Config, m *monitor.Monitor) []config.TelegramTa
 				out = append(out, config.TelegramTarget{Token: token, ChatID: chat})
 			}
 		}
+		// Override list replaces global even when only one receiver is set.
 		return out
 	}
 	if cfg.Telegram.Enabled {
@@ -40,6 +47,8 @@ func telegramTargets(cfg *config.Config, m *monitor.Monitor) []config.TelegramTa
 	return nil
 }
 
+// discordWebhooks resolves Discord destinations for one monitor (same
+// per-channel replace-vs-global rules as telegramTargets).
 func discordWebhooks(cfg *config.Config, m *monitor.Monitor) []string {
 	if m != nil && m.NotifyOverride != nil && len(m.NotifyOverride.Discord) > 0 {
 		out := make([]string, 0, len(m.NotifyOverride.Discord))
