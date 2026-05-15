@@ -74,11 +74,17 @@ func main() {
 	commands.RegisterConfigCommands(st, cfg)
 
 	sendAlert := func(alert notify.Alert, m *monitor.Monitor) {
-		for _, n := range notify.BuildNotifiers(cfg, m) {
-			if err := n.Send(alert); err != nil {
-				log.Printf("notify error: %v", err)
-			}
+		notifiers := notify.BuildNotifiers(cfg, m)
+		if len(notifiers) == 0 {
+			return
 		}
+		go func() {
+			for i, err := range notify.SendAll(notifiers, alert) {
+				if err != nil {
+					log.Printf("notify error (%T): %v", notifiers[i], err)
+				}
+			}
+		}()
 	}
 
 	engine := monitor.NewEngine(

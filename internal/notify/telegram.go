@@ -47,8 +47,12 @@ func (t *TelegramNotifier) Send(a Alert) error {
 }
 
 func formatAlert(a Alert) string {
-	if a.Status == "recovered" {
+	switch a.Status {
+	case "recovered":
 		return fmt.Sprintf("Site RECOVERED\n\n%s\n%s\nTime: %s",
+			a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
+	case "test":
+		return fmt.Sprintf("Beacon TEST\n\n%s\n%s\nTime: %s",
 			a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
 	}
 	return fmt.Sprintf("Site DOWN\n\n%s\n%s\nTime: %s",

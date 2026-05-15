@@ -48,9 +48,6 @@
                                 data-type="{{ m.Type }}"
                                 data-target="{{ m.Target }}"
                                 data-interval="{{ m.IntervalSec }}"
-                                data-tg-token="{{ m.TgToken }}"
-                                data-tg-chat="{{ m.TgChatID }}"
-                                data-discord="{{ m.DiscordWebhook }}"
                             >
                                 <i class="bi bi-pencil"></i><span class="d-none d-sm-inline">Edit</span>
                             </button>
@@ -93,14 +90,47 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="/static/notify-ui.js"></script>
 <script>
-    document.getElementById('addForm').onsubmit = async (e) => {
+    function attachNotifyToForm(form) {
+        if (!form || form._notify) return form && form._notify;
+        const overrides = form.querySelector('[data-notify-overrides]');
+        if (!overrides) return null;
+        let initial = { telegram: [], discord: [] };
+        try {
+            initial = JSON.parse(overrides.dataset.notifyOverrides || '{}') || initial;
+        } catch (e) {}
+        const tgContainer = overrides.querySelector('[data-notify-channel="telegram"]');
+        const dcContainer = overrides.querySelector('[data-notify-channel="discord"]');
+        const tgList = window.BeaconNotify.init(tgContainer, 'telegram', initial.telegram || []);
+        const dcWebhooks = (initial.discord || []).map((w) => ({ webhook: w }));
+        const dcList = window.BeaconNotify.init(dcContainer, 'discord', dcWebhooks);
+        form._notify = { telegram: tgList, discord: dcList };
+        return form._notify;
+    }
+
+    function collectNotifyOverride(form) {
+        const lists = attachNotifyToForm(form);
+        if (!lists) return null;
+        const tg = lists.telegram.values();
+        const dc = lists.discord.values().map((v) => v.webhook);
+        if (tg.length === 0 && dc.length === 0) return null;
+        const out = {};
+        if (tg.length > 0) out.telegram = tg;
+        if (dc.length > 0) out.discord = dc;
+        return out;
+    }
+
+    document.querySelectorAll('form').forEach(attachNotifyToForm);
+
+    const addForm = document.getElementById('addForm');
+    addForm.onsubmit = async (e) => {
         e.preventDefault();
-        const fd = new FormData(e.target);
+        const fd = new FormData(addForm);
         const payload = { name: fd.get('name'), type: fd.get('type'), target: fd.get('target') };
         const iv = parseInt(fd.get('interval'));
         if (!isNaN(iv) && iv > 0) payload.interval = iv;
-        const no = buildNotifyOverride(fd);
+        const no = collectNotifyOverride(addForm);
         if (no) payload.notify_override = no;
         const res = await fetch('/api/monitors', {
             method: 'POST',
@@ -142,9 +172,6 @@
                 f.querySelector('[name="type"]').value = b.dataset.type || 'http';
                 f.querySelector('[name="target"]').value = b.dataset.target || '';
                 f.querySelector('[name="interval"]').value = b.dataset.interval || '';
-                f.querySelector('[name="tg_token"]').value = b.dataset.tgToken || '';
-                f.querySelector('[name="tg_chat_id"]').value = b.dataset.tgChat || '';
-                f.querySelector('[name="discord_webhook"]').value = b.dataset.discord || '';
                 f.onsubmit = async (e) => {
                     e.preventDefault();
                     const fd = new FormData(f);
@@ -152,7 +179,7 @@
                     const iv = parseInt(fd.get('interval'));
                     if (!isNaN(iv) && iv > 0) patch.interval = iv;
                     else if (!isNaN(iv)) patch.interval = 0;
-                    const no = buildNotifyOverride(fd);
+                    const no = collectNotifyOverride(f);
                     patch.notify_override = no || {};
                     const r = await fetch('/api/monitors/' + id, {
                         method: 'PATCH',
@@ -164,16 +191,5 @@
             }
         };
     });
-
-    function buildNotifyOverride(fd) {
-        const tgToken = (fd.get('tg_token') || '').trim();
-        const tgChat = (fd.get('tg_chat_id') || '').trim();
-        const discord = (fd.get('discord_webhook') || '').trim();
-        if (!tgToken && !tgChat && !discord) return null;
-        const o = {};
-        if (tgToken && tgChat) o.telegram = { token: tgToken, chat_id: tgChat };
-        if (discord) o.discord = { webhook: discord };
-        return Object.keys(o).length ? o : null;
-    }
 </script>
 {% endblock %}

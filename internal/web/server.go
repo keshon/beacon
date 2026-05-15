@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/keshon/beacon/internal/config"
+	"github.com/keshon/beacon/internal/notify"
 	"github.com/keshon/beacon/internal/realtime"
 	"github.com/keshon/beacon/internal/store"
 
@@ -25,6 +26,7 @@ type Server struct {
 	hub       *realtime.Hub
 	tplDir    string
 	staticDir string
+	testLimit *notify.RateLimiter
 }
 
 func NewServer(s *store.Store, auth *Auth, cfg *config.Config, tplDir, staticDir string, hub *realtime.Hub) *Server {
@@ -35,6 +37,7 @@ func NewServer(s *store.Store, auth *Auth, cfg *config.Config, tplDir, staticDir
 		hub:       hub,
 		tplDir:    tplDir,
 		staticDir: staticDir,
+		testLimit: notify.NewRateLimiter(),
 	}
 }
 
@@ -67,6 +70,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/events", s.apiEvents)
 	mux.HandleFunc("GET /api/config", s.apiConfigGet)
 	mux.HandleFunc("PUT /api/config", s.apiConfigSet)
+	mux.HandleFunc("POST /api/notify/test", s.apiNotifyTest)
 	mux.HandleFunc("GET /api/sync/export", s.apiSyncExport)
 	mux.HandleFunc("GET /api/health", s.apiHealth)
 	mux.HandleFunc("GET /api/network/status", s.apiNetworkStatus)

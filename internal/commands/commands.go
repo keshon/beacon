@@ -33,6 +33,41 @@ func RegisterAll(st *store.Store) {
 	commandkit.DefaultRegistry.Register(&EventsGetCmd{store: st})
 }
 
+// sanitizeNotifyOverride drops incomplete rows, trims whitespace, and caps
+// each channel at config.MaxReceivers. Returns nil when both lists are empty
+// so callers can clear the override.
+func sanitizeNotifyOverride(in *monitor.NotifyOverride) *monitor.NotifyOverride {
+	if in == nil {
+		return nil
+	}
+	out := &monitor.NotifyOverride{}
+	for _, t := range in.Telegram {
+		token := strings.TrimSpace(t.Token)
+		chat := strings.TrimSpace(t.ChatID)
+		if token == "" || chat == "" {
+			continue
+		}
+		out.Telegram = append(out.Telegram, monitor.TelegramTarget{Token: token, ChatID: chat})
+		if len(out.Telegram) >= config.MaxReceivers {
+			break
+		}
+	}
+	for _, w := range in.Discord {
+		w = strings.TrimSpace(w)
+		if w == "" {
+			continue
+		}
+		out.Discord = append(out.Discord, w)
+		if len(out.Discord) >= config.MaxReceivers {
+			break
+		}
+	}
+	if len(out.Telegram) == 0 && len(out.Discord) == 0 {
+		return nil
+	}
+	return out
+}
+
 // RegisterConfigCommands registers config commands. cfg is updated in-place when config is saved.
 func RegisterConfigCommands(st *store.Store, cfg *config.Config) {
 	commandkit.DefaultRegistry.Register(&ConfigGetCmd{store: st})
@@ -119,7 +154,7 @@ func (c *MonitorAddCmd) Run(ctx context.Context, inv *commandkit.Invocation) err
 			m.Retries = req.Retries
 		}
 		if req.NotifyOverride != nil {
-			m.NotifyOverride = req.NotifyOverride
+			m.NotifyOverride = sanitizeNotifyOverride(req.NotifyOverride)
 		}
 		var cfg config.Config
 		if ok, _ := c.store.GetConfig(&cfg); ok && cfg.Network.Enabled && cfg.Network.NodeID != "" {
@@ -248,7 +283,7 @@ func (c *MonitorUpdateCmd) Run(ctx context.Context, inv *commandkit.Invocation) 
 			}
 		}
 		if patch.NotifyOverride != nil {
-			m.NotifyOverride = patch.NotifyOverride
+			m.NotifyOverride = sanitizeNotifyOverride(patch.NotifyOverride)
 		}
 		if err := c.store.SetMonitor(m); err != nil {
 			http.Error(d.W, err.Error(), http.StatusInternalServerError)

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -111,10 +112,10 @@ func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
 	monitors := s.store.GetMonitors()
 	type monitorRow struct {
 		*monitor.Monitor
-		IntervalSec    int
-		TgToken        string
-		TgChatID       string
-		DiscordWebhook string
+		IntervalSec     int
+		TelegramTargets []monitor.TelegramTarget
+		DiscordWebhooks []string
+		NotifyJSON      string
 	}
 	rows := make([]monitorRow, 0, len(monitors))
 	for _, m := range monitors {
@@ -122,22 +123,23 @@ func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
 		if m.Interval > 0 {
 			sec = int(m.Interval / time.Second)
 		}
-		tgToken, tgChat, discord := "", "", ""
+		var tg []monitor.TelegramTarget
+		var dc []string
 		if m.NotifyOverride != nil {
-			if m.NotifyOverride.Telegram != nil {
-				tgToken = m.NotifyOverride.Telegram.Token
-				tgChat = m.NotifyOverride.Telegram.ChatID
-			}
-			if m.NotifyOverride.Discord != nil {
-				discord = m.NotifyOverride.Discord.Webhook
-			}
+			tg = m.NotifyOverride.Telegram
+			dc = m.NotifyOverride.Discord
 		}
+		payload := map[string]any{
+			"telegram": tg,
+			"discord":  dc,
+		}
+		buf, _ := json.Marshal(payload)
 		rows = append(rows, monitorRow{
-			Monitor:        m,
-			IntervalSec:    sec,
-			TgToken:        tgToken,
-			TgChatID:       tgChat,
-			DiscordWebhook: discord,
+			Monitor:         m,
+			IntervalSec:     sec,
+			TelegramTargets: tg,
+			DiscordWebhooks: dc,
+			NotifyJSON:      string(buf),
 		})
 	}
 	s.render(w, "monitors.html", pongo2.Context{
