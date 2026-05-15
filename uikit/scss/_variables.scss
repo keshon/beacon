@@ -3,9 +3,9 @@
 // standard Bootstrap components render with our look-and-feel.
 //
 // Card / panel elevation is fully managed via CSS custom properties in
-// _tokens.scss (--app-shadow-outline + --app-shadow-flyout) and applied in
-// _shell.scss / _components.scss — Bootstrap's $card-box-shadow is intentionally
-// not redefined here.
+// _tokens.scss (--app-shadow-outline only — flat design, no drop shadow flyout)
+// and applied in _shell.scss / _components.scss. Bootstrap's $card-box-shadow
+// is intentionally not redefined here.
 
 // ── Colors ──
 $primary:   #6366f1;
@@ -21,9 +21,11 @@ $card-bg:    #ffffff;
 $body-color: #0e1014;
 
 // ── Typography ──
-$font-family-sans-serif: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+// Geist Sans / Geist Mono are loaded from Google Fonts (see templates/head_common.html).
+// System fallbacks keep first paint readable while web fonts swap in.
+$font-family-sans-serif: "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 
-$font-family-monospace: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+$font-family-monospace: "Geist Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
 // Keep Bootstrap $font-size-base at 1rem so global scaling is driven by html font-size (--ui-font-size).
 $font-size-base: 1rem;
@@ -47,7 +49,8 @@ $border-radius-pill: 100px;
 
 // ── Card ──
 // Elevation (box-shadow) is intentionally NOT set here. See _shell.scss /
-// _components.scss where `.card` binds to --app-shadow-outline (+ flyout in light).
+// _components.scss where `.card` binds to --app-shadow-outline only (flat design,
+// no drop shadow flyout in either theme).
 $card-border-width:  0;
 $card-border-radius: 1rem;
 $card-spacer-y:      1.25rem;

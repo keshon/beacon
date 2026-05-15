@@ -104,13 +104,13 @@
 }
 
 .brand-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--bs-primary);
-  display: inline-block;
-  box-shadow: 0 0 0.5rem rgba(99, 102, 241, 0.7);
-  animation: pulse-dot 2.5s ease-in-out infinite;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--bs-primary);
+    display: inline-block;
+    box-shadow: 0 0 0.5rem rgba(99, 102, 241, 0.7);
+    animation: pulse-dot 2.5s ease-in-out infinite;
 }
 
 // Light theme: same component as dark default in .dash-nav above.

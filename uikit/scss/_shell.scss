@@ -59,15 +59,12 @@
 
 // Cards / panels: hairline outline takes the place of a literal border, keeping
 // the rendered hairline crisp on subpixel scales without doubling stroke width.
+// Flat by design — no drop shadow flyout in either theme. Depth comes from the
+// surface stack (page vs panel vs panel-raised) and the hairline outline alone.
 .beacon-app .card {
   border: 0;
   background-color: var(--app-surface-panel);
   box-shadow: var(--app-shadow-outline);
-}
-
-html[data-bs-theme="light"] .beacon-app .card {
-  // Light: hairline outline + ultra-faint flyout for a tiny lift off paper.
-  box-shadow: var(--app-shadow-outline), var(--app-shadow-flyout);
 }
 
 .app-page {
@@ -183,10 +180,6 @@ html[data-dashboard-view="table"] .dashboard-view-btn[data-dashboard-view="table
   overflow: hidden;
 }
 
-html[data-bs-theme="light"] .app-panel {
-  box-shadow: var(--app-shadow-outline), var(--app-shadow-flyout);
-}
-
 .app-panel-header {
   display: flex;
   align-items: center;
@@ -246,20 +239,12 @@ html[data-bs-theme="light"] .app-panel {
     background var(--app-duration-fast) var(--app-easing-standard-in-out);
 }
 
-html[data-bs-theme="light"] .dash-card {
-  box-shadow: var(--app-shadow-outline), var(--app-shadow-flyout);
-}
-
 // Hover lifts the card to the next surface tier (panel → panel-raised) and
 // strengthens the hairline to --c-border-strong. Both themes share the rule —
 // --app-surface-panel-raised is theme-aware in _tokens.scss.
 .dash-card:hover {
   background: var(--app-surface-panel-raised);
   box-shadow: var(--app-shadow-outline-strong);
-}
-
-html[data-bs-theme="light"] .dash-card:hover {
-  box-shadow: var(--app-shadow-outline-strong), var(--app-shadow-flyout);
 }
 
 .dash-card-head {
@@ -328,10 +313,6 @@ html[data-bs-theme="light"] .dash-card:hover {
   background: var(--app-surface-panel);
   box-shadow: var(--app-shadow-outline);
   overflow: hidden;
-}
-
-html[data-bs-theme="light"] .dash-list {
-  box-shadow: var(--app-shadow-outline), var(--app-shadow-flyout);
 }
 
 .dash-list-row {

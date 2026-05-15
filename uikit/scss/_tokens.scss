@@ -11,10 +11,11 @@
 //
 // "Agentic tooling" inspiration (Cursor product CSS, summarized — not copied):
 // - Layered surface stack vs flat fills: chrome / page / panel / panel-raised / inset.
-// - Hairline elevation: 1px outline-shadow (--app-shadow-outline) + ~2% flyout.
+// - Hairline elevation only: 1px outline-shadow (--app-shadow-outline). No drop
+//   shadows on in-flow surfaces — depth comes from the surface stack itself.
 // - HUD/metric typography: dedicated mono micro-scale (.6875–.8125rem) + tabular-nums.
 // - Negative tracking staircase on display headings (-0.01 to -0.03em).
-// - ANSI palette (#1f8a65 / #cf2d56) for diff / status counts (terminal-feel).
+// - ANSI palette (#10b981 / #cf2d56) for diff / status counts (terminal-feel).
 // - Shimmer skeleton with --shimmer-color/--shimmer-intensity (loading states).
 
 :root {
@@ -67,9 +68,10 @@
   --app-radius-panel: 0.5rem;
   --app-radius-pill: 999rem;
 
-  // ── Mono font stack (decoupled from Bootstrap's $font-family-monospace so we can
-  //    swap to a webfont like JetBrains Mono / Geist Mono later without side effects).
-  --app-font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Monaco,
+  // ── Mono font stack. Geist Mono loaded via Google Fonts (head_common.html).
+  //    Decoupled from Bootstrap's $font-family-monospace so primitives like .app-code
+  //    can opt in without rebinding the whole monospace cascade.
+  --app-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
@@ -137,12 +139,11 @@ html[data-bs-theme="dark"] {
   --app-panel-header-bg:       rgba(255, 255, 255, 0.04);
   --app-footer-fg:             rgba(255, 255, 255, 0.35);
 
-  // ── Hairline elevation (Cursor-style: outline + ultra-faint flyout). In dark,
-  //    classic drop shadows disappear; depth comes from the outline + surface stack.
+  // ── Flat elevation: hairline outline only. Depth comes from the surface stack,
+  //    not drop shadows. Popover token is kept for floating overlays (tooltips,
+  //    dropdowns, menus) where separation from underlying content is mandatory.
   --app-shadow-outline:        0 0 0 0.0625rem var(--c-border);
   --app-shadow-outline-strong: 0 0 0 0.0625rem var(--c-border-strong);
-  --app-shadow-flyout:         0 0 1rem rgba(0, 0, 0, 0.35),
-                               0 0 0.5rem rgba(0, 0, 0, 0.20);
   --app-shadow-popover:        0 0.5rem 1.5rem rgba(0, 0, 0, 0.45),
                                0 0 0 0.0625rem var(--c-border-strong);
 
@@ -158,14 +159,15 @@ html[data-bs-theme="dark"] {
 // LIGHT THEME
 // ─────────────────────────────────────────────────────────────────────────────
 html[data-bs-theme="light"] {
-  // ── Surface stack: chrome (slight off-white frame), page (paper), panel (white card),
-  //    panel-raised (subtle warm tint on hover), inset/inset-strong (recessed greys).
-  --app-surface-chrome:        #e6e7eb; // nav, footer (current value, kept)
-  --app-surface-page:          #f6f7fa; // <main> background
-  --app-surface-panel:         #ffffff; // cards / panels
-  --app-surface-panel-raised:  #f9fafc; // hover / focus state
-  --app-surface-inset:         #eef0f4; // recessed surface
-  --app-surface-inset-strong:  #e7eaf0; // strong inset
+  // ── Surface stack: every layer carries the same cool blue-grey cast as --app-surface-page.
+  //    Panels are NOT pure white anymore — pure white reads as warm against the cool page bg.
+  //    Brightness is preserved: panel still sits visually on top of page.
+  --app-surface-chrome:        #e3e6ec; // nav, footer (cooled from #e6e7eb)
+  --app-surface-page:          #f6f7fa; // <main> background (the cool reference)
+  --app-surface-panel:         #fbfcfe; // cards / panels — slight cool tint, was #ffffff
+  --app-surface-panel-raised:  #f3f5f9; // hover / focus state — sits a touch below panel
+  --app-surface-inset:         #e9ecf3; // recessed surface (cooled from #eef0f4)
+  --app-surface-inset-strong:  #dfe3ec; // strong inset (cooled from #e7eaf0)
 
   --bs-body-bg:                var(--app-surface-page);
   --bs-card-bg:                var(--app-surface-panel);
@@ -193,10 +195,10 @@ html[data-bs-theme="light"] {
   --app-panel-header-bg:       rgba(0, 0, 0, 0.035);
   --app-footer-fg:             rgba(0, 0, 0, 0.45);
 
+  // Same flat-elevation contract as dark: hairline outline only, no drop shadows.
+  // Popover token kept for floating overlays (see dark theme note).
   --app-shadow-outline:        0 0 0 0.0625rem var(--c-border);
   --app-shadow-outline-strong: 0 0 0 0.0625rem var(--c-border-strong);
-  --app-shadow-flyout:         0 0 1rem rgba(0, 0, 0, 0.05),
-                               0 0 0.5rem rgba(0, 0, 0, 0.02);
   --app-shadow-popover:        0 0.5rem 1.5rem rgba(0, 0, 0, 0.10),
                                0 0 0 0.0625rem var(--c-border-strong);
 

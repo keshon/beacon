@@ -8,6 +8,11 @@ html {
 }
 
 body {
+  // Explicit body font-family (defensive). Bootstrap already wires
+  // body { font-family: var(--bs-body-font-family) } via reboot, but binding it
+  // directly to --bs-font-sans-serif here removes one indirection level and
+  // guarantees Geist resolves even if a theme/plugin shadows --bs-body-font-family.
+  font-family: var(--bs-font-sans-serif);
   -webkit-font-smoothing: antialiased;
   // Tabular figures globally — keeps numeric metrics aligned in tables/dashboards
   // without needing per-cell overrides. Mono-specific elements still re-declare it.

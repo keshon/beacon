@@ -66,9 +66,7 @@
     justify-content: center;
     font-size: 1.1rem;
     color: #fff;
-    // Soft, restrained primary glow — matches dashboard primary hover style.
-    box-shadow: 0 0 0 0.0625rem rgba(99, 102, 241, 0.35),
-      0 0.25rem 1rem rgba(99, 102, 241, 0.30);
+    // Flat — color block only, no glow ring or flyout.
   }
 
   .logo-name {
@@ -149,8 +147,8 @@
     i { opacity: 0.9; }
   }
 
-  // Override Bootstrap .btn.btn-primary for login CTA. Tool-UI restraint:
-  // no transform lift, hairline ring + soft flyout matches the dashboard primary.
+  // Override Bootstrap .btn.btn-primary for login CTA. Flat — mirrors the
+  // dashboard primary hover (filter:brightness instead of glow).
   .btn.btn-primary {
     display: block;
     width: 100%;
@@ -161,11 +159,10 @@
     border-radius: var(--app-radius-control);
     letter-spacing: 0.01em;
     transition: background var(--app-duration-medium) var(--app-easing-standard),
-      box-shadow var(--app-duration-medium) var(--app-easing-standard);
+      filter var(--app-duration-medium) var(--app-easing-standard);
 
     &:hover {
-      box-shadow: 0 0 0 0.0625rem rgba(99, 102, 241, 0.4),
-        0 0.25rem 0.75rem rgba(99, 102, 241, 0.25);
+      filter: brightness(1.08);
     }
   }
 }
