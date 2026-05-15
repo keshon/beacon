@@ -2,12 +2,12 @@
 {% block title %}Dashboard – Beacon{% endblock %}
 {% block content %}
 <div class="container-fluid app-page px-3 px-lg-4 py-3">
-    <div class="dashboard-toolbar anim-fadeup">
-        <div class="dashboard-toolbar-start">
+    <div class="app-page-toolbar anim-fadeup">
+        <div class="app-page-toolbar-start">
             <h1 class="app-page-title mb-0">Dashboard</h1>
             <p class="app-page-subtitle mb-0 d-none d-md-block">Live status · cards, list, or table</p>
         </div>
-        <div class="dashboard-toolbar-actions">
+        <div class="app-page-toolbar-actions">
             {% if rows %}
             <div class="btn-group dashboard-view-toggle" role="group" aria-label="Dashboard layout">
                 <button type="button" class="btn btn-sm btn-outline-secondary dashboard-view-btn" data-dashboard-view="cards" title="Cards">
@@ -48,7 +48,9 @@
                     <tr>
                         <td><code class="app-code">{{ n.NodeID }}</code></td>
                         <td>
-                            <a href="{{ n.URL }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ n.URL }}</a>
+                            <div class="monitor-meta">
+                                <a href="{{ n.URL }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ n.URL }}</a>
+                            </div>
                         </td>
                         <td>
                             {% if n.Status == 'self' %}

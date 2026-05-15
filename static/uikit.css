@@ -11865,7 +11865,7 @@ textarea.form-control-lg {
   --app-text-page-title: 1rem;
   --app-text-subtitle: 0.875rem;
   --app-text-panel-title: 0.75rem;
-  --app-text-card-title: 1rem;
+  --app-text-card-title: 0.875rem;
   --app-text-secondary: 0.875rem;
   --app-text-meta: 0.8125rem;
   --app-text-footer: 0.75rem;
@@ -12101,7 +12101,7 @@ body {
   margin-left: auto;
 }
 .dash-nav .navbar-nav {
-  gap: 0.125rem;
+  gap: 0.25rem;
   flex-direction: row;
   align-items: center;
 }
@@ -12470,13 +12470,11 @@ html[data-bs-theme=light] .dash-nav .vr {
 .badge-source-self {
   background: var(--c-accent-light) !important;
   color: var(--bs-primary) !important;
-  font-weight: 500;
 }
 
 .badge-source-peer {
   background: var(--c-hover-bg) !important;
   color: var(--bs-secondary-color) !important;
-  font-weight: 500;
 }
 
 .badge-source-self i,
@@ -12541,10 +12539,12 @@ code {
 
 .monitor-title {
   font-weight: 600;
+  font-size: var(--app-text-card-title);
   color: var(--bs-body-color);
 }
 
 .monitor-meta {
+  font-size: var(--app-text-meta);
   color: var(--bs-secondary-color);
 }
 
@@ -12862,7 +12862,7 @@ html[data-bs-theme=light] .theme-toggle-btn:hover {
   background: rgba(0, 0, 0, 0.06);
 }
 
-.dashboard-toolbar {
+.app-page-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -12871,7 +12871,7 @@ html[data-bs-theme=light] .theme-toggle-btn:hover {
   margin-bottom: 1rem;
 }
 
-.dashboard-toolbar-actions {
+.app-page-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -12976,7 +12976,7 @@ html[data-dashboard-view=table] .dashboard-view-btn[data-dashboard-view=table] {
 
 .dash-card-title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
   min-width: 0;
@@ -12991,7 +12991,6 @@ html[data-dashboard-view=table] .dashboard-view-btn[data-dashboard-view=table] {
 }
 
 .dash-card-target {
-  margin-top: 0.125rem;
   font-size: var(--app-text-secondary);
   min-width: 0;
   line-height: 1.45;
@@ -13098,7 +13097,6 @@ html[data-dashboard-view=table] .dashboard-view-btn[data-dashboard-view=table] {
 }
 
 .dash-list-target {
-  margin-top: 0.125rem;
   font-size: var(--app-text-secondary);
   line-height: 1.45;
 }
