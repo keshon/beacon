@@ -35,17 +35,17 @@
         var row = el(
             '<div class="notify-row row g-2 align-items-end mb-2">' +
                 '<div class="col-md-5">' +
-                '<label class="form-label small">Bot token</label>' +
+                // '<label class="form-label small">Bot token</label>' +
                 '<input type="text" class="form-control" data-notify-field="token" placeholder="Bot token" />' +
                 '</div>' +
                 '<div class="col-md-4">' +
-                '<label class="form-label small">Chat ID</label>' +
+                // '<label class="form-label small">Chat ID</label>' +
                 '<input type="text" class="form-control" data-notify-field="chat_id" placeholder="Chat ID" />' +
                 '</div>' +
                 '<div class="col-md-3 d-flex gap-1">' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-notify-action="test">' +
-                '<i class="bi bi-send"></i>Test</button>' +
-                '<button type="button" class="btn btn-sm btn-outline-danger" data-notify-action="remove" title="Remove receiver">' +
+                '<button type="button" class="btn btn-outline-secondary" data-notify-action="test">' +
+                'Test</button>' +
+                '<button type="button" class="btn btn-outline-danger" data-notify-action="remove" title="Remove receiver">' +
                 '<i class="bi bi-x-lg"></i></button>' +
                 '</div>' +
                 '<div class="col-12"><span class="notify-row-status small text-muted" data-notify-status></span></div>' +
@@ -61,13 +61,13 @@
         var row = el(
             '<div class="notify-row row g-2 align-items-end mb-2">' +
                 '<div class="col-md-9">' +
-                '<label class="form-label small">Webhook URL</label>' +
-                '<input type="text" class="form-control" data-notify-field="webhook" placeholder="https://discord.com/api/webhooks/..." />' +
+                // '<label class="form-label small">Webhook URL</label>' +
+                '<input type="text" class="form-control" data-notify-field="webhook" placeholder="Webhook URL" />' +
                 '</div>' +
                 '<div class="col-md-3 d-flex gap-1">' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-notify-action="test">' +
-                '<i class="bi bi-send"></i>Test</button>' +
-                '<button type="button" class="btn btn-sm btn-outline-danger" data-notify-action="remove" title="Remove receiver">' +
+                '<button type="button" class="btn btn-outline-secondary" data-notify-action="test">' +
+                'Test</button>' +
+                '<button type="button" class="btn btn-outline-danger" data-notify-action="remove" title="Remove receiver">' +
                 '<i class="bi bi-x-lg"></i></button>' +
                 '</div>' +
                 '<div class="col-12"><span class="notify-row-status small text-muted" data-notify-status></span></div>' +

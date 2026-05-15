@@ -71,34 +71,42 @@
         id="{% if mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}"
         {% if mode == "edit" %}data-notify-overrides="{{ m.NotifyJSON }}"{% else %}data-notify-overrides="{}"{% endif %}
     >
-        <p class="small text-muted mb-2">
+        <p class="form-label small mb-3">
             Leave empty to use the global Telegram and Discord settings.
             When any override is set, it fully replaces the global list for that channel.
         </p>
         <div class="row g-3">
             <div class="col-md-6">
-                <div class="small text-muted text-uppercase mb-2" style="letter-spacing:0.04em;font-weight:600;">Telegram</div>
-                <div data-notify-channel="telegram">
-                    <div data-notify-list></div>
-                    <div class="d-flex align-items-center gap-2 mt-1">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
-                            <i class="bi bi-plus-lg"></i>Add receiver
-                        </button>
-                        <span class="small text-muted" data-notify-helper></span>
+                <div class="app-panel-raised anim-fadeup anim-delay-1">
+                    <div class="app-panel-body p-3">
+                        <div class="app-panel-title mb-3">Telegram</div>
+                        <div data-notify-channel="telegram">
+                            <div data-notify-list></div>
+                            <div class="d-flex align-items-baseline gap-2 mt-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
+                                    <i class="bi bi-plus-lg"></i>Add receiver
+                                </button>
+                                <span class="form-label small mb-0" data-notify-helper></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="small text-muted text-uppercase mb-2" style="letter-spacing:0.04em;font-weight:600;">Discord</div>
-                <div data-notify-channel="discord">
-                    <div data-notify-list></div>
-                    <div class="d-flex align-items-center gap-2 mt-1">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
-                            <i class="bi bi-plus-lg"></i>Add receiver
-                        </button>
-                        <span class="small text-muted" data-notify-helper></span>
+                <div class="app-panel-raised anim-fadeup anim-delay-1">
+                    <div class="app-panel-body p-3">
+                        <div class="app-panel-title mb-3">Discord</div>
+                        <div data-notify-channel="discord">
+                            <div data-notify-list></div>
+                            <div class="d-flex align-items-baseline gap-2 mt-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
+                                    <i class="bi bi-plus-lg"></i>Add receiver
+                                </button>
+                                <span class="form-label small mb-0" data-notify-helper></span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </div>                
             </div>
         </div>
     </div>

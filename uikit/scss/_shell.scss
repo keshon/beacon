@@ -180,6 +180,13 @@ html[data-dashboard-view="table"] .dashboard-view-btn[data-dashboard-view="table
   overflow: hidden;
 }
 
+.app-panel-raised {
+  border-radius: var(--app-radius-panel);
+  background: var(--app-surface-panel-raised);
+  box-shadow: var(--app-shadow-outline-strong);
+  overflow: hidden;
+}
+
 .app-panel-header {
   display: flex;
   align-items: center;
