@@ -1,21 +1,27 @@
 // Beacon design tokens: CSS custom properties only (no component rules).
 //
 // Layers:
-// 1) :root — typography scale + radii + motion + global UI font default (rem-based; scales with Settings).
-// 2) html[data-bs-theme] — chroma tokens, semantic surfaces, focus ring (--c-*, --app-surface-*, etc.).
-//    Requires data-bs-theme on <html> (see templates/beacon_head_theme.html on all pages).
+// 1) :root — typography scale (regular + product/HUD mono micro-scale), tracking,
+//    leading, motion, radii, mono font stack, global UI font default. All rem-based.
+// 2) html[data-bs-theme] — chroma tokens, semantic surface stack (chrome → page →
+//    panel → panel-raised → inset → inset-strong), border scale, hairline elevation,
+//    ANSI palette, shimmer tokens, focus ring. Rebinds key Bootstrap CSS vars
+//    (--bs-body-bg, --bs-card-bg, --bs-border-color) so standard components inherit
+//    the agentic surfaces. Requires data-bs-theme on <html>.
 //
-// Reference (cursor.com marketing Tailwind chunk, summarized for Beacon, not copied verbatim):
-// - Motion: --duration ~0.14s, default transition ~0.15s, slow ~0.25s; easings material + spring cubic-bezier.
-// - Radii: xs 4px … lg 0.5rem … 2xl 1rem (we keep tighter --app-radius-* for dense app UI).
-// - Surfaces: warm near-black page bg + layered card hex steps (mapped to semantic --app-surface-* → Bootstrap --bs-*).
-// - Shadows: mostly flat in Beacon; marketing uses very soft flyout shadows only.
+// "Agentic tooling" inspiration (Cursor product CSS, summarized — not copied):
+// - Layered surface stack vs flat fills: chrome / page / panel / panel-raised / inset.
+// - Hairline elevation: 1px outline-shadow (--app-shadow-outline) + ~2% flyout.
+// - HUD/metric typography: dedicated mono micro-scale (.6875–.8125rem) + tabular-nums.
+// - Negative tracking staircase on display headings (-0.01 to -0.03em).
+// - ANSI palette (#1f8a65 / #cf2d56) for diff / status counts (terminal-feel).
+// - Shimmer skeleton with --shimmer-color/--shimmer-intensity (loading states).
 
 :root {
   // Global default until head_common.html applies saved --ui-font-size from localStorage.
   --ui-font-size: 0.9375rem;
 
-  // Typography (rem): scales with html font-size (Settings → Base font size).
+  // ── Typography (rem): scales with html font-size (Settings → Base font size).
   --app-text-page-title: 1rem;
   --app-text-subtitle: 0.875rem;
   --app-text-panel-title: 0.75rem;
@@ -28,62 +34,175 @@
   // Extra-small badges, collapse chevrons.
   --app-text-micro: 0.625rem;
 
-  // Motion (aligned with cursor.com chunk --duration / --default-transition-duration / easings).
+  // ── Product / HUD mono micro-scale (latency, last-check, code chips, IDs).
+  // Cursor calls these --text-product-{sm,base,lg}; mapped here as --app-text-mono-*.
+  --app-text-mono-sm: 0.6875rem;   // 11px — uptime tooltips, micro tags
+  --app-text-mono-base: 0.75rem;   // 12px — latency / last-check
+  --app-text-mono-lg: 0.8125rem;   // 13px — code blocks, multi-line snippets
+
+  // ── Tracking staircase (display / heading air control).
+  --app-tracking-tight: -0.01em;
+  --app-tracking-tighter: -0.02em;
+  --app-tracking-tightest: -0.03em;
+
+  // ── Leading tokens (paired with mono / heading scale).
+  --app-leading-snug: 1.25;
+  --app-leading-cozy: 1.4;
+  --app-leading-product: 1.33;
+
+  // ── Motion (aligned with cursor.com chunk --duration / --default-transition-duration / easings).
   --app-duration-fast: 0.14s;
   --app-duration-medium: 0.15s;
   --app-duration-slow: 0.25s;
   --app-duration-reveal: 0.3s;
+  --app-duration-shimmer: 1.6s;
   --app-easing-standard: cubic-bezier(0, 0, 0.2, 1);
   --app-easing-standard-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --app-easing-spring: cubic-bezier(0.25, 1, 0.5, 1);
 
-  // Tool shell radii (control rounding lives in _shell.scss under .beacon-app).
-  --app-radius-panel: 0.5rem;
-  --app-radius-control: 0.375rem;
+  // ── Tool shell radii (control rounding lives in _shell.scss under .beacon-app).
+  --app-radius-2xs: 0.125rem;       // 2px — inline code chips, micro tags
   --app-radius-control-sm: 0.3125rem;
+  --app-radius-control: 0.375rem;
+  --app-radius-panel: 0.5rem;
+  --app-radius-pill: 999rem;
+
+  // ── Mono font stack (decoupled from Bootstrap's $font-family-monospace so we can
+  //    swap to a webfont like JetBrains Mono / Geist Mono later without side effects).
+  --app-font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DARK THEME
+// ─────────────────────────────────────────────────────────────────────────────
 html[data-bs-theme="dark"] {
-  --c-hover-bg: rgba(255, 255, 255, 0.06);
-  --c-border: rgba(255, 255, 255, 0.08);
-  --c-border-strong: rgba(255, 255, 255, 0.14);
-  --c-accent-light: rgba(99, 102, 241, 0.22);
-  --c-success-light: rgba(16, 185, 129, 0.15);
-  --c-danger-light: rgba(239, 68, 68, 0.15);
-  --c-warning-light: rgba(245, 158, 11, 0.12);
-  --c-info-light: rgba(14, 165, 233, 0.15);
-  --c-nav-bg: #0c0e12;
-  --c-nav-border: rgba(255, 255, 255, 0.08);
-  --app-panel-header-bg: rgba(255, 255, 255, 0.04);
-  --app-footer-fg: rgba(255, 255, 255, 0.35);
-  --shadow-md: none;
+  // ── Surface stack (deepest → lightest). Each layer sits visually on top of the previous.
+  // Lifted from the original near-black stack (#0c0e12) by ~4 luminance units to
+  // reduce harshness while keeping the agentic-dark character. Cool blue cast preserved.
+  --app-surface-chrome:        #0f1218; // outermost frame: nav, footer
+  --app-surface-page:          #15181f; // <main> background under content
+  --app-surface-panel:         #1c2029; // cards / panels resting on the page
+  --app-surface-panel-raised:  #20242e; // hover / focus state for panels
+  --app-surface-inset:         #252934; // recessed surface (code well, alert)
+  --app-surface-inset-strong:  #2a2f3c; // diff / terminal-like recessed surface
 
-  // Semantic surfaces (Bootstrap-backed; allows future tuning vs marketing layered cards).
-  --app-surface-page: var(--bs-body-bg);
-  --app-surface-panel: var(--bs-card-bg);
-  --app-surface-inset: rgba(255, 255, 255, 0.045);
+  // Rebind Bootstrap surface vars to the agentic stack so standard components inherit it.
+  --bs-body-bg:                var(--app-surface-page);
+  --bs-card-bg:                var(--app-surface-panel);
+
+  // ── Text / link harmony.
+  // Body/heading dialed down from the near-white default (#dee2e6) for less harsh
+  // contrast against the lifted surfaces. Heading sits a notch brighter than body
+  // to preserve hierarchy. Links shifted to a softer indigo so they no longer
+  // "jump out" against the panel.
+  --bs-body-color:             #c9cdd6;
+  --bs-body-color-rgb:         201, 205, 214;
+  --bs-heading-color:          #e2e5eb;
+  --bs-emphasis-color:         #edeff3;
+  --bs-emphasis-color-rgb:     237, 239, 243;
+  --bs-secondary-color:        rgba(201, 205, 214, 0.65);
+  --bs-secondary-color-rgb:    201, 205, 214;
+  --bs-tertiary-color:         rgba(201, 205, 214, 0.42);
+  --bs-tertiary-color-rgb:     201, 205, 214;
+  --bs-link-color:             #9ea0f6;
+  --bs-link-hover-color:       #b4b6f8;
+  --bs-link-color-rgb:         158, 160, 246;
+  --bs-link-hover-color-rgb:   180, 182, 248;
+
+  // ── Border scale (subtle → emphasis). Single source of truth for hairlines.
+  --c-border-subtle:    rgba(255, 255, 255, 0.045);
+  --c-border:           rgba(255, 255, 255, 0.08);
+  --c-border-strong:    rgba(255, 255, 255, 0.14);
+  --c-border-emphasis:  rgba(255, 255, 255, 0.22);
+  --bs-border-color:    var(--c-border);
+
+  // ── Tinted overlays (legacy --c-* — used by badges / hover backgrounds).
+  --c-hover-bg:        rgba(255, 255, 255, 0.06);
+  --c-accent-light:    rgba(99, 102, 241, 0.22);
+  --c-success-light:   rgba(16, 185, 129, 0.15);
+  --c-danger-light:    rgba(239, 68, 68, 0.15);
+  --c-warning-light:   rgba(245, 158, 11, 0.12);
+  --c-info-light:      rgba(14, 165, 233, 0.15);
+
+  // ── ANSI palette (terminal-feel green/red for diffs, uptime segments, status counts).
+  --c-ansi-green:      #10b981;
+  --c-ansi-green-bg:   rgba(16, 185, 129, 0.4);
+  --c-ansi-red:        #cf2d56;
+  --c-ansi-red-bg:     rgba(207, 45, 86, 0.16);
+
+  // ── Chrome-bound surfaces (nav, panel header, footer).
+  --c-nav-bg:                  var(--app-surface-chrome);
+  --c-nav-border:              var(--c-border);
+  --app-panel-header-bg:       rgba(255, 255, 255, 0.04);
+  --app-footer-fg:             rgba(255, 255, 255, 0.35);
+
+  // ── Hairline elevation (Cursor-style: outline + ultra-faint flyout). In dark,
+  //    classic drop shadows disappear; depth comes from the outline + surface stack.
+  --app-shadow-outline:        0 0 0 0.0625rem var(--c-border);
+  --app-shadow-outline-strong: 0 0 0 0.0625rem var(--c-border-strong);
+  --app-shadow-flyout:         0 0 1rem rgba(0, 0, 0, 0.35),
+                               0 0 0.5rem rgba(0, 0, 0, 0.20);
+  --app-shadow-popover:        0 0.5rem 1.5rem rgba(0, 0, 0, 0.45),
+                               0 0 0 0.0625rem var(--c-border-strong);
+
+  // ── Shimmer skeleton (loading states: "checking…", empty uptime strips).
+  --app-shimmer-base:        rgba(255, 255, 255, 0.06);
+  --app-shimmer-highlight:   rgba(255, 255, 255, 0.18);
+  --app-shimmer-intensity:   0.7;
 
   --app-focus-ring: 0 0 0 0.1875rem var(--c-accent-light);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LIGHT THEME
+// ─────────────────────────────────────────────────────────────────────────────
 html[data-bs-theme="light"] {
-  --c-hover-bg: rgba(0, 0, 0, 0.045);
-  --c-border: rgba(0, 0, 0, 0.09);
-  --c-border-strong: rgba(0, 0, 0, 0.14);
-  --c-accent-light: rgba(99, 102, 241, 0.12);
-  --c-success-light: rgba(16, 185, 129, 0.12);
-  --c-danger-light: rgba(239, 68, 68, 0.1);
-  --c-warning-light: rgba(245, 158, 11, 0.1);
-  --c-info-light: rgba(14, 165, 233, 0.1);
-  --c-nav-bg: #e6e7eb;
-  --c-nav-border: rgba(0, 0, 0, 0.1);
-  --app-panel-header-bg: rgba(0, 0, 0, 0.035);
-  --app-footer-fg: rgba(0, 0, 0, 0.45);
-  --shadow-md: none;
+  // ── Surface stack: chrome (slight off-white frame), page (paper), panel (white card),
+  //    panel-raised (subtle warm tint on hover), inset/inset-strong (recessed greys).
+  --app-surface-chrome:        #e6e7eb; // nav, footer (current value, kept)
+  --app-surface-page:          #f6f7fa; // <main> background
+  --app-surface-panel:         #ffffff; // cards / panels
+  --app-surface-panel-raised:  #f9fafc; // hover / focus state
+  --app-surface-inset:         #eef0f4; // recessed surface
+  --app-surface-inset-strong:  #e7eaf0; // strong inset
 
-  --app-surface-page: var(--bs-body-bg);
-  --app-surface-panel: var(--bs-card-bg);
-  --app-surface-inset: rgba(0, 0, 0, 0.03);
+  --bs-body-bg:                var(--app-surface-page);
+  --bs-card-bg:                var(--app-surface-panel);
+
+  --c-border-subtle:    rgba(0, 0, 0, 0.05);
+  --c-border:           rgba(0, 0, 0, 0.09);
+  --c-border-strong:    rgba(0, 0, 0, 0.14);
+  --c-border-emphasis:  rgba(0, 0, 0, 0.22);
+  --bs-border-color:    var(--c-border);
+
+  --c-hover-bg:        rgba(0, 0, 0, 0.045);
+  --c-accent-light:    rgba(99, 102, 241, 0.12);
+  --c-success-light:   rgba(16, 185, 129, 0.12);
+  --c-danger-light:    rgba(239, 68, 68, 0.10);
+  --c-warning-light:   rgba(245, 158, 11, 0.10);
+  --c-info-light:      rgba(14, 165, 233, 0.10);
+
+  --c-ansi-green:      #10b981;
+  --c-ansi-green-bg:   rgba(16, 185, 129, 0.4);
+  --c-ansi-red:        #cf2d56;
+  --c-ansi-red-bg:     rgba(207, 45, 86, 0.10);
+
+  --c-nav-bg:                  var(--app-surface-chrome);
+  --c-nav-border:              rgba(0, 0, 0, 0.10);
+  --app-panel-header-bg:       rgba(0, 0, 0, 0.035);
+  --app-footer-fg:             rgba(0, 0, 0, 0.45);
+
+  --app-shadow-outline:        0 0 0 0.0625rem var(--c-border);
+  --app-shadow-outline-strong: 0 0 0 0.0625rem var(--c-border-strong);
+  --app-shadow-flyout:         0 0 1rem rgba(0, 0, 0, 0.05),
+                               0 0 0.5rem rgba(0, 0, 0, 0.02);
+  --app-shadow-popover:        0 0.5rem 1.5rem rgba(0, 0, 0, 0.10),
+                               0 0 0 0.0625rem var(--c-border-strong);
+
+  --app-shimmer-base:        rgba(0, 0, 0, 0.06);
+  --app-shimmer-highlight:   rgba(0, 0, 0, 0.12);
+  --app-shimmer-intensity:   0.7;
 
   --app-focus-ring: 0 0 0 0.1875rem var(--c-accent-light);
 }

@@ -9,6 +9,9 @@ html {
 
 body {
   -webkit-font-smoothing: antialiased;
+  // Tabular figures globally — keeps numeric metrics aligned in tables/dashboards
+  // without needing per-cell overrides. Mono-specific elements still re-declare it.
+  font-variant-numeric: tabular-nums;
 }
 
 // ── Scrollbar ──
@@ -36,4 +39,24 @@ body {
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(1.25rem); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+// Shimmer skeleton: agentic loading state ("checking…", placeholder uptime strips).
+// Background-position drives the highlight sweep across the gradient.
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ── Reduced motion ──
+// Honor OS-level preference. Pulses, shimmers, fades, transforms become instant.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

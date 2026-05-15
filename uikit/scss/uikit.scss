@@ -2,7 +2,7 @@
 // Compiled output: static/uikit.css
 //
 // Order: Bootstrap overrides → Bootstrap → tokens (CSS vars) → base → nav →
-// component bridges + domain → app shell surfaces → login page.
+// component bridges + domain → agentic primitives → app shell surfaces → login.
 
 // 1. Bootstrap variable overrides (BEFORE importing Bootstrap)
 @import "variables";
@@ -17,5 +17,10 @@
 @import "base";
 @import "nav";
 @import "components";
+// 5. Agentic primitives (shimmer, scroll-fade, composer, tool-row, code chip,
+//    segmented control, status dot). Sit between Bootstrap bridges and app shell
+//    so shell rules can build on them if needed.
+@import "primitives";
 @import "shell";
-@import "pages";
+// 6. Standalone pages outside the .beacon-app scope (login hero).
+@import "login";

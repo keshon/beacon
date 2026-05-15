@@ -3,12 +3,16 @@
 
 .dash-nav {
   background: var(--c-nav-bg);
-  border-bottom: 0.0625rem solid var(--c-nav-border);
+  // Hairline divider as a box-shadow rather than border avoids the 1px
+  // doubling on hi-DPI scrolls and reads cleaner under a backdrop blur.
+  border-bottom: 0;
+  box-shadow: 0 0.0625rem 0 0 var(--c-nav-border);
   padding: 0;
   position: sticky;
   top: 0;
   z-index: 1000;
   backdrop-filter: blur(0.75rem);
+  -webkit-backdrop-filter: blur(0.75rem);
 
   .container-fluid {
     display: flex;
