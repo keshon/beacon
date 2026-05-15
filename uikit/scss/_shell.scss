@@ -123,8 +123,8 @@ html[data-bs-theme="light"] .theme-toggle-btn {
   }
 }
 
-// ── Dashboard toolbar ──
-.dashboard-toolbar {
+// ── App toolbar ──
+.app-page-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -133,7 +133,7 @@ html[data-bs-theme="light"] .theme-toggle-btn {
   margin-bottom: 1rem;
 }
 
-.dashboard-toolbar-actions {
+.app-page-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -253,7 +253,7 @@ html[data-dashboard-view="table"] .dashboard-view-btn[data-dashboard-view="table
 
 .dash-card-title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
   min-width: 0;
@@ -268,7 +268,6 @@ html[data-dashboard-view="table"] .dashboard-view-btn[data-dashboard-view="table
 }
 
 .dash-card-target {
-  margin-top: 0.125rem;
   font-size: var(--app-text-secondary);
   min-width: 0;
   line-height: 1.45;
@@ -380,7 +379,6 @@ html[data-dashboard-view="table"] .dashboard-view-btn[data-dashboard-view="table
 }
 
 .dash-list-target {
-  margin-top: 0.125rem;
   font-size: var(--app-text-secondary);
   line-height: 1.45;
 }

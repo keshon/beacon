@@ -291,8 +291,8 @@
 .badge-paused { background: var(--c-hover-bg) !important; color: var(--bs-secondary-color) !important; }
 
 // Source variants
-.badge-source-self { background: var(--c-accent-light) !important; color: var(--bs-primary) !important; font-weight: 500; }
-.badge-source-peer { background: var(--c-hover-bg) !important; color: var(--bs-secondary-color) !important; font-weight: 500; }
+.badge-source-self { background: var(--c-accent-light) !important; color: var(--bs-primary) !important; }
+.badge-source-peer { background: var(--c-hover-bg) !important; color: var(--bs-secondary-color) !important; }
 .badge-source-self i,
 .badge-source-peer i { font-size: var(--app-text-micro); }
 
@@ -343,10 +343,12 @@ code {
 
 .monitor-title {
   font-weight: 600;
+  font-size: var(--app-text-card-title);
   color: var(--bs-body-color);
 }
 
 .monitor-meta {
+  font-size: var(--app-text-meta);
   color: var(--bs-secondary-color);
 }
 
