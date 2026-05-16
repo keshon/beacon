@@ -94,6 +94,11 @@ jobs:
             cp -R templates "${PKG_ROOT}/"
           fi
 
+          # static directory
+          if [ -d static ]; then
+            cp -R static "${PKG_ROOT}/"
+          fi
+          
           # Create zip archive with everything needed to run the bot
           mkdir -p dist
           zip -r "dist/${PKG_ROOT}.zip" "${PKG_ROOT}"
