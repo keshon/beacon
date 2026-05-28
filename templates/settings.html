@@ -78,6 +78,49 @@
             <div class="col-12">
                 <section class="app-panel anim-fadeup anim-delay-1">
                     <div class="app-panel-header">
+                        <span class="app-panel-title">Notifications</span>
+                    </div>
+                    <div class="app-panel-body p-3" id="notificationsPolicyPanel" data-notify-policy>
+                        <p class="form-label small mb-3">
+                            Default alert mode and message templates for new receivers. Leave fields empty in a
+                            receiver&rsquo;s policy modal to inherit these values.
+                        </p>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label small" for="notifications_alert_mode">Alert mode</label>
+                                <select class="form-select" id="notifications_alert_mode" data-policy-alert-mode>
+                                    <option value="repeat">Repeat while down (every check)</option>
+                                    <option value="once">Once on down, once on recovery</option>
+                                </select>
+                            </div>
+                            <div class="col-md-8 d-flex align-items-end justify-content-md-end">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-policy-reset-all>
+                                    Reset all to defaults
+                                </button>
+                            </div>
+                            <div class="col-12 policy-template-row">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label small mb-0">Down template</label>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-policy-reset>Reset</button>
+                                </div>
+                                <textarea class="form-control font-monospace small" rows="4" data-policy-template="down"></textarea>
+                                <div class="mt-1" data-policy-chips></div>
+                            </div>
+                            <div class="col-12 policy-template-row">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label small mb-0">Recovered template</label>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-policy-reset>Reset</button>
+                                </div>
+                                <textarea class="form-control font-monospace small" rows="4" data-policy-template="recovered"></textarea>
+                                <div class="mt-1" data-policy-chips></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12">
+                <section class="app-panel anim-fadeup anim-delay-1">
+                    <div class="app-panel-header">
                         <span class="app-panel-title">Telegram</span>
                     </div>
                     <div class="app-panel-body p-3" id="telegramPanel">
@@ -159,6 +202,8 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="/static/notify-policy-ui.js"></script>
+<script src="/static/notify-receiver-policy-modal.js"></script>
 <script src="/static/notify-ui.js"></script>
 <script>
     (function () {
@@ -207,6 +252,8 @@
         }
         const telegramList = window.BeaconNotify.init(document.getElementById('telegramPanel'), 'telegram', []);
         const discordList = window.BeaconNotify.init(document.getElementById('discordPanel'), 'discord', []);
+        const policyPanel = document.getElementById('notificationsPolicyPanel');
+        let policyForm = null;
         window.__beaconSettings = { telegramList, discordList };
         fetch('/api/config')
             .then((r) => r.json())
@@ -227,8 +274,15 @@
                 fieldByName(f, 'network_node_id').value = cfg.network?.node_id || '';
 
                 telegramList.setValues(cfg.telegram?.targets || []);
-                const webhooks = (cfg.discord?.webhooks || []).map((w) => ({ webhook: w }));
+                const webhooks = (cfg.discord?.webhooks || []).map((w) =>
+                    typeof w === 'string' ? { webhook: w } : w
+                );
                 discordList.setValues(webhooks);
+                const notifications = cfg.notifications || {};
+                window.BeaconNotify.setGlobalDefaults(notifications);
+                window.BeaconNotifyPolicy.init(policyPanel, notifications, { globalMode: true }).then(function (pf) {
+                    policyForm = pf;
+                });
 
                 bindToggle('telegram_enabled');
                 bindToggle('discord_enabled');
@@ -250,12 +304,22 @@
             .map((s) => s.trim())
             .filter(Boolean);
         const telegramTargets = window.__beaconSettings.telegramList.values();
-        const discordWebhooks = window.__beaconSettings.discordList.values().map((v) => v.webhook);
+        const discordWebhooks = window.__beaconSettings.discordList.values();
+        const pp = document.getElementById('notificationsPolicyPanel');
+        const notifications = {
+            alert_mode: (pp.querySelector('[data-policy-alert-mode]').value || 'repeat').trim(),
+            templates: {
+                down: (pp.querySelector('[data-policy-template="down"]').value || '').trim(),
+                recovered: (pp.querySelector('[data-policy-template="recovered"]').value || '').trim(),
+            },
+        };
+        window.BeaconNotify.setGlobalDefaults(notifications);
         const cfg = {
             listen: namedField('listen').value || ':8080',
             workers: parseInt(namedField('workers').value) || 10,
             default_interval: parseInt(namedField('default_interval').value) || 0,
             auth: { username: namedField('username').value, password: namedField('password').value },
+            notifications: notifications,
             telegram: { enabled: namedField('telegram_enabled').checked, targets: telegramTargets },
             discord: { enabled: namedField('discord_enabled').checked, webhooks: discordWebhooks },
             network: {

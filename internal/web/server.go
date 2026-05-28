@@ -71,6 +71,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/config", s.apiConfigGet)
 	mux.HandleFunc("PUT /api/config", s.apiConfigSet)
 	mux.HandleFunc("POST /api/notify/test", s.apiNotifyTest)
+	mux.HandleFunc("GET /api/notify/defaults", s.apiNotifyDefaults)
 	mux.HandleFunc("GET /api/sync/export", s.apiSyncExport)
 	mux.HandleFunc("GET /api/health", s.apiHealth)
 	mux.HandleFunc("GET /api/network/status", s.apiNetworkStatus)

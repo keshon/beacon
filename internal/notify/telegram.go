@@ -29,7 +29,7 @@ func NewTelegram(token, chatID string) *TelegramNotifier {
 }
 
 func (t *TelegramNotifier) Send(a Alert) error {
-	text := formatAlert(a)
+	text := AlertText(a)
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", t.token)
 	body, _ := json.Marshal(map[string]string{
 		"chat_id": t.chatID,
@@ -46,15 +46,3 @@ func (t *TelegramNotifier) Send(a Alert) error {
 	return nil
 }
 
-func formatAlert(a Alert) string {
-	switch a.Status {
-	case "recovered":
-		return fmt.Sprintf("Site RECOVERED\n\n%s\n%s\nTime: %s",
-			a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
-	case "test":
-		return fmt.Sprintf("Beacon TEST\n\n%s\n%s\nTime: %s",
-			a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
-	}
-	return fmt.Sprintf("Site DOWN\n\n%s\n%s\nTime: %s",
-		a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
-}

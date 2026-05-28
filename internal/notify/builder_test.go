@@ -21,12 +21,12 @@ func globalCfg() *config.Config {
 		},
 		Discord: config.DiscordConfig{
 			Enabled: true,
-			Webhooks: []string{
-				"https://global/w1",
-				"https://global/w2",
-				"https://global/w3",
-				"https://global/w4",
-				"https://global/w5",
+			Webhooks: []config.DiscordReceiver{
+				{Webhook: "https://global/w1"},
+				{Webhook: "https://global/w2"},
+				{Webhook: "https://global/w3"},
+				{Webhook: "https://global/w4"},
+				{Webhook: "https://global/w5"},
 			},
 		},
 	}
@@ -70,19 +70,19 @@ func TestTelegramTargets_oneOverride_ignoresGlobal(t *testing.T) {
 	}
 }
 
-func TestDiscordWebhooks_oneOverride_ignoresGlobal(t *testing.T) {
+func TestDiscordReceivers_oneOverride_ignoresGlobal(t *testing.T) {
 	cfg := globalCfg()
 	m := &monitor.Monitor{
 		NotifyOverride: &monitor.NotifyOverride{
-			Discord: []string{"https://override/w1"},
+			Discord: []monitor.DiscordReceiver{{Webhook: "https://override/w1"}},
 		},
 	}
-	got := discordWebhooks(cfg, m)
+	got := discordReceivers(cfg, m)
 	if len(got) != 1 {
 		t.Fatalf("want 1 override webhook, got %d: %+v", len(got), got)
 	}
-	if got[0] != "https://override/w1" {
-		t.Fatalf("unexpected webhook %q", got[0])
+	if got[0].Webhook != "https://override/w1" {
+		t.Fatalf("unexpected webhook %q", got[0].Webhook)
 	}
 }
 
@@ -90,11 +90,11 @@ func TestChannelsIndependent_discordOverrideOnly_usesGlobalTelegram(t *testing.T
 	cfg := globalCfg()
 	m := &monitor.Monitor{
 		NotifyOverride: &monitor.NotifyOverride{
-			Discord: []string{"https://override/w1"},
+			Discord: []monitor.DiscordReceiver{{Webhook: "https://override/w1"}},
 		},
 	}
 	tg := telegramTargets(cfg, m)
-	dc := discordWebhooks(cfg, m)
+	dc := discordReceivers(cfg, m)
 	if len(tg) != 5 {
 		t.Fatalf("telegram should use all 5 global, got %d", len(tg))
 	}
@@ -113,7 +113,7 @@ func TestChannelsIndependent_telegramOverrideOnly_usesGlobalDiscord(t *testing.T
 		},
 	}
 	tg := telegramTargets(cfg, m)
-	dc := discordWebhooks(cfg, m)
+	dc := discordReceivers(cfg, m)
 	if len(tg) != 1 {
 		t.Fatalf("telegram should use 1 override, got %d", len(tg))
 	}
@@ -122,7 +122,7 @@ func TestChannelsIndependent_telegramOverrideOnly_usesGlobalDiscord(t *testing.T
 	}
 }
 
-func TestBuildNotifiers_countsMatchTargets(t *testing.T) {
+func TestBuildReceivers_countsMatchTargets(t *testing.T) {
 	cfg := globalCfg()
 	m := &monitor.Monitor{
 		NotifyOverride: &monitor.NotifyOverride{
@@ -130,12 +130,40 @@ func TestBuildNotifiers_countsMatchTargets(t *testing.T) {
 				{Token: "o1", ChatID: "oc1"},
 				{Token: "o2", ChatID: "oc2"},
 			},
-			Discord: []string{"https://override/w1"},
+			Discord: []monitor.DiscordReceiver{{Webhook: "https://override/w1"}},
 		},
 	}
-	notifiers := BuildNotifiers(cfg, m)
-	if len(notifiers) != 3 {
-		t.Fatalf("want 3 notifiers (2 tg + 1 dc), got %d", len(notifiers))
+	recvs := BuildReceivers(cfg, m)
+	if len(recvs) != 3 {
+		t.Fatalf("want 3 receivers (2 tg + 1 dc), got %d", len(recvs))
+	}
+}
+
+func TestBuildReceivers_distinctPolicies(t *testing.T) {
+	cfg := globalCfg()
+	cfg.Discord.Enabled = false
+	cfg.Notifications.AlertMode = AlertModeRepeat
+	m := &monitor.Monitor{
+		NotifyOverride: &monitor.NotifyOverride{
+			Telegram: []monitor.TelegramTarget{
+				{
+					Token:  "o1",
+					ChatID: "c1",
+					Policy: &config.ReceiverPolicy{AlertMode: AlertModeOnce},
+				},
+				{Token: "o2", ChatID: "c2"},
+			},
+		},
+	}
+	recvs := BuildReceivers(cfg, m)
+	if len(recvs) != 2 {
+		t.Fatalf("want 2, got %d", len(recvs))
+	}
+	if recvs[0].Policy.AlertMode != AlertModeOnce {
+		t.Fatalf("first: %q", recvs[0].Policy.AlertMode)
+	}
+	if recvs[1].Policy.AlertMode != AlertModeRepeat {
+		t.Fatalf("second should inherit global repeat: %q", recvs[1].Policy.AlertMode)
 	}
 }
 
@@ -144,7 +172,7 @@ func TestTelegramTargets_emptyOverrideSlice_usesGlobal(t *testing.T) {
 	m := &monitor.Monitor{
 		NotifyOverride: &monitor.NotifyOverride{
 			Telegram: []monitor.TelegramTarget{},
-			Discord:  []string{"https://override/w1"},
+			Discord:  []monitor.DiscordReceiver{{Webhook: "https://override/w1"}},
 		},
 	}
 	got := telegramTargets(cfg, m)

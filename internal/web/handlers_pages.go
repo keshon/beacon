@@ -114,8 +114,8 @@ func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
 		*monitor.Monitor
 		IntervalSec     int
 		TelegramTargets []monitor.TelegramTarget
-		DiscordWebhooks []string
-		NotifyJSON      string
+		DiscordReceivers []monitor.DiscordReceiver
+		NotifyJSON       string
 	}
 	rows := make([]monitorRow, 0, len(monitors))
 	for _, m := range monitors {
@@ -124,7 +124,7 @@ func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
 			sec = int(m.Interval / time.Second)
 		}
 		var tg []monitor.TelegramTarget
-		var dc []string
+		var dc []monitor.DiscordReceiver
 		if m.NotifyOverride != nil {
 			tg = m.NotifyOverride.Telegram
 			dc = m.NotifyOverride.Discord
@@ -138,7 +138,7 @@ func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
 			Monitor:         m,
 			IntervalSec:     sec,
 			TelegramTargets: tg,
-			DiscordWebhooks: dc,
+			DiscordReceivers: dc,
 			NotifyJSON:      string(buf),
 		})
 	}

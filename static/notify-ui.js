@@ -4,6 +4,7 @@
     'use strict';
 
     var MAX_RECEIVERS = 5;
+    var builtinsCache = null;
 
     function el(html) {
         var tpl = document.createElement('template');
@@ -11,23 +12,114 @@
         return tpl.content.firstChild;
     }
 
-    function statusClass(kind) {
-        switch (kind) {
-            case 'success':
-                return 'small text-success';
-            case 'error':
-                return 'small text-danger';
-            case 'warn':
-                return 'small text-warning';
-            default:
-                return 'small text-muted';
+    function parsePolicy(raw) {
+        if (!raw) return {};
+        try {
+            return JSON.parse(raw) || {};
+        } catch (e) {
+            return {};
         }
     }
 
-    function setStatus(node, kind, text) {
-        if (!node) return;
-        node.className = statusClass(kind);
-        node.textContent = text || '';
+    function readRowPolicy(row) {
+        return parsePolicy(row.dataset.notifyPolicy);
+    }
+
+    function writeRowPolicy(row, policy) {
+        var out = policy || {};
+        var hasMode = !!(out.alert_mode && String(out.alert_mode).trim());
+        var hasTpl =
+            out.templates &&
+            (String(out.templates.down || '').trim() || String(out.templates.recovered || '').trim());
+        if (!hasMode && !hasTpl) {
+            delete row.dataset.notifyPolicy;
+        } else {
+            row.dataset.notifyPolicy = JSON.stringify(out);
+        }
+    }
+
+    function globalDefaults() {
+        return (
+            window.BeaconNotifyGlobalDefaults || {
+                alert_mode: 'repeat',
+                templates: {},
+            }
+        );
+    }
+
+    function loadBuiltins() {
+        if (builtinsCache) return Promise.resolve(builtinsCache);
+        if (window.BeaconNotifyPolicy && window.BeaconNotifyPolicy.fetchDefaults) {
+            return window.BeaconNotifyPolicy.fetchDefaults().then(function (d) {
+                builtinsCache = d;
+                return d;
+            });
+        }
+        return Promise.resolve({ alert_mode: 'repeat', templates: {} });
+    }
+
+    function mergeTemplates(def, globalTpl, rowTpl) {
+        function pick(d, g, r) {
+            if (r && String(r).trim()) return String(r).trim();
+            if (g && String(g).trim()) return String(g).trim();
+            return d || '';
+        }
+        var g = globalTpl || {};
+        var r = rowTpl || {};
+        return {
+            down: pick((def.templates && def.templates.down) || '', g.down, r.down),
+            recovered: pick((def.templates && def.templates.recovered) || '', g.recovered, r.recovered),
+        };
+    }
+
+    function effectivePolicy(rowPolicy) {
+        var row = rowPolicy || {};
+        var global = globalDefaults();
+        var mode = (row.alert_mode && String(row.alert_mode).trim()) || global.alert_mode || 'repeat';
+        return loadBuiltins().then(function (def) {
+            var templates = mergeTemplates(def, global.templates || {}, row.templates || {});
+            var builtin = (def && def.templates) || {};
+            var custom =
+                templates.down !== (builtin.down || '') ||
+                templates.recovered !== (builtin.recovered || '');
+            return { mode: mode, custom: custom };
+        });
+    }
+
+    function updateRowBadges(row) {
+        var badges = row.querySelector('[data-notify-badges]');
+        if (!badges) return;
+        effectivePolicy(readRowPolicy(row)).then(function (eff) {
+            var modeLabel = eff.mode === 'once' ? 'Once' : 'Repeat';
+            var tplLabel = eff.custom ? 'Custom' : 'Standard';
+            badges.innerHTML =
+                '<span class="badge rounded-pill text-bg-secondary me-1">' +
+                modeLabel +
+                '</span>' +
+                '<span class="badge rounded-pill text-bg-secondary">' +
+                tplLabel +
+                '</span>';
+        });
+    }
+
+    function rowActionsHtml() {
+        return (
+            '<div class="col-md-3 d-flex gap-1">' +
+            '<button type="button" class="btn btn-outline-secondary" data-notify-action="policy" title="Alert policy">' +
+            '<i class="bi bi-gear"></i></button>' +
+            '<button type="button" class="btn btn-outline-danger" data-notify-action="remove" title="Remove receiver">' +
+            '<i class="bi bi-x-lg"></i></button>' +
+            '</div>' +
+            '<div class="col-12"><span class="d-flex flex-wrap gap-1" data-notify-badges></span></div>'
+        );
+    }
+
+    function applyRowValue(row, value) {
+        value = value || {};
+        if (value.policy) {
+            writeRowPolicy(row, value.policy);
+        }
+        updateRowBadges(row);
     }
 
     function buildTelegramRow(value) {
@@ -35,24 +127,17 @@
         var row = el(
             '<div class="notify-row row g-2 align-items-end mb-2">' +
                 '<div class="col-md-5">' +
-                // '<label class="form-label small">Bot token</label>' +
                 '<input type="text" class="form-control" data-notify-field="token" placeholder="Bot token" />' +
                 '</div>' +
                 '<div class="col-md-4">' +
-                // '<label class="form-label small">Chat ID</label>' +
                 '<input type="text" class="form-control" data-notify-field="chat_id" placeholder="Chat ID" />' +
                 '</div>' +
-                '<div class="col-md-3 d-flex gap-1">' +
-                '<button type="button" class="btn btn-outline-secondary" data-notify-action="test">' +
-                'Test</button>' +
-                '<button type="button" class="btn btn-outline-danger" data-notify-action="remove" title="Remove receiver">' +
-                '<i class="bi bi-x-lg"></i></button>' +
-                '</div>' +
-                '<div class="col-12"><span class="notify-row-status small text-muted" data-notify-status></span></div>' +
+                rowActionsHtml() +
                 '</div>'
         );
         row.querySelector('[data-notify-field="token"]').value = value.token || '';
         row.querySelector('[data-notify-field="chat_id"]').value = value.chat_id || '';
+        applyRowValue(row, value);
         return row;
     }
 
@@ -61,32 +146,33 @@
         var row = el(
             '<div class="notify-row row g-2 align-items-end mb-2">' +
                 '<div class="col-md-9">' +
-                // '<label class="form-label small">Webhook URL</label>' +
                 '<input type="text" class="form-control" data-notify-field="webhook" placeholder="Webhook URL" />' +
                 '</div>' +
-                '<div class="col-md-3 d-flex gap-1">' +
-                '<button type="button" class="btn btn-outline-secondary" data-notify-action="test">' +
-                'Test</button>' +
-                '<button type="button" class="btn btn-outline-danger" data-notify-action="remove" title="Remove receiver">' +
-                '<i class="bi bi-x-lg"></i></button>' +
-                '</div>' +
-                '<div class="col-12"><span class="notify-row-status small text-muted" data-notify-status></span></div>' +
+                rowActionsHtml() +
                 '</div>'
         );
         row.querySelector('[data-notify-field="webhook"]').value = value.webhook || '';
+        applyRowValue(row, value);
         return row;
     }
 
     function readRow(channel, row) {
+        var data;
         if (channel === 'telegram') {
-            return {
+            data = {
                 token: (row.querySelector('[data-notify-field="token"]').value || '').trim(),
                 chat_id: (row.querySelector('[data-notify-field="chat_id"]').value || '').trim(),
             };
+        } else {
+            data = {
+                webhook: (row.querySelector('[data-notify-field="webhook"]').value || '').trim(),
+            };
         }
-        return {
-            webhook: (row.querySelector('[data-notify-field="webhook"]').value || '').trim(),
-        };
+        var policy = readRowPolicy(row);
+        if (policy.alert_mode || (policy.templates && (policy.templates.down || policy.templates.recovered))) {
+            data.policy = policy;
+        }
+        return data;
     }
 
     function isRowFilled(channel, data) {
@@ -123,10 +209,29 @@
             if (!row) return;
             if (btn.dataset.notifyAction === 'remove') {
                 self.remove(row);
-            } else if (btn.dataset.notifyAction === 'test') {
-                self.test(row, btn);
+            } else if (btn.dataset.notifyAction === 'policy') {
+                self.editPolicy(row);
             }
         });
+    };
+
+    NotifyList.prototype.editPolicy = function (row) {
+        if (!window.BeaconReceiverPolicyModal) return;
+        var data = readRow(this.channel, row);
+        var delivery = { channel: this.channel };
+        if (this.channel === 'telegram') {
+            delivery.telegram = { token: data.token, chat_id: data.chat_id };
+        } else {
+            delivery.discord = { webhook: data.webhook };
+        }
+        window.BeaconReceiverPolicyModal.open(
+            readRowPolicy(row),
+            delivery,
+            function (policy) {
+                writeRowPolicy(row, policy);
+                updateRowBadges(row);
+            }
+        );
     };
 
     NotifyList.prototype.rows = function () {
@@ -188,54 +293,8 @@
                 removeBtn.style.visibility = count === 1 ? 'hidden' : 'visible';
             }
             row.dataset.notifyIndex = String(idx);
+            updateRowBadges(row);
         });
-    };
-
-    NotifyList.prototype.test = function (row, btn) {
-        var statusEl = row.querySelector('[data-notify-status]');
-        var data = readRow(this.channel, row);
-        if (!isRowFilled(this.channel, data)) {
-            setStatus(statusEl, 'warn', 'Fill the fields first.');
-            return;
-        }
-        var payload = { channel: this.channel };
-        payload[this.channel] = data;
-        var label = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-        setStatus(statusEl, 'muted', 'Sending test...');
-        fetch('/api/notify/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        })
-            .then(function (res) {
-                return res
-                    .json()
-                    .catch(function () {
-                        return { ok: res.ok, error: 'HTTP ' + res.status };
-                    })
-                    .then(function (body) {
-                        return { status: res.status, body: body };
-                    });
-            })
-            .then(function (result) {
-                if (result.status === 200 && result.body.ok) {
-                    setStatus(statusEl, 'success', 'Sent. Check the receiver.');
-                } else if (result.status === 429) {
-                    var wait = result.body.retry_after_sec || 0;
-                    setStatus(statusEl, 'warn', 'Rate limited. Retry in ' + wait + 's.');
-                } else {
-                    setStatus(statusEl, 'error', result.body.error || 'Failed (HTTP ' + result.status + ').');
-                }
-            })
-            .catch(function (err) {
-                setStatus(statusEl, 'error', err && err.message ? err.message : 'Network error.');
-            })
-            .finally(function () {
-                btn.disabled = false;
-                btn.innerHTML = label;
-            });
     };
 
     function init(container, channel, values) {
@@ -244,8 +303,18 @@
         return instance;
     }
 
+    function setGlobalDefaults(notifications) {
+        window.BeaconNotifyGlobalDefaults = notifications || {
+            alert_mode: 'repeat',
+            templates: {},
+        };
+        document.querySelectorAll('.notify-row').forEach(updateRowBadges);
+    }
+
     window.BeaconNotify = {
         MAX_RECEIVERS: MAX_RECEIVERS,
         init: init,
+        setGlobalDefaults: setGlobalDefaults,
+        updateRowBadges: updateRowBadges,
     };
 })();

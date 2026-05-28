@@ -103,7 +103,16 @@ Example minimal `config.json`:
   },
   "discord": {
     "enabled": false,
-    "webhooks": []
+    "webhooks": [
+      { "webhook": "https://discord.com/api/webhooks/..." }
+    ]
+  },
+  "notifications": {
+    "alert_mode": "repeat",
+    "templates": {
+      "down": "Site DOWN\\n\\n{{name}}\\n{{message}}\\nTime: {{time}}",
+      "recovered": "Site RECOVERED\\n\\n{{name}}\\n{{message}}\\nTime: {{time}}"
+    }
   },
   "network": {
     "enabled": false
@@ -113,35 +122,54 @@ Example minimal `config.json`:
 
 ## Notifications
 
+### Global defaults (Settings → Notifications)
+
+Set the default **alert mode** and **message templates** for all receivers. Empty fields in a receiver’s policy (gear icon on each row) inherit these values.
+
+| Mode | Behavior |
+|------|----------|
+| **Repeat while down** (default) | Sends an alert on every failed check while the monitor is down |
+| **Once on down + recovery** | One alert when the monitor goes down, one when it recovers |
+
+### Per-receiver policy
+
+Each Telegram and Discord receiver row has a **gear** button to configure:
+
+- Alert mode (`repeat` / `once`) for that destination only
+- Custom **down** and **recovered** templates (per field; empty = use global default)
+
+Row badges show the effective mode (**Repeat** / **Once**) and whether templates are **Standard** (built-in) or **Custom** (differs from built-in defaults).
+
+Different receivers on the same monitor can use different modes (for example, ops channel `repeat`, management `once`).
+
+### Message templates
+
+Customize plain-text bodies for **down** and **recovered** using `{{placeholders}}`. In the receiver policy modal (gear icon), use **Test** next to each template field to send a preview with sample placeholder values to that receiver (works before Save).
+
+| Placeholder | Value |
+|-------------|--------|
+| `name` | Monitor name |
+| `target` | URL or host:port |
+| `type` | `http` or `tcp` |
+| `status` | `down`, `recovered`, or `test` |
+| `error` | Check error text |
+| `latency` | Response latency |
+| `status_code` | HTTP status code (`0` if N/A) |
+| `time` | Event time |
+| `message` | Detail line (error or latency summary) |
+| `fail_count` | Failed checks before marking down |
+
+Use **Reset** on a field (or **Reset all**) to restore built-in defaults. `GET /api/notify/defaults` returns built-in templates and the placeholder list for the UI.
+
 ### Global receivers
 
-Configure Telegram and Discord receivers in Settings (up to 5 per channel).
-
-Each receiver can be tested individually before saving configuration.
+Configure Telegram and Discord receivers in Settings (up to 5 per channel). Each row supports Test, remove, and per-receiver policy.
 
 ### Per-monitor overrides
 
-Each monitor can override notification routing for a specific channel.
+Override Telegram/Discord receiver lists per monitor. A non-empty list **replaces** the global list for that channel. Each override row carries its own policy (same gear modal as Settings).
 
-If a channel override is set, it replaces global receivers for that channel only.
-
-If left empty, global settings are used.
-
-Example:
-
-* Global Telegram receivers notify multiple chats
-* One critical monitor overrides Telegram to only notify a single on-call chat
-
-### Alert content
-
-Alerts include:
-
-* monitor name
-* status (down or recovered)
-* message
-* timestamp
-
-Test notifications are clearly marked as test messages.
+Legacy monitor-level `notify_override.alert_mode` / `templates` are migrated onto each override row on load.
 
 ## Multi-instance sync
 
@@ -208,6 +236,7 @@ All endpoints require basic authentication unless otherwise noted.
 | GET    | /api/config               | Get config             |
 | PUT    | /api/config               | Update config          |
 | POST   | /api/notify/test          | Send test notification |
+| GET    | /api/notify/defaults      | Default alert mode, templates, placeholders |
 | GET    | /api/stream/checks        | Live check stream      |
 | GET    | /api/sync/export          | Sync export            |
 | GET    | /api/network/status       | Sync status            |

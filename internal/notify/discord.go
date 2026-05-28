@@ -27,7 +27,7 @@ func NewDiscord(webhook string) *DiscordNotifier {
 }
 
 func (d *DiscordNotifier) Send(a Alert) error {
-	text := formatAlert(a)
+	text := AlertText(a)
 	body, _ := json.Marshal(map[string]string{
 		"content": text,
 	})

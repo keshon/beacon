@@ -73,36 +73,45 @@ func main() {
 	commands.RegisterAll(st)
 	commands.RegisterConfigCommands(st, cfg)
 
-	sendAlert := func(alert notify.Alert, m *monitor.Monitor) {
-		notifiers := notify.BuildNotifiers(cfg, m)
-		if len(notifiers) == 0 {
+	sendAlerts := func(m *monitor.Monitor, state *monitor.MonitorState, result checks.CheckResult, status, message string, isRepeat bool) {
+		receivers := notify.BuildReceivers(cfg, m)
+		if len(receivers) == 0 {
 			return
 		}
+		ctx := notify.NewTemplateContext(m, state, result, status, message)
+		base := notify.Alert{
+			MonitorName: m.Name,
+			Status:      status,
+			Message:     message,
+			Time:        result.Time,
+			Target:      m.Target,
+			Type:        m.Type,
+			StatusCode:  result.StatusCode,
+			Latency:     result.Latency,
+		}
+		if state != nil {
+			base.FailCount = state.FailCount
+		}
 		go func() {
-			for i, err := range notify.SendAll(notifiers, alert) {
-				if err != nil {
-					log.Printf("notify error (%T): %v", notifiers[i], err)
+			for _, r := range receivers {
+				if status == "down" && !notify.ShouldSendDown(r.Policy, isRepeat) {
+					continue
+				}
+				alert := base
+				alert.Body = notify.BuildAlertBody(r.Policy, status, ctx)
+				if err := r.Notifier.Send(alert); err != nil {
+					log.Printf("notify error [%s]: %v", r.Key, err)
 				}
 			}
 		}()
 	}
 
 	engine := monitor.NewEngine(
-		func(m *monitor.Monitor, state *monitor.MonitorState, result checks.CheckResult) {
-			sendAlert(notify.Alert{
-				MonitorName: m.Name,
-				Status:      "down",
-				Message:     "Error: " + result.Error,
-				Time:        result.Time,
-			}, m)
+		func(m *monitor.Monitor, state *monitor.MonitorState, result checks.CheckResult, isRepeat bool) {
+			sendAlerts(m, state, result, "down", "Error: "+result.Error, isRepeat)
 		},
 		func(m *monitor.Monitor, state *monitor.MonitorState, result checks.CheckResult) {
-			sendAlert(notify.Alert{
-				MonitorName: m.Name,
-				Status:      "recovered",
-				Message:     "Latency: " + result.Latency.String(),
-				Time:        result.Time,
-			}, m)
+			sendAlerts(m, state, result, "recovered", "Latency: "+result.Latency.String(), false)
 		},
 	)
 

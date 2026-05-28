@@ -72,8 +72,8 @@
         {% if mode == "edit" %}data-notify-overrides="{{ m.NotifyJSON }}"{% else %}data-notify-overrides="{}"{% endif %}
     >
         <p class="form-label small mb-3">
-            Leave empty to use the global Telegram and Discord settings.
-            When any override is set, it fully replaces the global list for that channel.
+            Receiver lists replace the global list for that channel when filled. Use the
+            <i class="bi bi-gear"></i> button on each row to set alert mode and message templates for that receiver.
         </p>
         <div class="row g-3">
             <div class="col-md-6">

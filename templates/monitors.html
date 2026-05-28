@@ -93,10 +93,21 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="/static/notify-policy-ui.js"></script>
+<script src="/static/notify-receiver-policy-modal.js"></script>
 <script src="/static/notify-ui.js"></script>
 <script>
+    fetch('/api/config')
+        .then((r) => r.json())
+        .then((cfg) => {
+            if (window.BeaconNotify) {
+                window.BeaconNotify.setGlobalDefaults(cfg.notifications || {});
+            }
+        })
+        .catch(function () {});
+
     function attachNotifyToForm(form) {
-        if (!form || form._notify) return form && form._notify;
+        if (!form || form._notifyAttached) return form._notify;
         const overrides = form.querySelector('[data-notify-overrides]');
         if (!overrides) return null;
         let initial = { telegram: [], discord: [] };
@@ -106,9 +117,12 @@
         const tgContainer = overrides.querySelector('[data-notify-channel="telegram"]');
         const dcContainer = overrides.querySelector('[data-notify-channel="discord"]');
         const tgList = window.BeaconNotify.init(tgContainer, 'telegram', initial.telegram || []);
-        const dcWebhooks = (initial.discord || []).map((w) => ({ webhook: w }));
-        const dcList = window.BeaconNotify.init(dcContainer, 'discord', dcWebhooks);
+        const dcReceivers = (initial.discord || []).map((w) =>
+            typeof w === 'string' ? { webhook: w } : w
+        );
+        const dcList = window.BeaconNotify.init(dcContainer, 'discord', dcReceivers);
         form._notify = { telegram: tgList, discord: dcList };
+        form._notifyAttached = true;
         return form._notify;
     }
 
@@ -116,11 +130,11 @@
         const lists = attachNotifyToForm(form);
         if (!lists) return null;
         const tg = lists.telegram.values();
-        const dc = lists.discord.values().map((v) => v.webhook);
-        if (tg.length === 0 && dc.length === 0) return null;
+        const dc = lists.discord.values();
         const out = {};
         if (tg.length > 0) out.telegram = tg;
         if (dc.length > 0) out.discord = dc;
+        if (Object.keys(out).length === 0) return null;
         return out;
     }
 

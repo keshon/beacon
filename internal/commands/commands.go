@@ -34,12 +34,12 @@ func RegisterAll(st *store.Store) {
 }
 
 // sanitizeNotifyOverride drops incomplete rows, trims whitespace, and caps
-// each channel at config.MaxReceivers. Returns nil when both lists are empty
-// so callers can clear the override.
+// each channel at config.MaxReceivers. Returns nil when override is empty.
 func sanitizeNotifyOverride(in *monitor.NotifyOverride) *monitor.NotifyOverride {
 	if in == nil {
 		return nil
 	}
+	monitor.MigrateNotifyOverride(in)
 	out := &monitor.NotifyOverride{}
 	for _, t := range in.Telegram {
 		token := strings.TrimSpace(t.Token)
@@ -47,17 +47,24 @@ func sanitizeNotifyOverride(in *monitor.NotifyOverride) *monitor.NotifyOverride 
 		if token == "" || chat == "" {
 			continue
 		}
-		out.Telegram = append(out.Telegram, monitor.TelegramTarget{Token: token, ChatID: chat})
+		out.Telegram = append(out.Telegram, monitor.TelegramTarget{
+			Token:  token,
+			ChatID: chat,
+			Policy: sanitizeReceiverPolicy(t.Policy),
+		})
 		if len(out.Telegram) >= config.MaxReceivers {
 			break
 		}
 	}
-	for _, w := range in.Discord {
-		w = strings.TrimSpace(w)
+	for _, d := range in.Discord {
+		w := strings.TrimSpace(d.Webhook)
 		if w == "" {
 			continue
 		}
-		out.Discord = append(out.Discord, w)
+		out.Discord = append(out.Discord, monitor.DiscordReceiver{
+			Webhook: w,
+			Policy:  sanitizeReceiverPolicy(d.Policy),
+		})
 		if len(out.Discord) >= config.MaxReceivers {
 			break
 		}
@@ -66,6 +73,43 @@ func sanitizeNotifyOverride(in *monitor.NotifyOverride) *monitor.NotifyOverride 
 		return nil
 	}
 	return out
+}
+
+func sanitizeReceiverPolicy(p *config.ReceiverPolicy) *config.ReceiverPolicy {
+	if p == nil {
+		return nil
+	}
+	out := &config.ReceiverPolicy{}
+	if mode := strings.ToLower(strings.TrimSpace(p.AlertMode)); mode == "repeat" || mode == "once" {
+		out.AlertMode = mode
+	}
+	if p.Templates != nil {
+		san := sanitizeOverrideTemplates(p.Templates)
+		if san.Down != "" || san.Recovered != "" {
+			out.Templates = &san
+		}
+	}
+	if out.AlertMode == "" && out.Templates == nil {
+		return nil
+	}
+	return out
+}
+
+func sanitizeOverrideTemplates(t *config.MessageTemplates) config.MessageTemplates {
+	if t == nil {
+		return config.MessageTemplates{}
+	}
+	cap := func(s string) string {
+		s = strings.TrimSpace(s)
+		if len(s) > 2000 {
+			return s[:2000]
+		}
+		return s
+	}
+	return config.MessageTemplates{
+		Down:      cap(t.Down),
+		Recovered: cap(t.Recovered),
+	}
 }
 
 // RegisterConfigCommands registers config commands. cfg is updated in-place when config is saved.
@@ -389,6 +433,8 @@ func (c *ConfigGetCmd) Run(ctx context.Context, inv *commandkit.Invocation) erro
 		ok, _ := c.store.GetConfig(&cfg)
 		if !ok {
 			cfg = *config.Default()
+		} else {
+			cfg.Normalize()
 		}
 		writeJSONTo(d.W, cfg)
 		return nil

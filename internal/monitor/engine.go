@@ -5,17 +5,22 @@ import (
 )
 
 type Engine struct {
-	onDown    func(m *Monitor, state *MonitorState, result checks.CheckResult)
+	onDown    func(m *Monitor, state *MonitorState, result checks.CheckResult, isRepeat bool)
 	onRecover func(m *Monitor, state *MonitorState, result checks.CheckResult)
 }
 
-func NewEngine(onDown, onRecover func(*Monitor, *MonitorState, checks.CheckResult)) *Engine {
+func NewEngine(
+	onDown func(*Monitor, *MonitorState, checks.CheckResult, bool),
+	onRecover func(*Monitor, *MonitorState, checks.CheckResult),
+) *Engine {
 	return &Engine{
 		onDown:    onDown,
 		onRecover: onRecover,
 	}
 }
 
+// Process updates state from a check result. onDown receives isRepeat=true
+// when the monitor is already down and another failed check occurred.
 func (e *Engine) Process(result checks.CheckResult, state *MonitorState, m *Monitor) {
 	if state == nil {
 		state = &MonitorState{
@@ -27,9 +32,7 @@ func (e *Engine) Process(result checks.CheckResult, state *MonitorState, m *Moni
 	state.LastCheck = result.Time
 
 	if result.Success {
-		// OK result
 		if state.Status == StatusDown {
-			// DOWN -> UP: recovery
 			state.Status = StatusUp
 			state.FailCount = 0
 			state.LastSuccess = result.Time
@@ -38,18 +41,15 @@ func (e *Engine) Process(result checks.CheckResult, state *MonitorState, m *Moni
 				e.onRecover(m, state, result)
 			}
 		} else {
-			// UP -> OK: update latency
 			state.Status = StatusUp
 			state.FailCount = 0
 			state.LastSuccess = result.Time
 			state.Latency = result.Latency
 		}
 	} else {
-		// FAIL result
 		if state.Status == StatusDown {
-			// DOWN -> FAIL: notify on every failed poll when already down
 			if e.onDown != nil {
-				e.onDown(m, state, result)
+				e.onDown(m, state, result, true)
 			}
 			return
 		}
@@ -57,7 +57,7 @@ func (e *Engine) Process(result checks.CheckResult, state *MonitorState, m *Moni
 		if state.FailCount >= m.Retries {
 			state.Status = StatusDown
 			if e.onDown != nil {
-				e.onDown(m, state, result)
+				e.onDown(m, state, result, false)
 			}
 		}
 	}
