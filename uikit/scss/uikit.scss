@@ -22,5 +22,6 @@
 //    so shell rules can build on them if needed.
 @import "primitives";
 @import "shell";
+@import "modal";
 // 6. Standalone pages outside the .beacon-app scope (login hero).
 @import "login";

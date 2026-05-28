@@ -296,6 +296,158 @@
 .badge-source-self i,
 .badge-source-peer i { font-size: var(--app-text-micro); }
 
+// ── Notify receiver rows (settings / monitor overrides) ──
+// Policy summary as muted meta text (Cursor-style), not status pills.
+.notify-row {
+  --notify-row-meta-fade: 0.58;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.625rem;
+  margin-bottom: 0.5rem;
+}
+
+.notify-row__fields {
+  display: flex;
+  flex: 1 1 14rem;
+  gap: 0.5rem;
+  min-width: min(100%, 14rem);
+}
+
+.notify-row__fields .form-control {
+  flex: 1 1 6rem;
+  min-width: 0;
+}
+
+.notify-row--discord .notify-row__field-main {
+  flex: 1 1 12rem;
+  min-width: min(100%, 10rem);
+}
+
+.notify-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  flex: 0 1 auto;
+  max-width: 100%;
+  font-size: var(--app-text-meta);
+  line-height: var(--app-leading-cozy);
+  color: var(--bs-secondary-color);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.notify-row-meta__sep {
+  opacity: 0.4;
+  user-select: none;
+}
+
+.notify-row-meta__mode {
+  font-weight: 500;
+  color: var(--bs-body-color);
+  opacity: var(--notify-row-meta-fade);
+}
+
+.notify-row-meta__templates {
+  opacity: var(--notify-row-meta-fade);
+}
+
+.notify-row-meta--inherited {
+  opacity: 0.72;
+}
+
+.notify-row-meta__templates--custom {
+  font-family: var(--app-font-mono);
+  font-size: var(--app-text-mono-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 0.0625rem 0.3125rem;
+  opacity: 1;
+  color: var(--bs-body-color);
+  background: var(--app-surface-inset);
+  border-radius: var(--app-radius-2xs);
+  box-shadow: var(--app-shadow-outline);
+}
+
+.notify-row__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.125rem;
+  margin-left: auto;
+}
+
+.notify-row__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--app-radius-control);
+  background: transparent;
+  color: var(--bs-secondary-color);
+  line-height: 1;
+  transition: background var(--app-duration-fast) var(--app-easing-standard),
+    color var(--app-duration-fast) var(--app-easing-standard);
+
+  i {
+    font-size: 0.8125rem;
+  }
+
+  &:hover {
+    background: var(--c-hover-bg);
+    color: var(--bs-body-color);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-ring);
+  }
+}
+
+.notify-row__btn--danger:hover {
+  background: var(--c-danger-light);
+  color: var(--bs-danger);
+}
+
+// Policy template blocks (settings + receiver modal)
+.policy-template-row {
+  padding: 0.625rem 0.75rem;
+  background: var(--app-surface-inset);
+  border-radius: var(--app-radius-panel);
+  box-shadow: var(--app-shadow-outline);
+
+  textarea.form-control {
+    background: var(--app-surface-panel);
+    font-size: var(--app-text-mono-sm);
+    line-height: var(--app-leading-cozy);
+  }
+
+  [data-policy-chips] .badge {
+    font-family: var(--app-font-mono);
+    font-size: var(--app-text-mono-sm);
+    font-weight: 500;
+    padding: 0.125rem 0.375rem;
+    background: var(--app-surface-panel);
+    border: 0.0625rem solid var(--c-border);
+    color: var(--bs-secondary-color);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .notify-row-meta {
+    flex: 1 1 100%;
+    order: 2;
+    white-space: normal;
+  }
+
+  .notify-row__actions {
+    order: 3;
+    margin-left: auto;
+  }
+}
+
 // ── Empty state ──
 .empty-state {
   padding: 4rem 1.5rem;

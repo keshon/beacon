@@ -86,17 +86,32 @@
         });
     }
 
-    function updateRowBadges(row) {
-        var badges = row.querySelector('[data-notify-badges]');
-        if (!badges) return;
+    function rowHasPolicy(row) {
+        var p = readRowPolicy(row);
+        var hasMode = !!(p.alert_mode && String(p.alert_mode).trim());
+        var hasTpl =
+            p.templates &&
+            (String(p.templates.down || '').trim() || String(p.templates.recovered || '').trim());
+        return hasMode || hasTpl;
+    }
+
+    function updateRowMeta(row) {
+        var meta = row.querySelector('[data-notify-meta]');
+        if (!meta) return;
+        var inherited = !rowHasPolicy(row);
         effectivePolicy(readRowPolicy(row)).then(function (eff) {
             var modeLabel = eff.mode === 'once' ? 'Once' : 'Repeat';
             var tplLabel = eff.custom ? 'Custom' : 'Standard';
-            badges.innerHTML =
-                '<span class="badge rounded-pill text-bg-secondary me-1">' +
+            var tplClass = eff.custom ? ' notify-row-meta__templates--custom' : '';
+            meta.classList.toggle('notify-row-meta--inherited', inherited && !eff.custom);
+            meta.innerHTML =
+                '<span class="notify-row-meta__mode">' +
                 modeLabel +
                 '</span>' +
-                '<span class="badge rounded-pill text-bg-secondary">' +
+                '<span class="notify-row-meta__sep" aria-hidden="true">·</span>' +
+                '<span class="notify-row-meta__templates' +
+                tplClass +
+                '">' +
                 tplLabel +
                 '</span>';
         });
@@ -104,13 +119,13 @@
 
     function rowActionsHtml() {
         return (
-            '<div class="col-md-3 d-flex gap-1">' +
-            '<button type="button" class="btn btn-outline-secondary" data-notify-action="policy" title="Alert policy">' +
+            '<span class="notify-row-meta" data-notify-meta></span>' +
+            '<div class="notify-row__actions">' +
+            '<button type="button" class="btn notify-row__btn" data-notify-action="policy" title="Alert policy">' +
             '<i class="bi bi-gear"></i></button>' +
-            '<button type="button" class="btn btn-outline-danger" data-notify-action="remove" title="Remove receiver">' +
+            '<button type="button" class="btn notify-row__btn notify-row__btn--danger" data-notify-action="remove" title="Remove receiver">' +
             '<i class="bi bi-x-lg"></i></button>' +
-            '</div>' +
-            '<div class="col-12"><span class="d-flex flex-wrap gap-1" data-notify-badges></span></div>'
+            '</div>'
         );
     }
 
@@ -119,17 +134,15 @@
         if (value.policy) {
             writeRowPolicy(row, value.policy);
         }
-        updateRowBadges(row);
+        updateRowMeta(row);
     }
 
     function buildTelegramRow(value) {
         value = value || {};
         var row = el(
-            '<div class="notify-row row g-2 align-items-end mb-2">' +
-                '<div class="col-md-5">' +
+            '<div class="notify-row notify-row--telegram">' +
+                '<div class="notify-row__fields">' +
                 '<input type="text" class="form-control" data-notify-field="token" placeholder="Bot token" />' +
-                '</div>' +
-                '<div class="col-md-4">' +
                 '<input type="text" class="form-control" data-notify-field="chat_id" placeholder="Chat ID" />' +
                 '</div>' +
                 rowActionsHtml() +
@@ -144,10 +157,8 @@
     function buildDiscordRow(value) {
         value = value || {};
         var row = el(
-            '<div class="notify-row row g-2 align-items-end mb-2">' +
-                '<div class="col-md-9">' +
-                '<input type="text" class="form-control" data-notify-field="webhook" placeholder="Webhook URL" />' +
-                '</div>' +
+            '<div class="notify-row notify-row--discord">' +
+                '<input type="text" class="form-control notify-row__field-main" data-notify-field="webhook" placeholder="Webhook URL" />' +
                 rowActionsHtml() +
                 '</div>'
         );
@@ -229,7 +240,7 @@
             delivery,
             function (policy) {
                 writeRowPolicy(row, policy);
-                updateRowBadges(row);
+                updateRowMeta(row);
             }
         );
     };
@@ -293,7 +304,7 @@
                 removeBtn.style.visibility = count === 1 ? 'hidden' : 'visible';
             }
             row.dataset.notifyIndex = String(idx);
-            updateRowBadges(row);
+            updateRowMeta(row);
         });
     };
 
@@ -308,13 +319,13 @@
             alert_mode: 'repeat',
             templates: {},
         };
-        document.querySelectorAll('.notify-row').forEach(updateRowBadges);
+        document.querySelectorAll('.notify-row').forEach(updateRowMeta);
     }
 
     window.BeaconNotify = {
         MAX_RECEIVERS: MAX_RECEIVERS,
         init: init,
         setGlobalDefaults: setGlobalDefaults,
-        updateRowBadges: updateRowBadges,
+        updateRowMeta: updateRowMeta,
     };
 })();
