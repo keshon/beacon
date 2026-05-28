@@ -176,12 +176,12 @@ func receiverPolicyConfigured(p *config.ReceiverPolicy) bool {
 func FormatLegacyAlert(a Alert) string {
 	switch a.Status {
 	case "recovered":
-		return fmt.Sprintf("Site RECOVERED\n\n%s\n%s\nTime: %s",
+		return fmt.Sprintf("Service RECOVERED\n\n%s\n%s\nTime: %s",
 			a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
 	case "test":
 		return fmt.Sprintf("Beacon TEST\n\n%s\n%s\nTime: %s",
 			a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
 	}
-	return fmt.Sprintf("Site DOWN\n\n%s\n%s\nTime: %s",
+	return fmt.Sprintf("Service DOWN\n\n%s\n%s\nTime: %s",
 		a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
 }

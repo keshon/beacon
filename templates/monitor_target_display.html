@@ -1,0 +1,6 @@
+{# Expects: target, type (http|tcp) #}
+{% if type == 'tcp' %}
+<span class="link-secondary text-decoration-none small app-monitor-target-text">{{ target }}</span>
+{% else %}
+<a href="{{ target }}" target="_blank" rel="noopener" class="link-secondary text-decoration-none small app-monitor-target-link">{{ target }}</a>
+{% endif %}

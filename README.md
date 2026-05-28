@@ -110,8 +110,8 @@ Example minimal `config.json`:
   "notifications": {
     "alert_mode": "repeat",
     "templates": {
-      "down": "Site DOWN\\n\\n{{name}}\\n{{message}}\\nTime: {{time}}",
-      "recovered": "Site RECOVERED\\n\\n{{name}}\\n{{message}}\\nTime: {{time}}"
+      "down": "Service DOWN\\n\\n{{name}}\\n{{message}}\\nTime: {{time}}",
+      "recovered": "Service RECOVERED\\n\\n{{name}}\\n{{message}}\\nTime: {{time}}"
     }
   },
   "network": {
@@ -209,6 +209,7 @@ Requires sync to be enabled.
 # Monitors
 beacon monitor list
 beacon monitor add -name "API" -type http -target https://api.example.com
+beacon monitor add -name "Redis" -type tcp -target redis.internal:6379
 beacon monitor delete <id>
 beacon monitor update <id>
 
@@ -218,6 +219,8 @@ beacon events -limit 100
 ```
 
 CLI uses the same datastore as the server.
+
+**Target format:** HTTP monitors need a full URL (`http://` or `https://`). TCP monitors need `host:port` with no scheme (e.g. `db.local:5432`). The API and UI validate targets on create/update.
 
 ## HTTP API
 

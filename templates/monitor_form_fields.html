@@ -19,6 +19,7 @@
         <select
             class="form-select"
             name="type"
+            data-monitor-type
         >
             <option value="http">HTTP</option>
             <option value="tcp">TCP</option>
@@ -30,13 +31,15 @@
             type="text"
             class="form-control"
             name="target"
+            data-monitor-target
             {% if mode == "add" %}
-            placeholder="https://example.com or host:443"
+            placeholder="https://example.com"
             required
             {% else %}
             placeholder="Target"
             {% endif %}
         />
+        <div class="form-text small text-danger d-none" data-monitor-target-error role="alert"></div>
     </div>
     <div class="col-md-2">
         <label class="form-label small">Interval (sec)</label>

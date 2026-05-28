@@ -41,8 +41,8 @@ type MessageTemplates struct {
 // DefaultMessageTemplates returns built-in down/recovered templates.
 func DefaultMessageTemplates() MessageTemplates {
 	return MessageTemplates{
-		Down:      "Site DOWN\n\n{{name}}\n{{message}}\nTime: {{time}}",
-		Recovered: "Site RECOVERED\n\n{{name}}\n{{message}}\nTime: {{time}}",
+		Down:      "Service DOWN\n\n{{name}}\n{{message}}\nTime: {{time}}",
+		Recovered: "Service RECOVERED\n\n{{name}}\n{{message}}\nTime: {{time}}",
 	}
 }
 

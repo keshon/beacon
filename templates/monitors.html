@@ -37,7 +37,7 @@
                             {% endif %}
                         </div>
                         <div class="monitor-meta">
-                            <a href="{{ m.Target }}" target="_blank" rel="noopener" class="link-secondary text-decoration-none small">{{ m.Target }}</a>
+                            {% include "monitor_target_display.html" with target=m.Target type=m.Type %}
                             · <code class="text-secondary">{{ m.Type }}</code>
                         </div>
                     </div>
@@ -138,11 +138,69 @@
         return out;
     }
 
-    document.querySelectorAll('form').forEach(attachNotifyToForm);
+    function monitorTargetPlaceholder(type) {
+        return type === 'tcp' ? 'db.local:5432' : 'https://example.com';
+    }
+
+    function clientValidateMonitorTarget(type, target) {
+        const t = String(target || '').trim();
+        if (!t) return 'Target is required';
+        if (type === 'tcp') {
+            if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(t)) {
+                return 'TCP target must be host:port, not a URL';
+            }
+            if (/^\[.+\]:\d+$/.test(t) || /^[^:]+:\d+$/.test(t)) {
+                return null;
+            }
+            return 'TCP target must include a port, e.g. db.local:5432';
+        }
+        if (!/^https?:\/\//i.test(t)) {
+            return 'HTTP target must start with http:// or https://';
+        }
+        return null;
+    }
+
+    function wireMonitorTargetForm(form) {
+        if (!form || form._monitorTargetWired) return;
+        const typeEl = form.querySelector('[data-monitor-type]');
+        const targetEl = form.querySelector('[data-monitor-target]');
+        const errEl = form.querySelector('[data-monitor-target-error]');
+        if (!typeEl || !targetEl) return;
+        form._monitorTargetWired = true;
+        function showTargetError(msg) {
+            if (!errEl) return;
+            if (msg) {
+                errEl.textContent = msg;
+                errEl.classList.remove('d-none');
+                targetEl.classList.add('is-invalid');
+            } else {
+                errEl.textContent = '';
+                errEl.classList.add('d-none');
+                targetEl.classList.remove('is-invalid');
+            }
+        }
+        function syncPlaceholder() {
+            targetEl.placeholder = monitorTargetPlaceholder(typeEl.value || 'http');
+        }
+        typeEl.addEventListener('change', syncPlaceholder);
+        targetEl.addEventListener('input', () => showTargetError(null));
+        syncPlaceholder();
+        form._validateMonitorTarget = function () {
+            const err = clientValidateMonitorTarget(typeEl.value || 'http', targetEl.value);
+            showTargetError(err);
+            return !err;
+        };
+    }
+
+    document.querySelectorAll('form').forEach((form) => {
+        attachNotifyToForm(form);
+        wireMonitorTargetForm(form);
+    });
 
     const addForm = document.getElementById('addForm');
     addForm.onsubmit = async (e) => {
         e.preventDefault();
+        if (addForm._validateMonitorTarget && !addForm._validateMonitorTarget()) return;
         const fd = new FormData(addForm);
         const payload = { name: fd.get('name'), type: fd.get('type'), target: fd.get('target') };
         const iv = parseInt(fd.get('interval'));
@@ -155,6 +213,7 @@
             body: JSON.stringify(payload),
         });
         if (res.ok) location.reload();
+        else alert((await res.text()) || 'Could not add monitor');
     };
 
     document.querySelectorAll('.btn-del').forEach((b) => {
@@ -189,8 +248,15 @@
                 f.querySelector('[name="type"]').value = b.dataset.type || 'http';
                 f.querySelector('[name="target"]').value = b.dataset.target || '';
                 f.querySelector('[name="interval"]').value = b.dataset.interval || '';
+                wireMonitorTargetForm(f);
+                const typeEl = f.querySelector('[data-monitor-type]');
+                const targetEl = f.querySelector('[data-monitor-target]');
+                if (typeEl && targetEl) {
+                    targetEl.placeholder = monitorTargetPlaceholder(typeEl.value || 'http');
+                }
                 f.onsubmit = async (e) => {
                     e.preventDefault();
+                    if (f._validateMonitorTarget && !f._validateMonitorTarget()) return;
                     const fd = new FormData(f);
                     const patch = { name: fd.get('name'), type: fd.get('type'), target: fd.get('target') };
                     const iv = parseInt(fd.get('interval'));
@@ -204,6 +270,7 @@
                         body: JSON.stringify(patch),
                     });
                     if (r.ok) location.reload();
+                    else alert((await r.text()) || 'Could not save monitor');
                 };
             }
         };

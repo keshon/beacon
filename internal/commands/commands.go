@@ -184,8 +184,17 @@ func (c *MonitorAddCmd) Run(ctx context.Context, inv *commandkit.Invocation) err
 			http.Error(d.W, "invalid JSON", http.StatusBadRequest)
 			return nil
 		}
+		typ, err := monitor.NormalizeType(req.Type)
+		if err != nil {
+			http.Error(d.W, err.Error(), http.StatusBadRequest)
+			return nil
+		}
+		if err := monitor.ValidateTarget(typ, req.Target); err != nil {
+			http.Error(d.W, err.Error(), http.StatusBadRequest)
+			return nil
+		}
 		m = &monitor.Monitor{
-			ID: uuid.New().String(), Name: req.Name, Type: req.Type, Target: req.Target,
+			ID: uuid.New().String(), Name: strings.TrimSpace(req.Name), Type: typ, Target: strings.TrimSpace(req.Target),
 			Interval: 0, Timeout: 10 * time.Second, Retries: 3, Enabled: true,
 		}
 		if req.Interval > 0 {
@@ -215,11 +224,15 @@ func (c *MonitorAddCmd) Run(ctx context.Context, inv *commandkit.Invocation) err
 		name := d.Args["name"]
 		typ := d.Args["type"]
 		target := d.Args["target"]
-		if typ == "" {
-			typ = "http"
+		typ, err := monitor.NormalizeType(typ)
+		if err != nil {
+			return err
+		}
+		if err := monitor.ValidateTarget(typ, target); err != nil {
+			return err
 		}
 		m = &monitor.Monitor{
-			ID: uuid.New().String(), Name: name, Type: typ, Target: target,
+			ID: uuid.New().String(), Name: name, Type: typ, Target: strings.TrimSpace(target),
 			Interval: 30 * time.Second, Timeout: 10 * time.Second, Retries: 3, Enabled: true,
 		}
 		if err := c.store.SetMonitor(m); err != nil {
@@ -313,11 +326,22 @@ func (c *MonitorUpdateCmd) Run(ctx context.Context, inv *commandkit.Invocation) 
 		if patch.Name != nil {
 			m.Name = *patch.Name
 		}
-		if patch.Type != nil && (*patch.Type == "http" || *patch.Type == "tcp") {
-			m.Type = *patch.Type
+		if patch.Type != nil {
+			typ, err := monitor.NormalizeType(*patch.Type)
+			if err != nil {
+				http.Error(d.W, err.Error(), http.StatusBadRequest)
+				return nil
+			}
+			m.Type = typ
 		}
 		if patch.Target != nil {
-			m.Target = *patch.Target
+			m.Target = strings.TrimSpace(*patch.Target)
+		}
+		if patch.Type != nil || patch.Target != nil {
+			if err := monitor.ValidateTarget(m.Type, m.Target); err != nil {
+				http.Error(d.W, err.Error(), http.StatusBadRequest)
+				return nil
+			}
 		}
 		if patch.Interval != nil {
 			if *patch.Interval > 0 {
