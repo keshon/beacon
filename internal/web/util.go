@@ -3,14 +3,17 @@ package web
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/keshon/buildinfo"
 )
 
-func randomID() string {
+func randomID() (string, error) {
 	b := make([]byte, 16)
-	rand.Read(b)
-	return hex.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate session id: %w", err)
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func getBuildVersion() string {

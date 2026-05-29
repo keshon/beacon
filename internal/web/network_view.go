@@ -25,8 +25,8 @@ func (s *Server) buildNetworkNodes() []networkNode {
 		return nodes
 	}
 	deadTimeout := time.Duration(s.cfg.Network.DeadTimeout) * time.Second
-	peerData := s.store.GetAllPeerData()
-	ownMonitors := s.store.GetMonitors()
+	peerData, _ := s.store.GetAllPeerData()
+	ownMonitors, _ := s.store.GetMonitors()
 
 	nodes = append(nodes, networkNode{
 		NodeID:        s.cfg.Network.NodeID,

@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/keshon/beacon/internal/checks"
@@ -19,16 +20,17 @@ type CheckJob struct {
 }
 
 type Scheduler struct {
-	store            *store.Store
-	engine           *monitor.Engine
-	workers          int
-	defaultInterval  time.Duration
-	cfg              *config.Config
-	onCheckRecorded  func(store.Event, *monitor.MonitorState)
-	jobs             chan CheckJob
-	wg               sync.WaitGroup
-	inFlight         map[string]struct{}
-	inflMu           sync.Mutex
+	store           *store.Store
+	engine          *monitor.Engine
+	workers         int
+	defaultInterval time.Duration
+	cfg             *config.Config
+	onCheckRecorded func(store.Event, *monitor.MonitorState)
+	jobs            chan CheckJob
+	wg              sync.WaitGroup
+	inFlight        map[string]struct{}
+	inflMu          sync.Mutex
+	droppedChecks   atomic.Uint64
 }
 
 func New(s *store.Store, engine *monitor.Engine, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(store.Event, *monitor.MonitorState)) *Scheduler {
@@ -36,42 +38,49 @@ func New(s *store.Store, engine *monitor.Engine, workers int, defaultInterval ti
 		defaultInterval = 30 * time.Second
 	}
 	return &Scheduler{
-		store:            s,
-		engine:           engine,
-		workers:          workers,
-		defaultInterval:  defaultInterval,
-		cfg:              cfg,
-		onCheckRecorded:  onCheckRecorded,
-		jobs:             make(chan CheckJob, 100),
-		inFlight:         make(map[string]struct{}),
+		store:           s,
+		engine:          engine,
+		workers:         workers,
+		defaultInterval: defaultInterval,
+		cfg:             cfg,
+		onCheckRecorded: onCheckRecorded,
+		jobs:            make(chan CheckJob, 100),
+		inFlight:        make(map[string]struct{}),
 	}
 }
 
+func (sc *Scheduler) DroppedChecks() uint64 {
+	return sc.droppedChecks.Load()
+}
+
 func (sc *Scheduler) Run(ctx context.Context) {
-	// Start workers
 	for i := 0; i < sc.workers; i++ {
 		sc.wg.Add(1)
 		go sc.worker(ctx)
 	}
-
-	// Main scheduling loop
 	sc.wg.Add(1)
 	go sc.loop(ctx)
 }
 
-func (sc *Scheduler) getMonitorsToCheck() []*monitor.Monitor {
+func (sc *Scheduler) getMonitorsToCheck() ([]*monitor.Monitor, error) {
 	var list []*monitor.Monitor
-	own := sc.store.GetMonitors()
+	own, err := sc.store.GetMonitors()
+	if err != nil {
+		return nil, err
+	}
 	for _, m := range own {
 		list = append(list, m)
 	}
 	if sc.cfg == nil || !sc.cfg.Network.Enabled || sc.cfg.Network.NodeID == "" {
-		return list
+		return list, nil
 	}
 	deadTimeout := time.Duration(sc.cfg.Network.DeadTimeout) * time.Second
-	peerData := sc.store.GetAllPeerData()
+	peerData, err := sc.store.GetAllPeerData()
+	if err != nil {
+		return list, err
+	}
 	if len(peerData) == 0 {
-		return list
+		return list, nil
 	}
 	now := time.Now()
 	var allNodes []string
@@ -94,15 +103,22 @@ func (sc *Scheduler) getMonitorsToCheck() []*monitor.Monitor {
 					if !m.Enabled {
 						continue
 					}
-					if st, ok := pd.State[m.ID]; ok && st != nil && sc.store.GetState(m.ID) == nil {
-						sc.store.SetState(st)
+					if err := monitor.ValidateTarget(m.Type, m.Target); err != nil {
+						log.Printf("[scheduler] skip invalid peer monitor %s: %v", m.Name, err)
+						continue
+					}
+					if st, ok := pd.State[m.ID]; ok && st != nil {
+						local, _ := sc.store.GetState(m.ID)
+						if local == nil {
+							_ = sc.store.SetState(st)
+						}
 					}
 					list = append(list, m)
 				}
 			}
 		}
 	}
-	return list
+	return list, nil
 }
 
 func nextLiveInRing(sorted []string, after string, live map[string]bool) string {
@@ -131,11 +147,20 @@ func (sc *Scheduler) loop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			now := time.Now()
-			for _, m := range sc.getMonitorsToCheck() {
+			monitors, err := sc.getMonitorsToCheck()
+			if err != nil {
+				log.Printf("[scheduler] list monitors: %v", err)
+				continue
+			}
+			for _, m := range monitors {
 				if !m.Enabled {
 					continue
 				}
-				st := sc.store.GetState(m.ID)
+				st, err := sc.store.GetState(m.ID)
+				if err != nil {
+					log.Printf("[scheduler] read state %s: %v", m.ID, err)
+					continue
+				}
 				var nextCheck time.Time
 				if st != nil && !st.LastCheck.IsZero() {
 					interval := m.Interval
@@ -157,11 +182,17 @@ func (sc *Scheduler) loop(ctx context.Context) {
 					sc.inflMu.Unlock()
 					select {
 					case sc.jobs <- CheckJob{Monitor: m}:
-					default:
+					case <-ctx.Done():
 						sc.inflMu.Lock()
 						delete(sc.inFlight, m.ID)
 						sc.inflMu.Unlock()
-						log.Printf("[scheduler] job queue full, skipping %s", m.Name)
+						return
+					default:
+						sc.droppedChecks.Add(1)
+						sc.inflMu.Lock()
+						delete(sc.inFlight, m.ID)
+						sc.inflMu.Unlock()
+						log.Printf("[scheduler] job queue full, skipping %s (%s)", m.Name, m.ID)
 					}
 				}
 			}
@@ -199,9 +230,9 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 	var result checks.CheckResult
 	switch m.Type {
 	case "http":
-		result = checks.HTTPCheck(m.Target, timeout)
+		result = checks.HTTPCheck(ctx, m.Target, timeout)
 	case "tcp":
-		result = checks.TCPCheck(m.Target, timeout)
+		result = checks.TCPCheck(ctx, m.Target, timeout)
 	default:
 		result = checks.CheckResult{
 			MonitorID: m.ID,
@@ -212,7 +243,6 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 	}
 	result.MonitorID = m.ID
 
-	// Record event
 	ev := store.Event{
 		MonitorID: m.ID,
 		Success:   result.Success,
@@ -223,13 +253,19 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 	if err := sc.store.AppendEvent(ev); err != nil {
 		log.Printf("[scheduler] append event: %v", err)
 	}
-	// Update state via engine
-	st := sc.store.GetState(m.ID)
+	st, err := sc.store.GetState(m.ID)
+	if err != nil {
+		log.Printf("[scheduler] read state: %v", err)
+		return
+	}
 	if st == nil {
 		st = &monitor.MonitorState{MonitorID: m.ID, Status: monitor.StatusUnknown}
 	}
 	sc.engine.Process(result, st, m)
-	sc.store.SetState(st)
+	if err := sc.store.SetState(st); err != nil {
+		log.Printf("[scheduler] write state: %v", err)
+		return
+	}
 
 	if sc.onCheckRecorded != nil {
 		sc.onCheckRecorded(ev, st)

@@ -46,7 +46,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small">Workers</label>
-                                <input type="number" class="form-control" name="workers" min="1" placeholder="10" />
+                                <input type="number" class="form-control" name="workers" min="1" placeholder="10" title="Requires restart to take effect" />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small">Default check interval (sec)</label>
@@ -69,7 +69,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small">Password</label>
-                                <input type="password" class="form-control" name="password" />
+                                <input type="password" class="form-control" name="password" placeholder="Leave blank to keep current" autocomplete="new-password" />
                             </div>
                         </div>
                     </div>
@@ -260,14 +260,20 @@
         let policyForm = null;
         window.__beaconSettings = { telegramList, discordList };
         fetch('/api/config')
-            .then((r) => r.json())
+            .then((r) => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
             .then((cfg) => {
                 const f = document.getElementById('configForm');
                 fieldByName(f, 'listen').value = cfg.listen || ':8080';
                 fieldByName(f, 'workers').value = cfg.workers || 10;
                 fieldByName(f, 'default_interval').value = cfg.default_interval || '';
                 fieldByName(f, 'username').value = cfg.auth?.username || '';
-                fieldByName(f, 'password').value = cfg.auth?.password || '';
+                fieldByName(f, 'password').value = '';
+                fieldByName(f, 'password').placeholder = cfg.secrets?.password
+                    ? 'Leave blank to keep current'
+                    : 'Set password';
                 fieldByName(f, 'telegram_enabled').checked = cfg.telegram?.enabled || false;
                 fieldByName(f, 'discord_enabled').checked = cfg.discord?.enabled || false;
                 fieldByName(f, 'network_enabled').checked = cfg.network?.enabled || false;
@@ -291,6 +297,11 @@
                 bindToggle('telegram_enabled');
                 bindToggle('discord_enabled');
                 bindToggle('network_enabled');
+            })
+            .catch(function () {
+                const msg = document.getElementById('msg');
+                msg.textContent = 'Failed to load settings.';
+                msg.className = 'small text-danger';
             });
     })();
     document.getElementById('configForm').onsubmit = async (e) => {
@@ -344,7 +355,9 @@
             const saved = await res.json();
             if (saved.network?.node_id) namedField('network_node_id').value = saved.network.node_id;
             window.__beaconSettings.telegramList.setValues(saved.telegram?.targets || []);
-            const savedWebhooks = (saved.discord?.webhooks || []).map((w) => ({ webhook: w }));
+            const savedWebhooks = (saved.discord?.webhooks || []).map((w) =>
+                typeof w === 'string' ? { webhook: w } : w
+            );
             window.__beaconSettings.discordList.setValues(savedWebhooks);
             msg.textContent = 'Saved';
             msg.className = 'small text-success';

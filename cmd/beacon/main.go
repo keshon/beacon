@@ -30,17 +30,30 @@ func loadConfig(st *store.Store, filePath string) *config.Config {
 	var cfg config.Config
 	ok, err := st.GetConfig(&cfg)
 	if ok && err == nil {
+		if cfg.Auth.Password != "" {
+			cfg.RememberPlainPassword(cfg.Auth.Password)
+		}
+		if err := cfg.Auth.EnsureAuthHashed(); err != nil {
+			log.Printf("auth hash: %v", err)
+		}
 		cfg.Normalize()
+		_ = st.SetConfig(&cfg)
 		return &cfg
 	}
 	if c, err := config.Load(filePath); err == nil {
+		if c.Auth.Password != "" {
+			c.RememberPlainPassword(c.Auth.Password)
+		}
+		_ = c.Auth.EnsureAuthHashed()
 		c.Normalize()
-		st.SetConfig(c)
+		_ = st.SetConfig(c)
 		return c
 	}
 	cfg = *config.Default()
+	cfg.RememberPlainPassword(cfg.Auth.Password)
+	_ = cfg.Auth.EnsureAuthHashed()
 	cfg.Normalize()
-	st.SetConfig(&cfg)
+	_ = st.SetConfig(&cfg)
 	log.Printf("using default config")
 	return &cfg
 }
@@ -73,12 +86,20 @@ func main() {
 	commands.RegisterAll(st)
 	commands.RegisterConfigCommands(st, cfg)
 
+	const alertQueueSize = 128
+	alertQueue := make(chan func(), alertQueueSize)
+	go func() {
+		for fn := range alertQueue {
+			fn()
+		}
+	}()
+
 	sendAlerts := func(m *monitor.Monitor, state *monitor.MonitorState, result checks.CheckResult, status, message string, isRepeat bool) {
 		receivers := notify.BuildReceivers(cfg, m)
 		if len(receivers) == 0 {
 			return
 		}
-		ctx := notify.NewTemplateContext(m, state, result, status, message)
+		tplCtx := notify.NewTemplateContext(m, state, result, status, message)
 		base := notify.Alert{
 			MonitorName: m.Name,
 			Status:      status,
@@ -92,18 +113,23 @@ func main() {
 		if state != nil {
 			base.FailCount = state.FailCount
 		}
-		go func() {
+		job := func() {
 			for _, r := range receivers {
 				if status == "down" && !notify.ShouldSendDown(r.Policy, isRepeat) {
 					continue
 				}
 				alert := base
-				alert.Body = notify.BuildAlertBody(r.Policy, status, ctx)
+				alert.Body = notify.BuildAlertBody(r.Policy, status, tplCtx)
 				if err := r.Notifier.Send(alert); err != nil {
 					log.Printf("notify error [%s]: %v", r.Key, err)
 				}
 			}
-		}()
+		}
+		select {
+		case alertQueue <- job:
+		default:
+			log.Printf("notify queue full, dropping alert for %s", m.Name)
+		}
 	}
 
 	engine := monitor.NewEngine(
@@ -123,7 +149,7 @@ func main() {
 	go syncClient.Run(ctx)
 
 	auth := web.NewAuth()
-	srv := web.NewServer(st, auth, cfg, "templates", "static", hub)
+	srv := web.NewServer(st, auth, cfg, sch, "templates", "static", hub)
 	httpServer := &http.Server{Addr: cfg.Listen, Handler: srv.Routes()}
 
 	go func() {
@@ -140,6 +166,7 @@ func main() {
 
 	cancel()
 	sch.Stop()
+	close(alertQueue)
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()

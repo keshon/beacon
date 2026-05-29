@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/keshon/beacon/internal/checks"
 )
 
 const (
@@ -57,6 +59,13 @@ func validateHTTPTarget(target string) error {
 	if u.Host == "" {
 		return fmt.Errorf("HTTP target must include a host")
 	}
+	host := u.Hostname()
+	if strings.EqualFold(u.Scheme, "javascript") || strings.EqualFold(u.Scheme, "data") {
+		return fmt.Errorf("HTTP target scheme is not allowed")
+	}
+	if err := checks.ResolvePublicHost(host); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -74,6 +83,9 @@ func validateTCPTarget(target string) error {
 	port, err := strconv.Atoi(portStr)
 	if err != nil || port < 1 || port > 65535 {
 		return fmt.Errorf("TCP port must be between 1 and 65535")
+	}
+	if err := checks.ResolvePublicHost(host); err != nil {
+		return err
 	}
 	return nil
 }

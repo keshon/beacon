@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -43,7 +44,7 @@ type Store struct {
 	eventsDS   *datastore.DataStore
 	configDS   *datastore.DataStore
 	peerDS     *datastore.DataStore
-	eventsMu   sync.Mutex
+	mu         sync.RWMutex
 }
 
 func New(ctx context.Context, dataDir string) (*Store, error) {
@@ -109,18 +110,23 @@ func (s *Store) Close() error {
 	return nil
 }
 
-func (s *Store) GetMonitors() []*monitor.Monitor {
+func (s *Store) GetMonitors() ([]*monitor.Monitor, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var m map[string]*monitor.Monitor
-	ok, _ := s.monitorsDS.Get(keyMonitors, &m)
+	ok, err := s.monitorsDS.Get(keyMonitors, &m)
+	if err != nil {
+		return nil, fmt.Errorf("read monitors: %w", err)
+	}
 	if !ok || m == nil {
-		return nil
+		return nil, nil
 	}
 	list := make([]*monitor.Monitor, 0, len(m))
 	for _, v := range m {
 		list = append(list, v)
 	}
 	sortMonitorsByName(list)
-	return list
+	return list, nil
 }
 
 func sortMonitorsByName(list []*monitor.Monitor) {
@@ -129,18 +135,28 @@ func sortMonitorsByName(list []*monitor.Monitor) {
 	})
 }
 
-func (s *Store) GetMonitor(id string) *monitor.Monitor {
+func (s *Store) GetMonitor(id string) (*monitor.Monitor, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var m map[string]*monitor.Monitor
-	ok, _ := s.monitorsDS.Get(keyMonitors, &m)
-	if !ok || m == nil {
-		return nil
+	ok, err := s.monitorsDS.Get(keyMonitors, &m)
+	if err != nil {
+		return nil, fmt.Errorf("read monitors: %w", err)
 	}
-	return m[id]
+	if !ok || m == nil {
+		return nil, nil
+	}
+	return m[id], nil
 }
 
 func (s *Store) SetMonitor(mon *monitor.Monitor) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var m map[string]*monitor.Monitor
-	ok, _ := s.monitorsDS.Get(keyMonitors, &m)
+	ok, err := s.monitorsDS.Get(keyMonitors, &m)
+	if err != nil {
+		return fmt.Errorf("read monitors: %w", err)
+	}
 	if !ok || m == nil {
 		m = make(map[string]*monitor.Monitor)
 	}
@@ -149,8 +165,13 @@ func (s *Store) SetMonitor(mon *monitor.Monitor) error {
 }
 
 func (s *Store) DeleteMonitor(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var m map[string]*monitor.Monitor
-	ok, _ := s.monitorsDS.Get(keyMonitors, &m)
+	ok, err := s.monitorsDS.Get(keyMonitors, &m)
+	if err != nil {
+		return fmt.Errorf("read monitors: %w", err)
+	}
 	if !ok || m == nil {
 		return nil
 	}
@@ -158,9 +179,11 @@ func (s *Store) DeleteMonitor(id string) error {
 	if err := s.monitorsDS.Set(keyMonitors, m); err != nil {
 		return err
 	}
-	// Remove state for deleted monitor
 	var st map[string]*monitor.MonitorState
-	ok, _ = s.stateDS.Get(keyState, &st)
+	ok, err = s.stateDS.Get(keyState, &st)
+	if err != nil {
+		return fmt.Errorf("read state: %w", err)
+	}
 	if ok && st != nil {
 		delete(st, id)
 		return s.stateDS.Set(keyState, st)
@@ -168,27 +191,42 @@ func (s *Store) DeleteMonitor(id string) error {
 	return nil
 }
 
-func (s *Store) GetState(monitorID string) *monitor.MonitorState {
+func (s *Store) GetState(monitorID string) (*monitor.MonitorState, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var st map[string]*monitor.MonitorState
-	ok, _ := s.stateDS.Get(keyState, &st)
-	if !ok || st == nil {
-		return nil
+	ok, err := s.stateDS.Get(keyState, &st)
+	if err != nil {
+		return nil, fmt.Errorf("read state: %w", err)
 	}
-	return st[monitorID]
+	if !ok || st == nil {
+		return nil, nil
+	}
+	return st[monitorID], nil
 }
 
-func (s *Store) GetAllState() map[string]*monitor.MonitorState {
+func (s *Store) GetAllState() (map[string]*monitor.MonitorState, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var st map[string]*monitor.MonitorState
-	ok, _ := s.stateDS.Get(keyState, &st)
-	if !ok || st == nil {
-		return nil
+	ok, err := s.stateDS.Get(keyState, &st)
+	if err != nil {
+		return nil, fmt.Errorf("read state: %w", err)
 	}
-	return st
+	if !ok || st == nil {
+		return nil, nil
+	}
+	return st, nil
 }
 
 func (s *Store) SetState(st *monitor.MonitorState) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var state map[string]*monitor.MonitorState
-	ok, _ := s.stateDS.Get(keyState, &state)
+	ok, err := s.stateDS.Get(keyState, &state)
+	if err != nil {
+		return fmt.Errorf("read state: %w", err)
+	}
 	if !ok || state == nil {
 		state = make(map[string]*monitor.MonitorState)
 	}
@@ -197,10 +235,13 @@ func (s *Store) SetState(st *monitor.MonitorState) error {
 }
 
 func (s *Store) AppendEvent(ev Event) error {
-	s.eventsMu.Lock()
-	defer s.eventsMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var events []Event
-	ok, _ := s.eventsDS.Get(keyEvents, &events)
+	ok, err := s.eventsDS.Get(keyEvents, &events)
+	if err != nil {
+		return fmt.Errorf("read events: %w", err)
+	}
 	if !ok || events == nil {
 		events = make([]Event, 0)
 	}
@@ -211,11 +252,16 @@ func (s *Store) AppendEvent(ev Event) error {
 	return s.eventsDS.Set(keyEvents, events)
 }
 
-func (s *Store) GetEvents(limit int) []Event {
+func (s *Store) GetEvents(limit int) ([]Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var events []Event
-	ok, _ := s.eventsDS.Get(keyEvents, &events)
+	ok, err := s.eventsDS.Get(keyEvents, &events)
+	if err != nil {
+		return nil, fmt.Errorf("read events: %w", err)
+	}
 	if !ok || events == nil {
-		return nil
+		return nil, nil
 	}
 	if limit <= 0 || limit > len(events) {
 		limit = len(events)
@@ -224,12 +270,11 @@ func (s *Store) GetEvents(limit int) []Event {
 	if start < 0 {
 		start = 0
 	}
-	return events[start:]
+	return events[start:], nil
 }
 
 // GetUptimeSamples returns the last limit check outcomes for monitorID, oldest first.
-// Scans the tail of the event log (variant A: simple, bounded by global event cap).
-func (s *Store) GetUptimeSamples(monitorID string, limit int) []Event {
+func (s *Store) GetUptimeSamples(monitorID string, limit int) ([]Event, error) {
 	if limit <= 0 {
 		limit = 120
 	}
@@ -237,12 +282,15 @@ func (s *Store) GetUptimeSamples(monitorID string, limit int) []Event {
 	if limit > maxLimit {
 		limit = maxLimit
 	}
-	s.eventsMu.Lock()
-	defer s.eventsMu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var events []Event
-	ok, _ := s.eventsDS.Get(keyEvents, &events)
+	ok, err := s.eventsDS.Get(keyEvents, &events)
+	if err != nil {
+		return nil, fmt.Errorf("read events: %w", err)
+	}
 	if !ok || events == nil {
-		return nil
+		return nil, nil
 	}
 	out := make([]Event, 0, limit)
 	for i := len(events) - 1; i >= 0 && len(out) < limit; i-- {
@@ -253,29 +301,47 @@ func (s *Store) GetUptimeSamples(monitorID string, limit int) []Event {
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 		out[i], out[j] = out[j], out[i]
 	}
-	return out
+	return out, nil
 }
 
 func (s *Store) GetConfig(dest any) (bool, error) {
-	return s.configDS.Get(keyConfig, dest)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	ok, err := s.configDS.Get(keyConfig, dest)
+	if err != nil {
+		return false, fmt.Errorf("read config: %w", err)
+	}
+	return ok, err
 }
 
 func (s *Store) SetConfig(cfg any) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.configDS.Set(keyConfig, cfg)
 }
 
-func (s *Store) GetPeerData(nodeID string) *PeerData {
+func (s *Store) GetPeerData(nodeID string) (*PeerData, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var m map[string]*PeerData
-	ok, _ := s.peerDS.Get(keyPeerData, &m)
-	if !ok || m == nil {
-		return nil
+	ok, err := s.peerDS.Get(keyPeerData, &m)
+	if err != nil {
+		return nil, fmt.Errorf("read peer data: %w", err)
 	}
-	return m[nodeID]
+	if !ok || m == nil {
+		return nil, nil
+	}
+	return m[nodeID], nil
 }
 
 func (s *Store) SetPeerData(data *PeerData) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var m map[string]*PeerData
-	ok, _ := s.peerDS.Get(keyPeerData, &m)
+	ok, err := s.peerDS.Get(keyPeerData, &m)
+	if err != nil {
+		return fmt.Errorf("read peer data: %w", err)
+	}
 	if !ok || m == nil {
 		m = make(map[string]*PeerData)
 	}
@@ -283,11 +349,39 @@ func (s *Store) SetPeerData(data *PeerData) error {
 	return s.peerDS.Set(keyPeerData, m)
 }
 
-func (s *Store) GetAllPeerData() map[string]*PeerData {
+func (s *Store) GetAllPeerData() (map[string]*PeerData, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var m map[string]*PeerData
-	ok, _ := s.peerDS.Get(keyPeerData, &m)
-	if !ok || m == nil {
-		return nil
+	ok, err := s.peerDS.Get(keyPeerData, &m)
+	if err != nil {
+		return nil, fmt.Errorf("read peer data: %w", err)
 	}
-	return m
+	if !ok || m == nil {
+		return nil, nil
+	}
+	return m, nil
+}
+
+// Ping verifies all datastore backends are readable.
+func (s *Store) Ping() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var dummy any
+	if _, err := s.monitorsDS.Get(keyMonitors, &dummy); err != nil {
+		return fmt.Errorf("monitors store: %w", err)
+	}
+	if _, err := s.stateDS.Get(keyState, &dummy); err != nil {
+		return fmt.Errorf("state store: %w", err)
+	}
+	if _, err := s.eventsDS.Get(keyEvents, &dummy); err != nil {
+		return fmt.Errorf("events store: %w", err)
+	}
+	if _, err := s.configDS.Get(keyConfig, &dummy); err != nil {
+		return fmt.Errorf("config store: %w", err)
+	}
+	if _, err := s.peerDS.Get(keyPeerData, &dummy); err != nil {
+		return fmt.Errorf("peer store: %w", err)
+	}
+	return nil
 }

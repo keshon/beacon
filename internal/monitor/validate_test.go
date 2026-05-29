@@ -12,17 +12,21 @@ func TestValidateTarget_HTTP(t *testing.T) {
 	if err := ValidateTarget("http", "ftp://example.com"); err == nil {
 		t.Fatal("want error for ftp scheme")
 	}
+	if err := ValidateTarget("http", "http://127.0.0.1/"); err == nil {
+		t.Fatal("want error for loopback")
+	}
+	if err := ValidateTarget("http", "javascript:alert(1)"); err == nil {
+		t.Fatal("want error for javascript scheme")
+	}
 }
 
 func TestValidateTarget_TCP(t *testing.T) {
-	cases := []string{
-		"127.0.0.1:6379",
-		"db.internal:5432",
-		"[::1]:8080",
+	if err := ValidateTarget("tcp", "example.com:5432"); err != nil {
+		t.Fatalf("public host: %v", err)
 	}
-	for _, c := range cases {
-		if err := ValidateTarget("tcp", c); err != nil {
-			t.Fatalf("%q: %v", c, err)
+	for _, c := range []string{"127.0.0.1:6379", "[::1]:8080", "localhost:8080"} {
+		if err := ValidateTarget("tcp", c); err == nil {
+			t.Fatalf("%q: want error for blocked host", c)
 		}
 	}
 	if err := ValidateTarget("tcp", "https://example.com:443"); err == nil {

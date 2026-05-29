@@ -17,6 +17,7 @@ const MaxReceivers = 5
 type Config struct {
 	Listen          string              `json:"listen"`
 	Auth            AuthConfig          `json:"auth"`
+	plainAuthPassword string            `json:"-"` // in-memory for HTTP Basic (sync); set on load or password change
 	Notifications   NotificationsConfig `json:"notifications"`
 	Telegram        TelegramConfig      `json:"telegram"`
 	Discord         DiscordConfig       `json:"discord"`
@@ -56,8 +57,9 @@ type NetworkConfig struct {
 }
 
 type AuthConfig struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username     string `json:"username"`
+	Password     string `json:"password,omitempty"` // API input / legacy file only; cleared after hash
+	PasswordHash string `json:"password_hash,omitempty"`
 }
 
 // ReceiverPolicy holds per-receiver alert mode and templates. Empty fields
@@ -335,6 +337,25 @@ func sanitizeReceiverPolicy(p *ReceiverPolicy) *ReceiverPolicy {
 }
 
 // DefaultIntervalDuration returns the global check interval.
+// RememberPlainPassword keeps the cleartext password for outbound Basic auth (peer sync).
+func (c *Config) RememberPlainPassword(password string) {
+	if c == nil {
+		return
+	}
+	c.plainAuthPassword = strings.TrimSpace(password)
+}
+
+// PlainPasswordForBasic returns the password used for outbound HTTP Basic auth.
+func (c *Config) PlainPasswordForBasic() string {
+	if c == nil {
+		return ""
+	}
+	if c.plainAuthPassword != "" {
+		return c.plainAuthPassword
+	}
+	return c.Auth.Password
+}
+
 func (c *Config) DefaultIntervalDuration() time.Duration {
 	if c.DefaultInterval > 0 {
 		return time.Duration(c.DefaultInterval) * time.Second

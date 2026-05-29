@@ -24,12 +24,20 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		IsPeer       bool
 	}
 	var rows []dashboardRow
-	state := s.store.GetAllState()
+	state, err := s.store.GetAllState()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if state == nil {
 		state = make(map[string]*monitor.MonitorState)
 	}
 
-	ownMonitors := s.store.GetMonitors()
+	ownMonitors, err := s.store.GetMonitors()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	for _, m := range ownMonitors {
 		st := state[m.ID]
 		row := dashboardRow{Monitor: m, State: st, Status: "unknown", SourceLabel: "This node", IsPeer: false}
@@ -52,7 +60,11 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.cfg.Network.Enabled {
-		peerData := s.store.GetAllPeerData()
+		peerData, err := s.store.GetAllPeerData()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		deadTimeout := time.Duration(s.cfg.Network.DeadTimeout) * time.Second
 		for _, pd := range peerData {
 			if time.Since(pd.LastSeen) < deadTimeout {
@@ -109,11 +121,15 @@ func shortURL(url string) string {
 }
 
 func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
-	monitors := s.store.GetMonitors()
+	monitors, err := s.store.GetMonitors()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	type monitorRow struct {
 		*monitor.Monitor
-		IntervalSec     int
-		TelegramTargets []monitor.TelegramTarget
+		IntervalSec      int
+		TelegramTargets  []monitor.TelegramTarget
 		DiscordReceivers []monitor.DiscordReceiver
 		NotifyJSON       string
 	}
@@ -135,11 +151,11 @@ func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
 		}
 		buf, _ := json.Marshal(payload)
 		rows = append(rows, monitorRow{
-			Monitor:         m,
-			IntervalSec:     sec,
-			TelegramTargets: tg,
+			Monitor:          m,
+			IntervalSec:      sec,
+			TelegramTargets:  tg,
 			DiscordReceivers: dc,
-			NotifyJSON:      string(buf),
+			NotifyJSON:       string(buf),
 		})
 	}
 	s.render(w, "monitors.html", pongo2.Context{

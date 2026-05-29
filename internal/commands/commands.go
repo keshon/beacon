@@ -149,11 +149,20 @@ func (c *MonitorListCmd) Description() string { return "List all monitors" }
 
 func (c *MonitorListCmd) Run(ctx context.Context, inv *commandkit.Invocation) error {
 	if d := getHTTPData(inv); d != nil {
-		writeJSONTo(d.W, c.store.GetMonitors())
+		list, err := c.store.GetMonitors()
+		if err != nil {
+			http.Error(d.W, err.Error(), http.StatusInternalServerError)
+			return nil
+		}
+		writeJSONTo(d.W, list)
 		return nil
 	}
 	if d := getCLIData(inv); d != nil {
-		writeJSONToWriter(d.Out, c.store.GetMonitors())
+		list, err := c.store.GetMonitors()
+		if err != nil {
+			return err
+		}
+		writeJSONToWriter(d.Out, list)
 		return nil
 	}
 	return nil
@@ -210,7 +219,7 @@ func (c *MonitorAddCmd) Run(ctx context.Context, inv *commandkit.Invocation) err
 			m.NotifyOverride = sanitizeNotifyOverride(req.NotifyOverride)
 		}
 		var cfg config.Config
-		if ok, _ := c.store.GetConfig(&cfg); ok && cfg.Network.Enabled && cfg.Network.NodeID != "" {
+		if ok, err := c.store.GetConfig(&cfg); err == nil && ok && cfg.Network.Enabled && cfg.Network.NodeID != "" {
 			m.OwnerNodeID = cfg.Network.NodeID
 		}
 		if err := c.store.SetMonitor(m); err != nil {
@@ -315,7 +324,11 @@ func (c *MonitorUpdateCmd) Run(ctx context.Context, inv *commandkit.Invocation) 
 			return nil
 		}
 		enabled = patch.Enabled
-		m := c.store.GetMonitor(id)
+		m, err := c.store.GetMonitor(id)
+		if err != nil {
+			http.Error(d.W, err.Error(), http.StatusInternalServerError)
+			return nil
+		}
 		if m == nil {
 			http.Error(d.W, "not found", http.StatusNotFound)
 			return nil
@@ -373,7 +386,10 @@ func (c *MonitorUpdateCmd) Run(ctx context.Context, inv *commandkit.Invocation) 
 			b := false
 			enabled = &b
 		}
-		m := c.store.GetMonitor(id)
+		m, err := c.store.GetMonitor(id)
+		if err != nil {
+			return err
+		}
 		if m == nil {
 			return nil
 		}
@@ -400,11 +416,20 @@ func (c *StateGetCmd) Description() string { return "Get all monitor state" }
 
 func (c *StateGetCmd) Run(ctx context.Context, inv *commandkit.Invocation) error {
 	if d := getHTTPData(inv); d != nil {
-		writeJSONTo(d.W, c.store.GetAllState())
+		st, err := c.store.GetAllState()
+		if err != nil {
+			http.Error(d.W, err.Error(), http.StatusInternalServerError)
+			return nil
+		}
+		writeJSONTo(d.W, st)
 		return nil
 	}
 	if d := getCLIData(inv); d != nil {
-		writeJSONToWriter(d.Out, c.store.GetAllState())
+		st, err := c.store.GetAllState()
+		if err != nil {
+			return err
+		}
+		writeJSONToWriter(d.Out, st)
 		return nil
 	}
 	return nil
@@ -427,7 +452,12 @@ func (c *EventsGetCmd) Run(ctx context.Context, inv *commandkit.Invocation) erro
 				limit = n
 			}
 		}
-		writeJSONTo(d.W, c.store.GetEvents(limit))
+		events, err := c.store.GetEvents(limit)
+		if err != nil {
+			http.Error(d.W, err.Error(), http.StatusInternalServerError)
+			return nil
+		}
+		writeJSONTo(d.W, events)
 		return nil
 	}
 	if d := getCLIData(inv); d != nil {
@@ -436,7 +466,11 @@ func (c *EventsGetCmd) Run(ctx context.Context, inv *commandkit.Invocation) erro
 				limit = n
 			}
 		}
-		writeJSONToWriter(d.Out, c.store.GetEvents(limit))
+		events, err := c.store.GetEvents(limit)
+		if err != nil {
+			return err
+		}
+		writeJSONToWriter(d.Out, events)
 		return nil
 	}
 	return nil
@@ -454,13 +488,16 @@ func (c *ConfigGetCmd) Description() string { return "Get config" }
 func (c *ConfigGetCmd) Run(ctx context.Context, inv *commandkit.Invocation) error {
 	if d := getHTTPData(inv); d != nil {
 		var cfg config.Config
-		ok, _ := c.store.GetConfig(&cfg)
+		ok, err := c.store.GetConfig(&cfg)
+		if err != nil {
+			http.Error(d.W, err.Error(), http.StatusInternalServerError)
+			return nil
+		}
 		if !ok {
 			cfg = *config.Default()
-		} else {
-			cfg.Normalize()
 		}
-		writeJSONTo(d.W, cfg)
+		cfg.Normalize()
+		writeJSONTo(d.W, cfg.ToPublic())
 		return nil
 	}
 	return nil
@@ -481,17 +518,35 @@ func (c *ConfigSetCmd) Run(ctx context.Context, inv *commandkit.Invocation) erro
 	if d == nil {
 		return nil
 	}
-	var cfg config.Config
-	if err := json.NewDecoder(d.R.Body).Decode(&cfg); err != nil {
+	var incoming config.Config
+	if err := json.NewDecoder(d.R.Body).Decode(&incoming); err != nil {
 		http.Error(d.W, "invalid JSON", http.StatusBadRequest)
 		return nil
 	}
-	cfg.Normalize()
-	if err := c.store.SetConfig(&cfg); err != nil {
+	var existing config.Config
+	ok, err := c.store.GetConfig(&existing)
+	if err != nil {
 		http.Error(d.W, err.Error(), http.StatusInternalServerError)
 		return nil
 	}
-	*c.cfg = cfg
-	writeJSONTo(d.W, cfg)
+	if !ok {
+		existing = *config.Default()
+	}
+	config.ApplyNonSecret(&existing, &incoming)
+	if err := config.MergeSecrets(&existing, &incoming); err != nil {
+		http.Error(d.W, err.Error(), http.StatusBadRequest)
+		return nil
+	}
+	existing.Normalize()
+	if err := existing.Auth.EnsureAuthHashed(); err != nil {
+		http.Error(d.W, err.Error(), http.StatusInternalServerError)
+		return nil
+	}
+	if err := c.store.SetConfig(&existing); err != nil {
+		http.Error(d.W, err.Error(), http.StatusInternalServerError)
+		return nil
+	}
+	*c.cfg = existing
+	writeJSONTo(d.W, existing.ToPublic())
 	return nil
 }

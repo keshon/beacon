@@ -10,6 +10,7 @@ import (
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/notify"
 	"github.com/keshon/beacon/internal/realtime"
+	"github.com/keshon/beacon/internal/scheduler"
 	"github.com/keshon/beacon/internal/store"
 
 	"github.com/flosch/pongo2/v6"
@@ -23,17 +24,19 @@ type Server struct {
 	store     *store.Store
 	auth      *Auth
 	cfg       *config.Config
+	scheduler *scheduler.Scheduler
 	hub       *realtime.Hub
 	tplDir    string
 	staticDir string
 	testLimit *notify.RateLimiter
 }
 
-func NewServer(s *store.Store, auth *Auth, cfg *config.Config, tplDir, staticDir string, hub *realtime.Hub) *Server {
+func NewServer(s *store.Store, auth *Auth, cfg *config.Config, sch *scheduler.Scheduler, tplDir, staticDir string, hub *realtime.Hub) *Server {
 	return &Server{
 		store:     s,
 		auth:      auth,
 		cfg:       cfg,
+		scheduler: sch,
 		hub:       hub,
 		tplDir:    tplDir,
 		staticDir: staticDir,
@@ -78,7 +81,13 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /settings", s.handleSettings)
 
-	authMw := s.auth.Middleware(s.cfg.Auth.Username, s.cfg.Auth.Password)
+	checkPassword := func(user, pass string) bool {
+		if user != s.cfg.Auth.Username {
+			return false
+		}
+		return s.cfg.Auth.CheckPassword(pass)
+	}
+	authMw := s.auth.Middleware(s.cfg.Auth.Username, checkPassword)
 	h := authMw(mux)
 	if s.staticDir != "" {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

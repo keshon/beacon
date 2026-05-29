@@ -30,13 +30,10 @@ func NewClient(st *store.Store, cfg *config.Config) *Client {
 	}
 }
 
-// Run starts the sync loop. It fetches from each peer and stores the result.
-// The loop keeps running even when network is disabled, re-checking config periodically
-// so that enabling network in Settings takes effect without restart.
+// Run starts the sync loop.
 func (c *Client) Run(ctx context.Context) {
 	checkInterval := 10 * time.Second
 	for {
-		// Re-check config: if disabled or no peers, sleep and re-check
 		if !c.cfg.Network.Enabled || len(c.cfg.Network.Peers) == 0 {
 			select {
 			case <-ctx.Done():
@@ -52,10 +49,8 @@ func (c *Client) Run(ctx context.Context) {
 		}
 		ticker := time.NewTicker(interval)
 
-		// Immediate first sync when network becomes enabled
-		c.syncFromPeers()
+		c.syncFromPeers(ctx)
 
-		// Ticker loop
 	inner:
 		for {
 			select {
@@ -67,13 +62,31 @@ func (c *Client) Run(ctx context.Context) {
 					ticker.Stop()
 					break inner
 				}
-				c.syncFromPeers()
+				c.syncFromPeers(ctx)
 			}
 		}
 	}
 }
 
-func (c *Client) syncFromPeers() {
+func filterValidMonitors(monitors []*monitor.Monitor) []*monitor.Monitor {
+	if len(monitors) == 0 {
+		return nil
+	}
+	out := make([]*monitor.Monitor, 0, len(monitors))
+	for _, m := range monitors {
+		if m == nil {
+			continue
+		}
+		if err := monitor.ValidateTarget(m.Type, m.Target); err != nil {
+			log.Printf("[sync] skip invalid monitor %s: %v", m.Name, err)
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+func (c *Client) syncFromPeers(ctx context.Context) {
 	selfURL := strings.TrimSuffix(c.cfg.Network.SelfURL, "/")
 	for _, peerURL := range c.cfg.Network.Peers {
 		if peerURL == "" {
@@ -86,11 +99,11 @@ func (c *Client) syncFromPeers() {
 		if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 			url = "http://" + url
 		}
-		req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			continue
 		}
-		req.SetBasicAuth(c.cfg.Auth.Username, c.cfg.Auth.Password)
+		req.SetBasicAuth(c.cfg.Auth.Username, syncBasicPassword(c.cfg))
 		resp, err := c.client.Do(req)
 		if err != nil {
 			log.Printf("[sync] peer %s: %v", peerURL, err)
@@ -117,7 +130,7 @@ func (c *Client) syncFromPeers() {
 		data := &store.PeerData{
 			NodeID:    payload.NodeID,
 			PeerURL:   peerURL,
-			Monitors:  payload.Monitors,
+			Monitors:  filterValidMonitors(payload.Monitors),
 			State:     payload.State,
 			LastSeen:  time.Now(),
 			LastError: "",
@@ -133,13 +146,24 @@ func (c *Client) syncFromPeers() {
 	}
 }
 
+// syncBasicPassword is only used for outbound peer requests; empty when hash-only auth.
+func syncBasicPassword(cfg *config.Config) string {
+	if cfg == nil {
+		return ""
+	}
+	return cfg.PlainPasswordForBasic()
+}
+
 func (c *Client) recordSyncError(peerURL, errMsg string) {
-	all := c.store.GetAllPeerData()
+	all, err := c.store.GetAllPeerData()
+	if err != nil {
+		return
+	}
 	normalized := strings.TrimSuffix(peerURL, "/")
 	for _, pd := range all {
 		if strings.TrimSuffix(pd.PeerURL, "/") == normalized {
 			pd.LastError = errMsg
-			c.store.SetPeerData(pd)
+			_ = c.store.SetPeerData(pd)
 			return
 		}
 	}

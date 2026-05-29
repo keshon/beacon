@@ -59,7 +59,17 @@ func (s *Server) apiMonitorUptime(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing id", http.StatusBadRequest)
 		return
 	}
-	if s.store.GetMonitor(id) == nil && s.store.GetState(id) == nil {
+	mon, err := s.store.GetMonitor(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	st, err := s.store.GetState(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if mon == nil && st == nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -69,7 +79,11 @@ func (s *Server) apiMonitorUptime(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
-	samples := s.store.GetUptimeSamples(id, limit)
+	samples, err := s.store.GetUptimeSamples(id, limit)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	type point struct {
 		Time    string `json:"time"`
 		Success bool   `json:"success"`
@@ -101,8 +115,21 @@ func (s *Server) apiConfigSet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) apiHealth(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	type health struct {
+		Status        string `json:"status"`
+		StoreOK       bool   `json:"store_ok"`
+		DroppedChecks uint64 `json:"dropped_checks"`
+	}
+	h := health{Status: "ok", StoreOK: true}
+	if err := s.store.Ping(); err != nil {
+		h.Status = "degraded"
+		h.StoreOK = false
+	}
+	if s.scheduler != nil {
+		h.DroppedChecks = s.scheduler.DroppedChecks()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(h)
 }
 
 func (s *Server) apiSyncExport(w http.ResponseWriter, r *http.Request) {
@@ -110,8 +137,16 @@ func (s *Server) apiSyncExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "network not configured", http.StatusServiceUnavailable)
 		return
 	}
-	monitors := s.store.GetMonitors()
-	state := s.store.GetAllState()
+	monitors, err := s.store.GetMonitors()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	state, err := s.store.GetAllState()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if state == nil {
 		state = make(map[string]*monitor.MonitorState)
 	}
