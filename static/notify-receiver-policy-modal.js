@@ -173,7 +173,8 @@
         ensureModal();
         onSaveCb = onSave;
         currentDelivery = delivery || null;
-        return window.BeaconNotifyPolicy.init(formRoot, initial || {}, {
+        var policy = (window.Beacon && window.Beacon.policy) || window.BeaconNotifyPolicy;
+        return policy.init(formRoot, initial || {}, {
             globalMode: false,
             delivery: currentDelivery,
         }).then(function (pf) {
@@ -182,5 +183,8 @@
         });
     }
 
-    window.BeaconReceiverPolicyModal = { open: open, close: closeModal };
+    var modalAPI = { open: open, close: closeModal };
+    window.Beacon = window.Beacon || {};
+    window.Beacon.policyModal = modalAPI;
+    window.BeaconReceiverPolicyModal = modalAPI;
 })();

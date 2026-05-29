@@ -25,7 +25,7 @@ type Scheduler struct {
 	workers         int
 	defaultInterval time.Duration
 	cfg             *config.Config
-	onCheckRecorded func(store.Event, *monitor.MonitorState)
+	onCheckRecorded func(store.CheckRecord, *monitor.MonitorState)
 	jobs            chan CheckJob
 	wg              sync.WaitGroup
 	inFlight        map[string]struct{}
@@ -33,7 +33,7 @@ type Scheduler struct {
 	droppedChecks   atomic.Uint64
 }
 
-func New(s *store.Store, engine *monitor.Engine, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(store.Event, *monitor.MonitorState)) *Scheduler {
+func New(s *store.Store, engine *monitor.Engine, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(store.CheckRecord, *monitor.MonitorState)) *Scheduler {
 	if defaultInterval <= 0 {
 		defaultInterval = 30 * time.Second
 	}
@@ -243,14 +243,14 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 	}
 	result.MonitorID = m.ID
 
-	ev := store.Event{
+	rec := store.CheckRecord{
 		MonitorID: m.ID,
 		Success:   result.Success,
 		Time:      result.Time,
 		Latency:   result.Latency,
 		Error:     result.Error,
 	}
-	if err := sc.store.AppendEvent(ev); err != nil {
+	if err := sc.store.AppendCheckRecord(rec); err != nil {
 		log.Printf("[scheduler] append event: %v", err)
 	}
 	st, err := sc.store.GetState(m.ID)
@@ -268,7 +268,7 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 	}
 
 	if sc.onCheckRecorded != nil {
-		sc.onCheckRecorded(ev, st)
+		sc.onCheckRecorded(rec, st)
 	}
 
 	log.Printf("[%s] monitor=%s status=%v latency=%v", result.Time.Format("15:04:05"), m.Name, result.Success, result.Latency)

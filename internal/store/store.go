@@ -20,7 +20,8 @@ const (
 	keyPeerData = "peer_data"
 )
 
-type Event struct {
+// CheckRecord is one persisted outcome of a monitor probe (uptime history sample).
+type CheckRecord struct {
 	MonitorID string        `json:"monitor_id"`
 	Success   bool          `json:"success"`
 	Time      time.Time     `json:"time"`
@@ -234,28 +235,28 @@ func (s *Store) SetState(st *monitor.MonitorState) error {
 	return s.stateDS.Set(keyState, state)
 }
 
-func (s *Store) AppendEvent(ev Event) error {
+func (s *Store) AppendCheckRecord(rec CheckRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var events []Event
+	var events []CheckRecord
 	ok, err := s.eventsDS.Get(keyEvents, &events)
 	if err != nil {
 		return fmt.Errorf("read events: %w", err)
 	}
 	if !ok || events == nil {
-		events = make([]Event, 0)
+		events = make([]CheckRecord, 0)
 	}
-	events = append(events, ev)
+	events = append(events, rec)
 	if len(events) > 10000 {
 		events = events[len(events)-10000:]
 	}
 	return s.eventsDS.Set(keyEvents, events)
 }
 
-func (s *Store) GetEvents(limit int) ([]Event, error) {
+func (s *Store) GetCheckRecords(limit int) ([]CheckRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var events []Event
+	var events []CheckRecord
 	ok, err := s.eventsDS.Get(keyEvents, &events)
 	if err != nil {
 		return nil, fmt.Errorf("read events: %w", err)
@@ -274,7 +275,7 @@ func (s *Store) GetEvents(limit int) ([]Event, error) {
 }
 
 // GetUptimeSamples returns the last limit check outcomes for monitorID, oldest first.
-func (s *Store) GetUptimeSamples(monitorID string, limit int) ([]Event, error) {
+func (s *Store) GetUptimeSamples(monitorID string, limit int) ([]CheckRecord, error) {
 	if limit <= 0 {
 		limit = 120
 	}
@@ -284,7 +285,7 @@ func (s *Store) GetUptimeSamples(monitorID string, limit int) ([]Event, error) {
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var events []Event
+	var events []CheckRecord
 	ok, err := s.eventsDS.Get(keyEvents, &events)
 	if err != nil {
 		return nil, fmt.Errorf("read events: %w", err)
@@ -292,7 +293,7 @@ func (s *Store) GetUptimeSamples(monitorID string, limit int) ([]Event, error) {
 	if !ok || events == nil {
 		return nil, nil
 	}
-	out := make([]Event, 0, limit)
+	out := make([]CheckRecord, 0, limit)
 	for i := len(events) - 1; i >= 0 && len(out) < limit; i-- {
 		if events[i].MonitorID == monitorID {
 			out = append(out, events[i])

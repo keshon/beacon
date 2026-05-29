@@ -3,7 +3,7 @@
     <td>
         <div class="monitor-title">{{ row.Monitor.Name }}</div>
         <div class="monitor-meta">
-            {% include "monitor_target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
+            {% include "../monitors/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
             · <code class="text-secondary">{{ row.Monitor.Type }}</code>
         </div>
     </td>

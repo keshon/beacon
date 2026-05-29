@@ -22,7 +22,9 @@
     }
 
     function globalDefaults() {
+        var root = window.Beacon && window.Beacon.notify;
         return (
+            (root && root.globalDefaults) ||
             window.BeaconNotifyGlobalDefaults || {
                 alert_mode: 'repeat',
                 templates: {},
@@ -268,10 +270,13 @@
         });
     }
 
-    window.BeaconNotifyPolicy = {
+    var policyAPI = {
         init: initPolicyForm,
         fetchDefaults: fetchDefaults,
         postNotifyTest: postNotifyTest,
     };
+    window.Beacon = window.Beacon || {};
+    window.Beacon.policy = policyAPI;
+    window.BeaconNotifyPolicy = policyAPI;
 })();
 

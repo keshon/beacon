@@ -14,7 +14,7 @@
             </div>
         </div>
         <div class="monitor-meta dash-card-target text-truncate">
-            {% include "monitor_target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
+            {% include "../monitors/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
             <span class="text-body-tertiary">·</span> <code class="text-secondary">{{ row.Monitor.Type }}</code>
         </div>
     </div>

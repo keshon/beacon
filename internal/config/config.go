@@ -136,6 +136,11 @@ func (d *DiscordConfig) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ParseDiscordReceiversJSON decodes a Discord webhooks JSON field (array, object, or string).
+func ParseDiscordReceiversJSON(data json.RawMessage) ([]DiscordReceiver, error) {
+	return parseDiscordWebhooksJSON(data)
+}
+
 func parseDiscordWebhooksJSON(data json.RawMessage) ([]DiscordReceiver, error) {
 	trimmed := strings.TrimSpace(string(data))
 	if trimmed == "" || trimmed == "null" {
@@ -230,8 +235,8 @@ func (c *Config) Normalize() {
 		c.Network.NodeID = uuid.New().String()
 	}
 
-	c.Telegram.Targets = sanitizeTelegramTargets(c.Telegram.Targets)
-	c.Discord.Webhooks = sanitizeDiscordReceivers(c.Discord.Webhooks)
+	c.Telegram.Targets = SanitizeTelegramTargets(c.Telegram.Targets)
+	c.Discord.Webhooks = SanitizeDiscordReceivers(c.Discord.Webhooks)
 	normalizeNotifications(&c.Notifications)
 }
 
@@ -271,9 +276,9 @@ func capTemplateField(s string) string {
 	return s
 }
 
-// sanitizeTelegramTargets trims whitespace, drops rows missing token or chat,
+// SanitizeTelegramTargets trims whitespace, drops rows missing token or chat,
 // and caps the slice at MaxReceivers.
-func sanitizeTelegramTargets(in []TelegramTarget) []TelegramTarget {
+func SanitizeTelegramTargets(in []TelegramTarget) []TelegramTarget {
 	out := make([]TelegramTarget, 0, len(in))
 	for _, t := range in {
 		token := strings.TrimSpace(t.Token)
@@ -284,7 +289,7 @@ func sanitizeTelegramTargets(in []TelegramTarget) []TelegramTarget {
 		out = append(out, TelegramTarget{
 			Token:  token,
 			ChatID: chat,
-			Policy: sanitizeReceiverPolicy(t.Policy),
+			Policy: SanitizeReceiverPolicy(t.Policy),
 		})
 		if len(out) >= MaxReceivers {
 			break
@@ -293,8 +298,8 @@ func sanitizeTelegramTargets(in []TelegramTarget) []TelegramTarget {
 	return out
 }
 
-// sanitizeDiscordReceivers trims webhooks, drops empty rows, and caps at MaxReceivers.
-func sanitizeDiscordReceivers(in []DiscordReceiver) []DiscordReceiver {
+// SanitizeDiscordReceivers trims webhooks, drops empty rows, and caps at MaxReceivers.
+func SanitizeDiscordReceivers(in []DiscordReceiver) []DiscordReceiver {
 	out := make([]DiscordReceiver, 0, len(in))
 	for _, r := range in {
 		w := strings.TrimSpace(r.Webhook)
@@ -303,7 +308,7 @@ func sanitizeDiscordReceivers(in []DiscordReceiver) []DiscordReceiver {
 		}
 		out = append(out, DiscordReceiver{
 			Webhook: w,
-			Policy:  sanitizeReceiverPolicy(r.Policy),
+			Policy:  SanitizeReceiverPolicy(r.Policy),
 		})
 		if len(out) >= MaxReceivers {
 			break
@@ -312,8 +317,8 @@ func sanitizeDiscordReceivers(in []DiscordReceiver) []DiscordReceiver {
 	return out
 }
 
-// sanitizeReceiverPolicy trims alert policy on a receiver row.
-func sanitizeReceiverPolicy(p *ReceiverPolicy) *ReceiverPolicy {
+// SanitizeReceiverPolicy trims alert policy on a receiver row.
+func SanitizeReceiverPolicy(p *ReceiverPolicy) *ReceiverPolicy {
 	if p == nil {
 		return nil
 	}
@@ -336,7 +341,6 @@ func sanitizeReceiverPolicy(p *ReceiverPolicy) *ReceiverPolicy {
 	return out
 }
 
-// DefaultIntervalDuration returns the global check interval.
 // RememberPlainPassword keeps the cleartext password for outbound Basic auth (peer sync).
 func (c *Config) RememberPlainPassword(password string) {
 	if c == nil {
@@ -356,6 +360,7 @@ func (c *Config) PlainPasswordForBasic() string {
 	return c.Auth.Password
 }
 
+// DefaultIntervalDuration returns the global check interval.
 func (c *Config) DefaultIntervalDuration() time.Duration {
 	if c.DefaultInterval > 0 {
 		return time.Duration(c.DefaultInterval) * time.Second

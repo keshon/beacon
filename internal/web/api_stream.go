@@ -1,10 +1,8 @@
 package web
 
-import (
-	"net/http"
-)
+import "net/http"
 
-func (s *Server) handleStreamChecks(w http.ResponseWriter, r *http.Request) {
+func (s *Server) apiStreamChecks(w http.ResponseWriter, r *http.Request) {
 	if s.hub == nil {
 		http.Error(w, "stream unavailable", http.StatusServiceUnavailable)
 		return

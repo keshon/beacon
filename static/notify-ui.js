@@ -39,7 +39,9 @@
     }
 
     function globalDefaults() {
+        var root = window.Beacon && window.Beacon.notify;
         return (
+            (root && root.globalDefaults) ||
             window.BeaconNotifyGlobalDefaults || {
                 alert_mode: 'repeat',
                 templates: {},
@@ -49,8 +51,9 @@
 
     function loadBuiltins() {
         if (builtinsCache) return Promise.resolve(builtinsCache);
-        if (window.BeaconNotifyPolicy && window.BeaconNotifyPolicy.fetchDefaults) {
-            return window.BeaconNotifyPolicy.fetchDefaults().then(function (d) {
+        var policy = (window.Beacon && window.Beacon.policy) || window.BeaconNotifyPolicy;
+        if (policy && policy.fetchDefaults) {
+            return policy.fetchDefaults().then(function (d) {
                 builtinsCache = d;
                 return d;
             });
@@ -227,7 +230,8 @@
     };
 
     NotifyList.prototype.editPolicy = function (row) {
-        if (!window.BeaconReceiverPolicyModal) return;
+        var modal = (window.Beacon && window.Beacon.policyModal) || window.BeaconReceiverPolicyModal;
+        if (!modal) return;
         var data = readRow(this.channel, row);
         var delivery = { channel: this.channel };
         if (this.channel === 'telegram') {
@@ -235,7 +239,7 @@
         } else {
             delivery.discord = { webhook: data.webhook };
         }
-        window.BeaconReceiverPolicyModal.open(
+        modal.open(
             readRowPolicy(row),
             delivery,
             function (policy) {
@@ -315,17 +319,20 @@
     }
 
     function setGlobalDefaults(notifications) {
-        window.BeaconNotifyGlobalDefaults = notifications || {
-            alert_mode: 'repeat',
-            templates: {},
-        };
+        var defs = notifications || { alert_mode: 'repeat', templates: {} };
+        window.Beacon = window.Beacon || { notify: {} };
+        window.Beacon.notify.globalDefaults = defs;
+        window.BeaconNotifyGlobalDefaults = defs;
         document.querySelectorAll('.notify-row').forEach(updateRowMeta);
     }
 
-    window.BeaconNotify = {
+    var notifyAPI = {
         MAX_RECEIVERS: MAX_RECEIVERS,
         init: init,
         setGlobalDefaults: setGlobalDefaults,
         updateRowMeta: updateRowMeta,
     };
+    window.Beacon = window.Beacon || {};
+    window.Beacon.notify = Object.assign(window.Beacon.notify || {}, notifyAPI);
+    window.BeaconNotify = notifyAPI;
 })();

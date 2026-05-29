@@ -1,0 +1,252 @@
+{% extends "../base.html" %}
+{% block title %}Dashboard – Beacon{% endblock %}
+{% block content %}
+<div class="container-fluid app-page px-3 px-lg-4 py-3">
+    <div class="app-page-toolbar anim-fadeup">
+        <div class="app-page-toolbar-start">
+            <h1 class="app-page-title mb-0">Dashboard</h1>
+            <p class="app-page-subtitle mb-0 d-none d-md-block">Live status · cards, list, or table</p>
+        </div>
+        <div class="app-page-toolbar-actions">
+            {% if rows %}
+            <div class="btn-group dashboard-view-toggle" role="group" aria-label="Dashboard layout">
+                <button type="button" class="btn btn-sm btn-outline-secondary dashboard-view-btn" data-dashboard-view="cards" title="Cards">
+                    <i class="bi bi-grid-3x2-gap"></i><span class="d-none d-sm-inline ms-1">Cards</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary dashboard-view-btn" data-dashboard-view="list" title="List">
+                    <i class="bi bi-list-ul"></i><span class="d-none d-sm-inline ms-1">List</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary dashboard-view-btn" data-dashboard-view="table" title="Table">
+                    <i class="bi bi-table"></i><span class="d-none d-sm-inline ms-1">Table</span>
+                </button>
+            </div>
+            {% endif %}
+            <a href="/monitors" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg"></i><span class="d-none d-sm-inline ms-1">Add monitor</span>
+            </a>
+        </div>
+    </div>
+
+    {% if networkEnabled and networkNodes %}
+    <section class="app-panel anim-fadeup anim-delay-1 mb-3">
+        <div class="app-panel-header">
+            <span class="app-panel-title">Network</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover app-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Node</th>
+                        <th>URL</th>
+                        <th>Status</th>
+                        <th>Last seen</th>
+                        <th>Monitors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in networkNodes %}
+                    <tr>
+                        <td><code class="app-code">{{ n.NodeID }}</code></td>
+                        <td>
+                            <div class="monitor-meta">
+                                <a href="{{ n.URL }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ n.URL }}</a>
+                            </div>
+                        </td>
+                        <td>
+                            {% if n.Status == 'self' %}
+                            <span class="badge rounded-pill badge-self"><span class="dot"></span>Self</span>
+                            {% elif n.Status == 'live' %}
+                            <span class="badge rounded-pill badge-live"><span class="dot"></span>Live</span>
+                            {% elif n.Status == 'dead' %}
+                            <span class="badge rounded-pill badge-dead"><span class="dot"></span>Dead</span>
+                            {% else %}
+                            <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-body-tertiary app-metric">{{ n.LastSeen }}</td>
+                        <td class="text-body-secondary app-metric">{{ n.MonitorsCount }}</td>
+                    </tr>
+                    {% if n.LastError %}
+                    <tr>
+                        <td colspan="5" class="table-alert-cell">
+                            <i class="bi bi-exclamation-circle me-1"></i>{{ n.LastError }}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if rows %}
+    <div id="dashboardViews" class="dashboard-views anim-fadeup anim-delay-2">
+        <div class="dashboard-view dashboard-view-cards" data-dashboard-view-panel="cards">
+            <div class="dash-card-grid">
+                {% for row in rows %}
+                {% include "card.html" with row=row %}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="dashboard-view dashboard-view-list" data-dashboard-view-panel="list">
+            <div class="dash-list">
+                {% for row in rows %}
+                {% include "list_row.html" with row=row %}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="dashboard-view dashboard-view-table" data-dashboard-view-panel="table">
+            <section class="app-panel">
+                <div class="app-panel-header">
+                    <span class="app-panel-title">Monitors</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover app-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Monitor</th>
+                                <th>Source</th>
+                                <th class="uptime-col">Recent</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                                <th>Last check</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows %}
+                            {% include "table_row.html" with row=row %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+    {% else %}
+    <div class="app-panel empty-panel anim-fadeup anim-delay-2">
+        <div class="empty-state py-5">
+            <div class="empty-icon"><i class="bi bi-activity"></i></div>
+            <p>No monitors yet. <a href="/monitors">Add one</a> to get started.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    (function () {
+        var MAX = 45;
+        function barEl(ok) {
+            var d = document.createElement("span");
+            d.className = "uptime-seg " + (ok ? "uptime-seg-up" : "uptime-seg-down");
+            d.setAttribute("aria-hidden", "true");
+            return d;
+        }
+        function statusBadgeHtml(status) {
+            var labels = { up: "Up", down: "Down", unknown: "Unknown" };
+            var classes = { up: "badge-up", down: "badge-down", unknown: "badge-unknown" };
+            var s = status && classes[status] ? status : "unknown";
+            return (
+                '<span class="badge rounded-pill ' +
+                classes[s] +
+                '"><span class="dot"></span>' +
+                (labels[s] || labels.unknown) +
+                "</span>"
+            );
+        }
+        function trim(strip) {
+            while (strip.children.length > MAX) {
+                strip.removeChild(strip.firstChild);
+            }
+        }
+        function render(strip, points) {
+            strip.textContent = "";
+            for (var i = 0; i < points.length; i++) {
+                strip.appendChild(barEl(points[i].success));
+            }
+            trim(strip);
+        }
+        function updateRowFromSSE(data) {
+            if (!data.monitor_id) return;
+            document.querySelectorAll('[data-dashboard-monitor="' + data.monitor_id + '"]').forEach(function (root) {
+                var lat = root.querySelector(".dashboard-latency");
+                var lc = root.querySelector(".dashboard-lastcheck");
+                var stCell = root.querySelector(".dashboard-status");
+                if (lat && data.latency_ms != null) lat.textContent = data.latency_ms;
+                if (lc && data.last_check != null) lc.textContent = data.last_check;
+                if (stCell && data.status) stCell.innerHTML = statusBadgeHtml(data.status);
+                var strip = root.querySelector('.uptime-strip[data-monitor-id="' + data.monitor_id + '"]');
+                if (strip) {
+                    strip.appendChild(barEl(!!data.success));
+                    trim(strip);
+                }
+            });
+        }
+        var strips = document.querySelectorAll(".uptime-strip[data-monitor-id]");
+        if (strips.length) {
+            var seen = Object.create(null);
+            var loads = [];
+            Array.prototype.forEach.call(strips, function (strip) {
+                var id = strip.getAttribute("data-monitor-id");
+                if (!id || seen[id]) return;
+                seen[id] = true;
+                loads.push(
+                    fetch("/api/monitors/" + encodeURIComponent(id) + "/uptime?limit=" + MAX)
+                        .then(function (r) {
+                            if (!r.ok) throw new Error("uptime");
+                            return r.json();
+                        })
+                        .then(function (pts) {
+                            document.querySelectorAll('.uptime-strip[data-monitor-id="' + id + '"]').forEach(function (s) {
+                                render(s, pts);
+                            });
+                        })
+                        .catch(function () {})
+                );
+            });
+            Promise.all(loads).then(function () {
+                var es = new EventSource("/api/stream/checks");
+                es.onmessage = function (ev) {
+                    try {
+                        var data = JSON.parse(ev.data);
+                        updateRowFromSSE(data);
+                    } catch (e) {}
+                };
+            });
+        }
+
+        if (!document.getElementById("dashboardViews")) return;
+
+        var storageKey = "beaconDashboardView";
+        var buttons = document.querySelectorAll(".dashboard-view-btn");
+        if (!buttons.length) return;
+
+        function setView(mode) {
+            if (mode === "grid") mode = "list";
+            if (mode !== "cards" && mode !== "list" && mode !== "table") mode = "cards";
+            document.documentElement.setAttribute("data-dashboard-view", mode);
+            try {
+                localStorage.setItem(storageKey, mode);
+            } catch (e) {}
+        }
+
+        var initial = document.documentElement.getAttribute("data-dashboard-view");
+        if (initial !== "list" && initial !== "table" && initial !== "cards") {
+            initial = "cards";
+            try {
+                var saved = localStorage.getItem(storageKey);
+                if (saved === "grid") saved = "list";
+                if (saved === "list" || saved === "table" || saved === "cards") initial = saved;
+            } catch (e) {}
+        }
+        setView(initial);
+
+        buttons.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                setView(btn.getAttribute("data-dashboard-view"));
+            });
+        });
+    })();
+</script>
+{% endblock %}

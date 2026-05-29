@@ -35,7 +35,7 @@ func (a *Auth) CreateSession(username string) (string, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.pruneSessionsLocked()
-	sid, err := randomID()
+	sid, err := randomSessionID()
 	if err != nil {
 		return "", err
 	}

@@ -8,24 +8,11 @@ import (
 	"github.com/keshon/beacon/internal/config"
 )
 
-// TelegramTarget mirrors config.TelegramTarget for per-monitor overrides.
-type TelegramTarget struct {
-	Token  string                 `json:"token,omitempty"`
-	ChatID string                 `json:"chat_id,omitempty"`
-	Policy *config.ReceiverPolicy `json:"policy,omitempty"`
-}
-
-// DiscordReceiver mirrors config.DiscordReceiver for per-monitor overrides.
-type DiscordReceiver struct {
-	Webhook string                 `json:"webhook,omitempty"`
-	Policy  *config.ReceiverPolicy `json:"policy,omitempty"`
-}
-
 // NotifyOverride holds per-monitor notification overrides. When a slice is
 // non-empty it fully replaces the matching global channel.
 type NotifyOverride struct {
-	Telegram  []TelegramTarget         `json:"telegram,omitempty"`
-	Discord   []DiscordReceiver        `json:"discord,omitempty"`
+	Telegram  []config.TelegramTarget  `json:"telegram,omitempty"`
+	Discord   []config.DiscordReceiver `json:"discord,omitempty"`
 	AlertMode string                   `json:"alert_mode,omitempty"` // deprecated; migrated to row policy
 	Templates *config.MessageTemplates `json:"templates,omitempty"`  // deprecated; migrated to row policy
 }
@@ -34,9 +21,9 @@ type NotifyOverride struct {
 func (n *NotifyOverride) UnmarshalJSON(data []byte) error {
 	*n = NotifyOverride{}
 	var raw struct {
-		Telegram  json.RawMessage        `json:"telegram"`
-		Discord   json.RawMessage        `json:"discord"`
-		AlertMode string                 `json:"alert_mode"`
+		Telegram  json.RawMessage          `json:"telegram"`
+		Discord   json.RawMessage          `json:"discord"`
+		AlertMode string                   `json:"alert_mode"`
 		Templates *config.MessageTemplates `json:"templates"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -51,17 +38,17 @@ func (n *NotifyOverride) UnmarshalJSON(data []byte) error {
 				return err
 			}
 		} else if trimmed != "null" {
-			var single TelegramTarget
+			var single config.TelegramTarget
 			if err := json.Unmarshal(raw.Telegram, &single); err != nil {
 				return err
 			}
 			if single.Token != "" || single.ChatID != "" {
-				n.Telegram = []TelegramTarget{single}
+				n.Telegram = []config.TelegramTarget{single}
 			}
 		}
 	}
 	if len(raw.Discord) > 0 {
-		parsed, err := parseOverrideDiscordJSON(raw.Discord)
+		parsed, err := config.ParseDiscordReceiversJSON(raw.Discord)
 		if err != nil {
 			return err
 		}
@@ -71,59 +58,6 @@ func (n *NotifyOverride) UnmarshalJSON(data []byte) error {
 	}
 	MigrateNotifyOverride(n)
 	return nil
-}
-
-func parseOverrideDiscordJSON(data json.RawMessage) ([]DiscordReceiver, error) {
-	trimmed := strings.TrimSpace(string(data))
-	if trimmed == "" || trimmed == "null" {
-		return nil, nil
-	}
-	if strings.HasPrefix(trimmed, "{") {
-		var single struct {
-			Webhook string `json:"webhook"`
-		}
-		if err := json.Unmarshal(data, &single); err != nil {
-			return nil, err
-		}
-		if single.Webhook == "" {
-			return nil, nil
-		}
-		return []DiscordReceiver{{Webhook: single.Webhook}}, nil
-	}
-	if !strings.HasPrefix(trimmed, "[") {
-		return nil, nil
-	}
-	var elems []json.RawMessage
-	if err := json.Unmarshal(data, &elems); err != nil {
-		return nil, err
-	}
-	out := make([]DiscordReceiver, 0, len(elems))
-	for _, elem := range elems {
-		r, err := parseOverrideDiscordElement(elem)
-		if err != nil {
-			return nil, err
-		}
-		if r.Webhook != "" {
-			out = append(out, r)
-		}
-	}
-	return out, nil
-}
-
-func parseOverrideDiscordElement(data json.RawMessage) (DiscordReceiver, error) {
-	trimmed := strings.TrimSpace(string(data))
-	if strings.HasPrefix(trimmed, "\"") {
-		var s string
-		if err := json.Unmarshal(data, &s); err != nil {
-			return DiscordReceiver{}, err
-		}
-		return DiscordReceiver{Webhook: s}, nil
-	}
-	var r DiscordReceiver
-	if err := json.Unmarshal(data, &r); err != nil {
-		return DiscordReceiver{}, err
-	}
-	return r, nil
 }
 
 type Monitor struct {

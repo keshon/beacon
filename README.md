@@ -271,18 +271,25 @@ go test ./...
 ## Project layout
 
 ```
-cmd/beacon/          Entry point
+cmd/beacon/              Entry point
 internal/
-  checks/            HTTP and TCP probes
-  config/            Configuration handling
-  monitor/           Core monitor logic
-  notify/            Notifications
-  scheduler/         Job scheduling
-  store/             Persistence layer
-  sync/              Multi-instance sync
-  web/               HTTP server and API
-templates/           Web UI templates
-static/              CSS and JS
+  checks/                HTTP and TCP probes
+  commands/              CLI + API command handlers (split by domain)
+  config/                Configuration and receiver types
+  monitor/               Monitors, state, notify overrides
+  notify/                Telegram/Discord delivery
+  scheduler/             Check scheduling
+  store/                 Persistence (CheckRecord history)
+  sync/                  Multi-instance sync
+  web/                   Pages (page*) and JSON API (api*)
+templates/
+  dashboard/             Dashboard page and row partials
+  monitors/              Monitors page and form partials
+  settings/              Settings page
+  partials/              Shared head fragments
+  base.html, login.html  Root layouts
+static/                  beacon.js namespace + notify UI modules
+docs/REMAINING.md        Follow-up naming/structure backlog
 ```
 
 ## License

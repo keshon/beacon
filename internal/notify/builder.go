@@ -56,22 +56,9 @@ func discordReceiverKey(webhook string) string {
 	return "discord:" + w
 }
 
-// telegramTargets resolves Telegram destinations for one monitor.
 func telegramTargets(cfg *config.Config, m *monitor.Monitor) []config.TelegramTarget {
 	if m != nil && m.NotifyOverride != nil && len(m.NotifyOverride.Telegram) > 0 {
-		out := make([]config.TelegramTarget, 0, len(m.NotifyOverride.Telegram))
-		for _, t := range m.NotifyOverride.Telegram {
-			token := strings.TrimSpace(t.Token)
-			chat := strings.TrimSpace(t.ChatID)
-			if token != "" && chat != "" {
-				out = append(out, config.TelegramTarget{
-					Token:  token,
-					ChatID: chat,
-					Policy: t.Policy,
-				})
-			}
-		}
-		return out
+		return m.NotifyOverride.Telegram
 	}
 	if cfg != nil && cfg.Telegram.Enabled {
 		return cfg.Telegram.Targets
@@ -79,20 +66,9 @@ func telegramTargets(cfg *config.Config, m *monitor.Monitor) []config.TelegramTa
 	return nil
 }
 
-// discordReceivers resolves Discord destinations for one monitor.
 func discordReceivers(cfg *config.Config, m *monitor.Monitor) []config.DiscordReceiver {
 	if m != nil && m.NotifyOverride != nil && len(m.NotifyOverride.Discord) > 0 {
-		out := make([]config.DiscordReceiver, 0, len(m.NotifyOverride.Discord))
-		for _, d := range m.NotifyOverride.Discord {
-			w := strings.TrimSpace(d.Webhook)
-			if w != "" {
-				out = append(out, config.DiscordReceiver{
-					Webhook: w,
-					Policy:  d.Policy,
-				})
-			}
-		}
-		return out
+		return m.NotifyOverride.Discord
 	}
 	if cfg != nil && cfg.Discord.Enabled {
 		return cfg.Discord.Webhooks

@@ -40,7 +40,7 @@ func (h *Hub) Register(buf int) (ch <-chan []byte, unregister func()) {
 
 // BroadcastCheck notifies subscribers of a completed check (non-blocking per client).
 // st is the persisted monitor state after the check (may be nil only if caller passes nil).
-func (h *Hub) BroadcastCheck(ev store.Event, st *monitor.MonitorState) {
+func (h *Hub) BroadcastCheck(rec store.CheckRecord, st *monitor.MonitorState) {
 	status := monitor.StatusUnknown
 	latencyMs := "—"
 	lastCheck := "—"
@@ -62,9 +62,9 @@ func (h *Hub) BroadcastCheck(ev store.Event, st *monitor.MonitorState) {
 		LastCheck string `json:"last_check"`
 	}
 	payload, err := json.Marshal(wire{
-		MonitorID: ev.MonitorID,
-		Success:   ev.Success,
-		Time:      ev.Time.UTC().Format(time.RFC3339Nano),
+		MonitorID: rec.MonitorID,
+		Success:   rec.Success,
+		Time:      rec.Time.UTC().Format(time.RFC3339Nano),
 		Status:    status,
 		LatencyMs: latencyMs,
 		LastCheck: lastCheck,

@@ -1,12 +1,23 @@
 package web
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"net/http"
 
 	"github.com/flosch/pongo2/v6"
 )
 
-func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
+func randomSessionID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate session id: %w", err)
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func (s *Server) pageLoginForm(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(sessionCookie)
 	if cookie != nil && s.auth.GetSession(cookie.Value) != nil {
 		http.Redirect(w, r, "/dashboard", http.StatusFound)
@@ -15,7 +26,7 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "login.html", pongo2.Context{})
 }
 
-func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+func (s *Server) pageLogin(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	user := r.FormValue("username")
 	pass := r.FormValue("password")
@@ -40,7 +51,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
-func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+func (s *Server) pageLogout(w http.ResponseWriter, r *http.Request) {
 	if c, _ := r.Cookie(sessionCookie); c != nil {
 		s.auth.DeleteSession(c.Value)
 	}

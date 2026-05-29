@@ -12,7 +12,7 @@ import (
 	"github.com/flosch/pongo2/v6"
 )
 
-func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
+func (s *Server) pageDashboard(w http.ResponseWriter, r *http.Request) {
 	type dashboardRow struct {
 		Monitor      *monitor.Monitor
 		State        *monitor.MonitorState
@@ -68,7 +68,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		deadTimeout := time.Duration(s.cfg.Network.DeadTimeout) * time.Second
 		for _, pd := range peerData {
 			if time.Since(pd.LastSeen) < deadTimeout {
-				sourceLabel := shortURL(pd.PeerURL)
+				sourceLabel := peerDisplayName(pd.PeerURL)
 				for _, m := range pd.Monitors {
 					st := pd.State[m.ID]
 					if st == nil {
@@ -101,8 +101,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	networkNodes := s.buildNetworkNodes()
-	s.render(w, "dashboard.html", pongo2.Context{
-		"version":        getBuildVersion(),
+	s.render(w, "dashboard/dashboard.html", pongo2.Context{
+		"version":        buildVersion(),
 		"nav_active":     "dashboard",
 		"rows":           rows,
 		"networkNodes":   networkNodes,
@@ -110,7 +110,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func shortURL(url string) string {
+func peerDisplayName(url string) string {
 	url = strings.TrimPrefix(url, "https://")
 	url = strings.TrimPrefix(url, "http://")
 	url = strings.TrimSuffix(url, "/")
@@ -120,7 +120,7 @@ func shortURL(url string) string {
 	return url
 }
 
-func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
+func (s *Server) pageMonitors(w http.ResponseWriter, r *http.Request) {
 	monitors, err := s.store.GetMonitors()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -158,16 +158,16 @@ func (s *Server) handleMonitors(w http.ResponseWriter, r *http.Request) {
 			NotifyJSON:       string(buf),
 		})
 	}
-	s.render(w, "monitors.html", pongo2.Context{
-		"version":    getBuildVersion(),
+	s.render(w, "monitors/monitors.html", pongo2.Context{
+		"version":    buildVersion(),
 		"nav_active": "monitors",
 		"monitors":   rows,
 	})
 }
 
-func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "settings.html", pongo2.Context{
-		"version":    getBuildVersion(),
+func (s *Server) pageSettings(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "settings/settings.html", pongo2.Context{
+		"version":    buildVersion(),
 		"nav_active": "settings",
 	})
 }

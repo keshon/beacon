@@ -47,13 +47,13 @@ func NewServer(s *store.Store, auth *Auth, cfg *config.Config, sch *scheduler.Sc
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
-	// Static-ish: login doesn't need auth
-	mux.HandleFunc("GET /login", s.handleLoginForm)
-	mux.HandleFunc("POST /login", s.handleLogin)
-	mux.HandleFunc("GET /logout", s.handleLogout)
+	mux.HandleFunc("GET /login", s.pageLoginForm)
+	mux.HandleFunc("POST /login", s.pageLogin)
+	mux.HandleFunc("GET /logout", s.pageLogout)
 
-	mux.HandleFunc("GET /dashboard", s.handleDashboard)
-	mux.HandleFunc("GET /monitors", s.handleMonitors)
+	mux.HandleFunc("GET /dashboard", s.pageDashboard)
+	mux.HandleFunc("GET /monitors", s.pageMonitors)
+	mux.HandleFunc("GET /settings", s.pageSettings)
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -62,15 +62,14 @@ func (s *Server) Routes() http.Handler {
 		http.Redirect(w, r, "/dashboard", http.StatusFound)
 	})
 
-	// API
-	mux.HandleFunc("GET /api/monitors", s.apiMonitors)
-	mux.HandleFunc("POST /api/monitors", s.apiCreateMonitor)
-	mux.HandleFunc("DELETE /api/monitors/{id}", s.apiDeleteMonitor)
-	mux.HandleFunc("PATCH /api/monitors/{id}", s.apiUpdateMonitor)
+	mux.HandleFunc("GET /api/monitors", s.apiMonitorList)
+	mux.HandleFunc("POST /api/monitors", s.apiMonitorCreate)
+	mux.HandleFunc("DELETE /api/monitors/{id}", s.apiMonitorDelete)
+	mux.HandleFunc("PATCH /api/monitors/{id}", s.apiMonitorUpdate)
 	mux.HandleFunc("GET /api/monitors/{id}/uptime", s.apiMonitorUptime)
-	mux.HandleFunc("GET /api/stream/checks", s.handleStreamChecks)
-	mux.HandleFunc("GET /api/state", s.apiState)
-	mux.HandleFunc("GET /api/events", s.apiEvents)
+	mux.HandleFunc("GET /api/stream/checks", s.apiStreamChecks)
+	mux.HandleFunc("GET /api/state", s.apiStateGet)
+	mux.HandleFunc("GET /api/events", s.apiCheckRecords)
 	mux.HandleFunc("GET /api/config", s.apiConfigGet)
 	mux.HandleFunc("PUT /api/config", s.apiConfigSet)
 	mux.HandleFunc("POST /api/notify/test", s.apiNotifyTest)
@@ -78,8 +77,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/sync/export", s.apiSyncExport)
 	mux.HandleFunc("GET /api/health", s.apiHealth)
 	mux.HandleFunc("GET /api/network/status", s.apiNetworkStatus)
-
-	mux.HandleFunc("GET /settings", s.handleSettings)
 
 	checkPassword := func(user, pass string) bool {
 		if user != s.cfg.Auth.Username {

@@ -131,7 +131,7 @@ func mergeTelegramTargets(existing, incoming []TelegramTarget) []TelegramTarget 
 		out = append(out, TelegramTarget{
 			Token:  token,
 			ChatID: chat,
-			Policy: sanitizeReceiverPolicy(t.Policy),
+			Policy: SanitizeReceiverPolicy(t.Policy),
 		})
 		if len(out) >= MaxReceivers {
 			break
@@ -152,7 +152,7 @@ func mergeDiscordWebhooks(existing, incoming []DiscordReceiver) []DiscordReceive
 		}
 		out = append(out, DiscordReceiver{
 			Webhook: webhook,
-			Policy:  sanitizeReceiverPolicy(w.Policy),
+			Policy:  SanitizeReceiverPolicy(w.Policy),
 		})
 		if len(out) >= MaxReceivers {
 			break
