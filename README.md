@@ -196,7 +196,7 @@ Legacy flat `notify_override` arrays (e.g. `{ "telegram": [...] }`) are migrated
 
 ### HTTP monitor options
 
-For HTTP monitors, expand **HTTP options** to set Basic Auth credentials (stored server-side; password is never shown in the UI after save) and an optional response **keyword** (must appear in the body, or enable **Must not contain** to invert).
+For HTTP monitors, expand **HTTP options** to set Basic Auth credentials (stored server-side; password is never shown in the UI after save) and an optional response **keyword** (must appear in the body, or enable **Must not contain** to invert). Multi-word keywords match when all words appear in order; spacing and HTML between words is ignored (e.g. `hello world` matches `hello <b>world</b>`).
 
 ## Multi-instance sync
 

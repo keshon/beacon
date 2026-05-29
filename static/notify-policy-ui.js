@@ -243,7 +243,11 @@
             (modeSelect.closest('[data-policy-alert-mode-row]') ||
                 modeSelect.closest('.col-md-6') ||
                 modeSelect.closest('.col-md-4'));
-        if (modeRow) modeRow.classList.toggle('d-none', hideAlertMode);
+        if (modeRow) {
+            modeRow.classList.toggle('invisible', hideAlertMode);
+            modeRow.setAttribute('aria-hidden', hideAlertMode ? 'true' : 'false');
+        }
+        if (modeSelect) modeSelect.disabled = hideAlertMode;
         var tplDown = root.querySelector('[data-policy-template="down"]');
         var tplRecovered = root.querySelector('[data-policy-template="recovered"]');
         var resetAll = root.querySelector('[data-policy-reset-all]');

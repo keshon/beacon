@@ -18,22 +18,27 @@ func TestHTTPCheck_rejectsURLUserinfo(t *testing.T) {
 }
 
 func TestMatchHTTPKeyword(t *testing.T) {
-	body := []byte("hello world")
 	tests := []struct {
 		name    string
+		body    string
 		keyword string
 		invert  bool
 		wantErr string
 	}{
-		{name: "empty keyword", keyword: "", wantErr: ""},
-		{name: "found", keyword: "world", wantErr: ""},
-		{name: "missing", keyword: "missing", wantErr: "keyword not found"},
-		{name: "invert ok", keyword: "missing", invert: true, wantErr: ""},
-		{name: "invert fail", keyword: "world", invert: true, wantErr: "forbidden keyword"},
+		{name: "empty keyword", body: "hello world", keyword: "", wantErr: ""},
+		{name: "found single word", body: "hello world", keyword: "world", wantErr: ""},
+		{name: "found exact phrase", body: "hello world", keyword: "hello world", wantErr: ""},
+		{name: "found phrase extra spaces", body: "hello   world", keyword: "hello world", wantErr: ""},
+		{name: "found phrase html between words", body: "hello <b>world</b>", keyword: "hello world", wantErr: ""},
+		{name: "found phrase newline", body: "hello\nworld", keyword: "hello world", wantErr: ""},
+		{name: "missing", body: "hello world", keyword: "missing", wantErr: "keyword not found"},
+		{name: "missing phrase wrong order", body: "world hello", keyword: "hello world", wantErr: "keyword not found"},
+		{name: "invert ok", body: "hello world", keyword: "missing", invert: true, wantErr: ""},
+		{name: "invert fail", body: "hello world", keyword: "world", invert: true, wantErr: "forbidden keyword"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := matchHTTPKeyword(body, tc.keyword, tc.invert)
+			err := matchHTTPKeyword([]byte(tc.body), tc.keyword, tc.invert)
 			if tc.wantErr == "" {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -44,6 +49,15 @@ func TestMatchHTTPKeyword(t *testing.T) {
 				t.Fatalf("want error containing %q, got %v", tc.wantErr, err)
 			}
 		})
+	}
+}
+
+func TestBodyContainsKeyword(t *testing.T) {
+	if !bodyContainsKeyword([]byte("a  b  c"), "a b c") {
+		t.Fatal("expected flexible phrase match")
+	}
+	if bodyContainsKeyword([]byte("abc"), "a b") {
+		t.Fatal("should not match non-contiguous letters as words")
 	}
 }
 

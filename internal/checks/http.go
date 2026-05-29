@@ -137,7 +137,7 @@ func matchHTTPKeyword(body []byte, keyword string, invert bool) error {
 	if keyword == "" {
 		return nil
 	}
-	contains := bytes.Contains(body, []byte(keyword))
+	contains := bodyContainsKeyword(body, keyword)
 	if invert {
 		if contains {
 			return fmt.Errorf("forbidden keyword found in response")
@@ -148,4 +148,59 @@ func matchHTTPKeyword(body []byte, keyword string, invert bool) error {
 		return fmt.Errorf("keyword not found in response")
 	}
 	return nil
+}
+
+// bodyContainsKeyword reports whether keyword appears in body.
+// Single tokens use exact substring match. Multi-word phrases also match when
+// all words appear in order with arbitrary content (whitespace, HTML tags, etc.) between them.
+func bodyContainsKeyword(body []byte, keyword string) bool {
+	keyword = strings.TrimSpace(keyword)
+	if keyword == "" {
+		return true
+	}
+	if bytes.Contains(body, []byte(keyword)) {
+		return true
+	}
+	parts := strings.Fields(keyword)
+	if len(parts) <= 1 {
+		return false
+	}
+	return bodyContainsWordSequence(body, parts)
+}
+
+func bodyContainsWordSequence(body []byte, words []string) bool {
+	pos := 0
+	for i, word := range words {
+		if word == "" {
+			continue
+		}
+		idx := bytes.Index(body[pos:], []byte(word))
+		if idx < 0 {
+			return false
+		}
+		wordStart := pos + idx
+		if i > 0 && !keywordWordGapOK(body[pos:wordStart]) {
+			return false
+		}
+		pos = wordStart + len(word)
+	}
+	return true
+}
+
+// keywordWordGapOK requires a non-alphanumeric separator between phrase words
+// so "a b" does not match inside "abc".
+func keywordWordGapOK(gap []byte) bool {
+	if len(gap) == 0 {
+		return false
+	}
+	for _, b := range gap {
+		if !isASCIILetterOrDigit(b) {
+			return true
+		}
+	}
+	return false
+}
+
+func isASCIILetterOrDigit(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9')
 }
