@@ -1,10 +1,11 @@
-// Shared UI helpers for Telegram / Discord notification receivers.
-// Used by /settings (global config) and /monitors (per-monitor overrides).
+// Notification receivers UI: settings lists + monitor override tri-state panels.
 (function () {
     'use strict';
 
     var MAX_RECEIVERS = 5;
     var builtinsCache = null;
+    var MODES = ['inherit', 'off', 'custom'];
+    var MODE_LABELS = { inherit: 'Global', off: 'Off', custom: 'Custom' };
 
     function el(html) {
         var tpl = document.createElement('template');
@@ -92,12 +93,12 @@
         return hasMode || hasTpl;
     }
 
-    function updateRowMeta(row) {
+    function updateRowMeta(row, channel) {
         var meta = row.querySelector('[data-notify-meta]');
         if (!meta) return;
         var inherited = !rowHasPolicy(row);
         effectivePolicy(readRowPolicy(row)).then(function (eff) {
-            var modeLabel = eff.mode === 'once' ? 'Once' : 'Repeat';
+            var modeLabel = channel === 'email' ? 'Once' : eff.mode === 'once' ? 'Once' : 'Repeat';
             var tplLabel = eff.custom ? 'Custom' : 'Standard';
             var tplClass = eff.custom ? ' notify-row-meta__templates--custom' : '';
             meta.classList.toggle('notify-row-meta--inherited', inherited && !eff.custom);
@@ -126,82 +127,154 @@
         );
     }
 
-    function applyRowValue(row, value) {
+    function applyRowValue(row, value, channel) {
         value = value || {};
         if (value.policy) {
             writeRowPolicy(row, value.policy);
         }
-        updateRowMeta(row);
+        updateRowMeta(row, channel);
     }
 
-    function buildTelegramRow(value) {
-        value = value || {};
-        var row = el(
-            '<div class="notify-row notify-row--telegram">' +
-                '<div class="notify-row__fields">' +
-                '<input type="text" class="form-control" data-notify-field="token" placeholder="Bot token" />' +
-                '<input type="text" class="form-control" data-notify-field="chat_id" placeholder="Chat ID" />' +
-                '</div>' +
-                rowActionsHtml() +
-                '</div>'
-        );
-        row.querySelector('[data-notify-field="token"]').value = value.token || '';
-        row.querySelector('[data-notify-field="chat_id"]').value = value.chat_id || '';
-        applyRowValue(row, value);
-        return row;
-    }
-
-    function buildDiscordRow(value) {
-        value = value || {};
-        var row = el(
-            '<div class="notify-row notify-row--discord">' +
-                '<input type="text" class="form-control notify-row__field-main" data-notify-field="webhook" placeholder="Webhook URL" />' +
-                rowActionsHtml() +
-                '</div>'
-        );
-        row.querySelector('[data-notify-field="webhook"]').value = value.webhook || '';
-        applyRowValue(row, value);
-        return row;
-    }
-
-    function readRow(channel, row) {
-        var data;
-        if (channel === 'telegram') {
-            data = {
-                token: (row.querySelector('[data-notify-field="token"]').value || '').trim(),
-                chat_id: (row.querySelector('[data-notify-field="chat_id"]').value || '').trim(),
-            };
-        } else {
-            data = {
-                webhook: (row.querySelector('[data-notify-field="webhook"]').value || '').trim(),
-            };
-        }
-        var policy = readRowPolicy(row);
-        if (policy.alert_mode || (policy.templates && (policy.templates.down || policy.templates.recovered))) {
-            data.policy = policy;
-        }
-        return data;
-    }
-
-    function isRowFilled(channel, data) {
-        if (channel === 'telegram') {
-            return !!(data.token && data.chat_id);
-        }
-        return !!data.webhook;
-    }
+    var channels = {
+        telegram: {
+            buildRow: function (value) {
+                value = value || {};
+                var row = el(
+                    '<div class="notify-row notify-row--telegram">' +
+                        '<div class="notify-row__fields">' +
+                        '<input type="text" class="form-control" data-notify-field="token" placeholder="Bot token" />' +
+                        '<input type="text" class="form-control" data-notify-field="chat_id" placeholder="Chat ID" />' +
+                        '</div>' +
+                        rowActionsHtml() +
+                        '</div>'
+                );
+                row.querySelector('[data-notify-field="token"]').value = value.token || '';
+                row.querySelector('[data-notify-field="chat_id"]').value = value.chat_id || '';
+                applyRowValue(row, value, 'telegram');
+                return row;
+            },
+            readRow: function (row) {
+                var data = {
+                    token: (row.querySelector('[data-notify-field="token"]').value || '').trim(),
+                    chat_id: (row.querySelector('[data-notify-field="chat_id"]').value || '').trim(),
+                };
+                var policy = readRowPolicy(row);
+                if (policy.alert_mode || (policy.templates && (policy.templates.down || policy.templates.recovered))) {
+                    data.policy = policy;
+                }
+                return data;
+            },
+            isFilled: function (data) {
+                return !!(data.token && data.chat_id);
+            },
+            delivery: function (data) {
+                return { channel: 'telegram', telegram: { token: data.token, chat_id: data.chat_id } };
+            },
+        },
+        discord: {
+            buildRow: function (value) {
+                value = value || {};
+                var row = el(
+                    '<div class="notify-row notify-row--discord">' +
+                        '<div class="notify-row__fields">' +
+                        '<input type="text" class="form-control" data-notify-field="webhook" placeholder="Webhook URL" />' +
+                        '</div>' +
+                        rowActionsHtml() +
+                        '</div>'
+                );
+                row.querySelector('[data-notify-field="webhook"]').value = value.webhook || '';
+                applyRowValue(row, value, 'discord');
+                return row;
+            },
+            readRow: function (row) {
+                var data = {
+                    webhook: (row.querySelector('[data-notify-field="webhook"]').value || '').trim(),
+                };
+                var policy = readRowPolicy(row);
+                if (policy.alert_mode || (policy.templates && (policy.templates.down || policy.templates.recovered))) {
+                    data.policy = policy;
+                }
+                return data;
+            },
+            isFilled: function (data) {
+                return !!data.webhook;
+            },
+            delivery: function (data) {
+                return { channel: 'discord', discord: { webhook: data.webhook } };
+            },
+        },
+        email: {
+            buildRow: function (value) {
+                value = value || {};
+                var row = el(
+                    '<div class="notify-row notify-row--email">' +
+                        '<div class="notify-row__fields">' +
+                        '<input type="email" class="form-control" data-notify-field="to" placeholder="recipient@example.com" />' +
+                        '</div>' +
+                        rowActionsHtml() +
+                        '</div>'
+                );
+                row.querySelector('[data-notify-field="to"]').value = value.to || '';
+                applyRowValue(row, value, 'email');
+                return row;
+            },
+            readRow: function (row) {
+                var data = { to: (row.querySelector('[data-notify-field="to"]').value || '').trim() };
+                var policy = readRowPolicy(row);
+                if (policy.alert_mode) delete policy.alert_mode;
+                if (policy.templates && (policy.templates.down || policy.templates.recovered)) {
+                    data.policy = policy;
+                }
+                return data;
+            },
+            isFilled: function (data) {
+                return !!data.to;
+            },
+            delivery: function (data) {
+                return { channel: 'email', email: { to: data.to } };
+            },
+        },
+        webhook: {
+            buildRow: function (value) {
+                value = value || {};
+                var row = el(
+                    '<div class="notify-row notify-row--webhook">' +
+                        '<div class="notify-row__fields">' +
+                        '<input type="url" class="form-control" data-notify-field="url" placeholder="https://hooks.example.com/..." />' +
+                        '</div>' +
+                        rowActionsHtml() +
+                        '</div>'
+                );
+                row.querySelector('[data-notify-field="url"]').value = value.url || '';
+                applyRowValue(row, value, 'webhook');
+                return row;
+            },
+            readRow: function (row) {
+                var data = { url: (row.querySelector('[data-notify-field="url"]').value || '').trim() };
+                var policy = readRowPolicy(row);
+                if (policy.alert_mode || (policy.templates && (policy.templates.down || policy.templates.recovered))) {
+                    data.policy = policy;
+                }
+                return data;
+            },
+            isFilled: function (data) {
+                return !!data.url;
+            },
+            delivery: function (data) {
+                return { channel: 'webhook', webhook: { url: data.url } };
+            },
+        },
+    };
 
     function NotifyList(container, channel) {
         this.container = container;
         this.channel = channel;
+        this.def = channels[channel];
         this.list = container.querySelector('[data-notify-list]');
         this.addBtn = container.querySelector('[data-notify-add]');
         this.helper = container.querySelector('[data-notify-helper]');
         this.bind();
     }
-
-    NotifyList.prototype.rowBuilder = function (value) {
-        return this.channel === 'telegram' ? buildTelegramRow(value) : buildDiscordRow(value);
-    };
 
     NotifyList.prototype.bind = function () {
         var self = this;
@@ -224,23 +297,16 @@
     };
 
     NotifyList.prototype.editPolicy = function (row) {
-        var modal = (window.Beacon && window.Beacon.policyModal) || window.BeaconReceiverPolicyModal;
+        var modal = window.Beacon && window.Beacon.policyModal;
         if (!modal) return;
-        var data = readRow(this.channel, row);
-        var delivery = { channel: this.channel };
-        if (this.channel === 'telegram') {
-            delivery.telegram = { token: data.token, chat_id: data.chat_id };
-        } else {
-            delivery.discord = { webhook: data.webhook };
-        }
-        modal.open(
-            readRowPolicy(row),
-            delivery,
-            function (policy) {
-                writeRowPolicy(row, policy);
-                updateRowMeta(row);
+        var data = this.def.readRow(row);
+        modal.open(readRowPolicy(row), this.def.delivery(data), function (policy) {
+            if (this.channel === 'email' && policy) {
+                delete policy.alert_mode;
             }
-        );
+            writeRowPolicy(row, policy);
+            updateRowMeta(row, this.channel);
+        }.bind(this), { channel: this.channel });
     };
 
     NotifyList.prototype.rows = function () {
@@ -251,10 +317,10 @@
         this.list.innerHTML = '';
         var list = Array.isArray(values) ? values : [];
         if (list.length === 0) {
-            this.list.appendChild(this.rowBuilder());
+            this.list.appendChild(this.def.buildRow());
         } else {
             for (var i = 0; i < list.length && i < MAX_RECEIVERS; i++) {
-                this.list.appendChild(this.rowBuilder(list[i]));
+                this.list.appendChild(this.def.buildRow(list[i]));
             }
         }
         this.refresh();
@@ -262,24 +328,23 @@
 
     NotifyList.prototype.values = function () {
         var out = [];
-        var rows = this.rows();
-        for (var i = 0; i < rows.length; i++) {
-            var v = readRow(this.channel, rows[i]);
-            if (isRowFilled(this.channel, v)) out.push(v);
-        }
+        this.rows().forEach(function (row) {
+            var v = this.def.readRow(row);
+            if (this.def.isFilled(v)) out.push(v);
+        }, this);
         return out;
     };
 
     NotifyList.prototype.add = function () {
         if (this.rows().length >= MAX_RECEIVERS) return;
-        this.list.appendChild(this.rowBuilder());
+        this.list.appendChild(this.def.buildRow());
         this.refresh();
     };
 
     NotifyList.prototype.remove = function (row) {
         row.remove();
         if (this.rows().length === 0) {
-            this.list.appendChild(this.rowBuilder());
+            this.list.appendChild(this.def.buildRow());
         }
         this.refresh();
     };
@@ -288,21 +353,18 @@
         var rows = this.rows();
         var count = rows.length;
         var atMax = count >= MAX_RECEIVERS;
-        if (this.addBtn) {
-            this.addBtn.disabled = atMax;
-        }
+        if (this.addBtn) this.addBtn.disabled = atMax;
         if (this.helper) {
             this.helper.textContent = atMax
                 ? 'Maximum of ' + MAX_RECEIVERS + ' receivers reached.'
                 : 'Up to ' + MAX_RECEIVERS + ' receivers. Empty rows are ignored.';
         }
+        var ch = this.channel;
         rows.forEach(function (row, idx) {
             var removeBtn = row.querySelector('[data-notify-action="remove"]');
-            if (removeBtn) {
-                removeBtn.style.visibility = count === 1 ? 'hidden' : 'visible';
-            }
+            if (removeBtn) removeBtn.style.visibility = count === 1 ? 'hidden' : 'visible';
             row.dataset.notifyIndex = String(idx);
-            updateRowMeta(row);
+            updateRowMeta(row, ch);
         });
     };
 
@@ -312,19 +374,97 @@
         return instance;
     }
 
+    function normalizeChannelBlock(raw, legacyKey) {
+        if (!raw) return { mode: 'inherit', targets: [] };
+        if (Array.isArray(raw)) {
+            return raw.length ? { mode: 'custom', targets: raw } : { mode: 'inherit', targets: [] };
+        }
+        if (raw.mode) {
+            return { mode: raw.mode || 'inherit', targets: raw.targets || [] };
+        }
+        return { mode: 'inherit', targets: [] };
+    }
+
+    function setChannelMode(panel, mode) {
+        mode = MODES.indexOf(mode) >= 0 ? mode : 'inherit';
+        var seg = panel.querySelector('[data-notify-mode]');
+        if (seg) {
+            seg.querySelectorAll('[data-mode]').forEach(function (btn) {
+                btn.classList.toggle('is-active', btn.dataset.mode === mode);
+            });
+        }
+        panel.dataset.notifyCurrentMode = mode;
+        var body = panel.querySelector('[data-notify-channel-body]');
+        var hint = panel.querySelector('[data-notify-mode-hint]');
+        if (body) body.classList.toggle('d-none', mode !== 'custom');
+        if (hint) {
+            if (mode === 'inherit') hint.textContent = 'Uses global settings for this channel.';
+            else if (mode === 'off') hint.textContent = 'Disabled for this monitor.';
+            else hint.textContent = 'Custom receiver list for this monitor only.';
+        }
+    }
+
+    function wireModeSegment(panel) {
+        var seg = panel.querySelector('[data-notify-mode]');
+        if (!seg || seg._wired) return;
+        seg._wired = true;
+        seg.querySelectorAll('[data-mode]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                setChannelMode(panel, btn.dataset.mode);
+            });
+        });
+    }
+
+    function initOverridePanel(overridesEl, initial) {
+        initial = initial || {};
+        var lists = {};
+        overridesEl.querySelectorAll('[data-notify-channel-panel]').forEach(function (panel) {
+            var channel = panel.dataset.notifyChannelPanel;
+            if (!channels[channel]) return;
+            wireModeSegment(panel);
+            var block = normalizeChannelBlock(initial[channel], channel);
+            setChannelMode(panel, block.mode);
+            var listRoot = panel.querySelector('[data-notify-channel-body]');
+            lists[channel] = init(listRoot, channel, block.mode === 'custom' ? block.targets : []);
+        });
+        return lists;
+    }
+
+    function readOverrideFromPanel(overridesEl) {
+        var out = {};
+        overridesEl.querySelectorAll('[data-notify-channel-panel]').forEach(function (panel) {
+            var channel = panel.dataset.notifyChannelPanel;
+            var mode = panel.dataset.notifyCurrentMode || 'inherit';
+            if (mode === 'inherit') return;
+            var block = { mode: mode };
+            if (mode === 'custom') {
+                var listRoot = panel.querySelector('[data-notify-channel-body]');
+                var tmp = init(listRoot, channel, []);
+                block.targets = tmp.values();
+            }
+            out[channel] = block;
+        });
+        return Object.keys(out).length ? out : null;
+    }
+
     function setGlobalDefaults(notifications) {
         var defs = notifications || { alert_mode: 'repeat', templates: {} };
         window.Beacon = window.Beacon || { notify: {} };
         window.Beacon.notify.globalDefaults = defs;
-        document.querySelectorAll('.notify-row').forEach(updateRowMeta);
+        document.querySelectorAll('.notify-row').forEach(function (row) {
+            var ch = row.className.match(/notify-row--(\w+)/);
+            updateRowMeta(row, ch ? ch[1] : 'telegram');
+        });
     }
 
-    var notifyAPI = {
+    window.Beacon = window.Beacon || {};
+    window.Beacon.notify = Object.assign(window.Beacon.notify || {}, {
         MAX_RECEIVERS: MAX_RECEIVERS,
+        channels: channels,
         init: init,
+        initOverridePanel: initOverridePanel,
+        readOverrideFromPanel: readOverrideFromPanel,
         setGlobalDefaults: setGlobalDefaults,
         updateRowMeta: updateRowMeta,
-    };
-    window.Beacon = window.Beacon || {};
-    window.Beacon.notify = Object.assign(window.Beacon.notify || {}, notifyAPI);
+    });
 })();

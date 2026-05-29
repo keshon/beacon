@@ -27,14 +27,32 @@ func MigrateNotifyOverride(n *NotifyOverride) {
 		AlertMode: legacyMode,
 		Templates: legacyTpl,
 	}
-	for i := range n.Telegram {
-		if receiverPolicyEmpty(n.Telegram[i].Policy) {
-			n.Telegram[i].Policy = cloneReceiverPolicy(legacy)
+	if n.Telegram != nil {
+		for i := range n.Telegram.Targets {
+			if receiverPolicyEmpty(n.Telegram.Targets[i].Policy) {
+				n.Telegram.Targets[i].Policy = cloneReceiverPolicy(legacy)
+			}
 		}
 	}
-	for i := range n.Discord {
-		if receiverPolicyEmpty(n.Discord[i].Policy) {
-			n.Discord[i].Policy = cloneReceiverPolicy(legacy)
+	if n.Discord != nil {
+		for i := range n.Discord.Targets {
+			if receiverPolicyEmpty(n.Discord.Targets[i].Policy) {
+				n.Discord.Targets[i].Policy = cloneReceiverPolicy(legacy)
+			}
+		}
+	}
+	if n.Email != nil {
+		for i := range n.Email.Targets {
+			if receiverPolicyEmpty(n.Email.Targets[i].Policy) {
+				n.Email.Targets[i].Policy = cloneReceiverPolicy(legacy)
+			}
+		}
+	}
+	if n.Webhook != nil {
+		for i := range n.Webhook.Targets {
+			if receiverPolicyEmpty(n.Webhook.Targets[i].Policy) {
+				n.Webhook.Targets[i].Policy = cloneReceiverPolicy(legacy)
+			}
 		}
 	}
 	n.AlertMode = ""

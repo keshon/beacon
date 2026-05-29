@@ -3,7 +3,6 @@ package config
 import "strings"
 
 // ResolveTelegramTestCredentials returns token and chat ID allowed for notify test.
-// Empty token in the request is filled from config when chat_id matches a stored target.
 func (c *Config) ResolveTelegramTestCredentials(token, chatID string) (allowedToken, allowedChat string, ok bool) {
 	if c == nil {
 		return "", "", false
@@ -40,6 +39,40 @@ func (c *Config) ResolveDiscordTestWebhook(webhook string) (allowed string, ok b
 	for _, w := range c.Discord.Webhooks {
 		if strings.TrimSpace(w.Webhook) == webhook {
 			return webhook, true
+		}
+	}
+	return "", false
+}
+
+// ResolveEmailTestTarget returns SMTP and recipient allowed for notify test.
+func (c *Config) ResolveEmailTestTarget(to string) (target EmailTarget, ok bool) {
+	if c == nil {
+		return EmailTarget{}, false
+	}
+	to = strings.TrimSpace(to)
+	if to == "" {
+		return EmailTarget{}, false
+	}
+	for _, t := range c.Email.Targets {
+		if strings.EqualFold(strings.TrimSpace(t.To), to) {
+			return t, true
+		}
+	}
+	return EmailTarget{}, false
+}
+
+// ResolveWebhookTestURL returns a generic webhook URL allowed for notify test.
+func (c *Config) ResolveWebhookTestURL(rawURL string) (allowed string, ok bool) {
+	if c == nil {
+		return "", false
+	}
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return "", false
+	}
+	for _, w := range c.Webhook.Webhooks {
+		if strings.TrimSpace(w.URL) == rawURL {
+			return rawURL, true
 		}
 	}
 	return "", false

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/keshon/beacon/internal/checks"
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
 	"github.com/keshon/beacon/internal/store"
@@ -22,6 +23,7 @@ type AddMonitorInput struct {
 	IntervalSec    int
 	TimeoutSec     int
 	Retries        int
+	HTTP           *checks.HTTPOptions
 	NotifyOverride *monitor.NotifyOverride
 }
 
@@ -56,6 +58,9 @@ func AddMonitor(st *store.Store, in AddMonitorInput) (*monitor.Monitor, error) {
 	if in.NotifyOverride != nil {
 		m.NotifyOverride = monitor.SanitizeNotifyOverride(in.NotifyOverride)
 	}
+	if in.HTTP != nil {
+		m.HTTP = in.HTTP
+	}
 	var cfg config.Config
 	if ok, err := st.GetConfig(&cfg); err == nil && ok && cfg.Network.Enabled && cfg.Network.NodeID != "" {
 		m.OwnerNodeID = cfg.Network.NodeID
@@ -74,6 +79,7 @@ func AddMonitorFromJSON(st *store.Store, body []byte) (*monitor.Monitor, error) 
 		Interval       int                     `json:"interval"`
 		Timeout        int                     `json:"timeout"`
 		Retries        int                     `json:"retries"`
+		HTTP           *checks.HTTPOptions     `json:"http,omitempty"`
 		NotifyOverride *monitor.NotifyOverride `json:"notify_override"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -86,6 +92,7 @@ func AddMonitorFromJSON(st *store.Store, body []byte) (*monitor.Monitor, error) 
 		IntervalSec:    req.Interval,
 		TimeoutSec:     req.Timeout,
 		Retries:        req.Retries,
+		HTTP:           req.HTTP,
 		NotifyOverride: req.NotifyOverride,
 	})
 }
@@ -96,6 +103,7 @@ type UpdateMonitorPatch struct {
 	Type           *string
 	Target         *string
 	IntervalSec    *int
+	HTTP           *checks.HTTPOptions
 	NotifyOverride *monitor.NotifyOverride
 }
 
@@ -135,6 +143,9 @@ func UpdateMonitor(st *store.Store, id string, patch UpdateMonitorPatch) (*monit
 			mon.Interval = 0
 		}
 	}
+	if patch.HTTP != nil {
+		mon.HTTP = monitor.MergeHTTPOptions(mon.HTTP, patch.HTTP)
+	}
 	if patch.NotifyOverride != nil {
 		mon.NotifyOverride = monitor.SanitizeNotifyOverride(patch.NotifyOverride)
 	}
@@ -151,6 +162,7 @@ func UpdateMonitorFromJSON(st *store.Store, id string, body []byte) (*monitor.Mo
 		Type           *string                 `json:"type"`
 		Target         *string                 `json:"target"`
 		Interval       *int                    `json:"interval"`
+		HTTP           *checks.HTTPOptions     `json:"http,omitempty"`
 		NotifyOverride *monitor.NotifyOverride `json:"notify_override"`
 	}
 	if err := json.Unmarshal(body, &patch); err != nil {
@@ -162,6 +174,7 @@ func UpdateMonitorFromJSON(st *store.Store, id string, body []byte) (*monitor.Mo
 		Type:           patch.Type,
 		Target:         patch.Target,
 		IntervalSec:    patch.Interval,
+		HTTP:           patch.HTTP,
 		NotifyOverride: patch.NotifyOverride,
 	})
 }

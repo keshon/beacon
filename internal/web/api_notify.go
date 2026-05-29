@@ -20,6 +20,12 @@ type notifyTestRequest struct {
 	Discord *struct {
 		Webhook string `json:"webhook"`
 	} `json:"discord,omitempty"`
+	Email *struct {
+		To string `json:"to"`
+	} `json:"email,omitempty"`
+	Webhook *struct {
+		URL string `json:"url"`
+	} `json:"webhook,omitempty"`
 }
 
 type notifyTestResponse struct {
@@ -121,8 +127,68 @@ func (s *Server) apiNotifyTest(w http.ResponseWriter, r *http.Request) {
 		}
 		writeNotifyTest(w, http.StatusOK, notifyTestResponse{OK: true})
 
+	case "email":
+		if req.Email == nil {
+			writeNotifyTest(w, http.StatusBadRequest, notifyTestResponse{Error: "email payload required"})
+			return
+		}
+		to := strings.TrimSpace(req.Email.To)
+		if to == "" {
+			writeNotifyTest(w, http.StatusBadRequest, notifyTestResponse{Error: "to is required"})
+			return
+		}
+		target, ok := s.cfg.ResolveEmailTestTarget(to)
+		if !ok {
+			writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "email is not configured"})
+			return
+		}
+		if allowed, wait := s.testLimit.AllowEmail(clientID, to); !allowed {
+			writeNotifyTest(w, http.StatusTooManyRequests, notifyTestResponse{
+				Error:         "rate limited",
+				RetryAfterSec: notify.RetryAfterSeconds(wait),
+			})
+			return
+		}
+		smtp := s.cfg.EffectiveSMTP(target)
+		if err := notify.NewEmail(smtp, target.To).Send(alert); err != nil {
+			writeNotifyTest(w, http.StatusBadGateway, notifyTestResponse{Error: err.Error()})
+			return
+		}
+		writeNotifyTest(w, http.StatusOK, notifyTestResponse{OK: true})
+
+	case "webhook":
+		if req.Webhook == nil {
+			writeNotifyTest(w, http.StatusBadRequest, notifyTestResponse{Error: "webhook payload required"})
+			return
+		}
+		rawURL := strings.TrimSpace(req.Webhook.URL)
+		allowedURL, ok := s.cfg.ResolveWebhookTestURL(rawURL)
+		if !ok {
+			writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "webhook is not configured"})
+			return
+		}
+		if allowed, wait := s.testLimit.AllowWebhook(clientID, allowedURL); !allowed {
+			writeNotifyTest(w, http.StatusTooManyRequests, notifyTestResponse{
+				Error:         "rate limited",
+				RetryAfterSec: notify.RetryAfterSeconds(wait),
+			})
+			return
+		}
+		var headers map[string]string
+		for _, w := range s.cfg.Webhook.Webhooks {
+			if strings.TrimSpace(w.URL) == allowedURL {
+				headers = w.Headers
+				break
+			}
+		}
+		if err := notify.NewWebhook(allowedURL, headers).Send(alert); err != nil {
+			writeNotifyTest(w, http.StatusBadGateway, notifyTestResponse{Error: err.Error()})
+			return
+		}
+		writeNotifyTest(w, http.StatusOK, notifyTestResponse{OK: true})
+
 	default:
-		writeNotifyTest(w, http.StatusBadRequest, notifyTestResponse{Error: "channel must be telegram or discord"})
+		writeNotifyTest(w, http.StatusBadRequest, notifyTestResponse{Error: "channel must be telegram, discord, email, or webhook"})
 	}
 }
 

@@ -230,7 +230,7 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 	var result checks.CheckResult
 	switch m.Type {
 	case "http":
-		result = checks.HTTPCheck(ctx, m.Target, timeout)
+		result = checks.HTTPCheck(ctx, m.Target, timeout, m.HTTP)
 	case "tcp":
 		result = checks.TCPCheck(ctx, m.Target, timeout)
 	default:

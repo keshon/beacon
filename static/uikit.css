@@ -12279,6 +12279,7 @@ html[data-bs-theme=light] .dash-nav .vr {
   color: var(--bs-info);
 }
 
+.btn-outline-secondary[data-beacon-collapse] i,
 .btn-outline-secondary[data-bs-toggle=collapse] i {
   font-size: var(--app-text-micro);
 }
@@ -12485,7 +12486,7 @@ html[data-bs-theme=light] .dash-nav .vr {
 .notify-row {
   --notify-row-meta-fade: 0.58;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.5rem 0.625rem;
   margin-bottom: 0.5rem;
@@ -12493,19 +12494,14 @@ html[data-bs-theme=light] .dash-nav .vr {
 
 .notify-row__fields {
   display: flex;
-  flex: 1 1 14rem;
+  flex: 1 1 auto;
   gap: 0.5rem;
-  min-width: min(100%, 14rem);
+  min-width: 0;
 }
 
 .notify-row__fields .form-control {
   flex: 1 1 6rem;
   min-width: 0;
-}
-
-.notify-row--discord .notify-row__field-main {
-  flex: 1 1 12rem;
-  min-width: min(100%, 10rem);
 }
 
 .notify-row-meta {
@@ -12613,6 +12609,9 @@ html[data-bs-theme=light] .dash-nav .vr {
 }
 
 @media (max-width: 575.98px) {
+  .notify-row {
+    flex-wrap: wrap;
+  }
   .notify-row-meta {
     flex: 1 1 100%;
     order: 2;

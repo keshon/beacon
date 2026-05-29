@@ -128,10 +128,9 @@ func (s *Server) pageMonitors(w http.ResponseWriter, r *http.Request) {
 	}
 	type monitorRow struct {
 		*monitor.Monitor
-		IntervalSec      int
-		TelegramTargets  []monitor.TelegramTarget
-		DiscordReceivers []monitor.DiscordReceiver
-		NotifyJSON       string
+		IntervalSec int
+		NotifyJSON  string
+		HTTPJSON    string
 	}
 	rows := make([]monitorRow, 0, len(monitors))
 	for _, m := range monitors {
@@ -139,23 +138,22 @@ func (s *Server) pageMonitors(w http.ResponseWriter, r *http.Request) {
 		if m.Interval > 0 {
 			sec = int(m.Interval / time.Second)
 		}
-		var tg []monitor.TelegramTarget
-		var dc []monitor.DiscordReceiver
+		notifyJSON := "{}"
 		if m.NotifyOverride != nil {
-			tg = m.NotifyOverride.Telegram
-			dc = m.NotifyOverride.Discord
+			buf, _ := json.Marshal(m.NotifyOverride)
+			notifyJSON = string(buf)
 		}
-		payload := map[string]any{
-			"telegram": tg,
-			"discord":  dc,
+		httpJSON := "{}"
+		if m.HTTP != nil {
+			if buf, err := json.Marshal(m.HTTP.Redacted()); err == nil {
+				httpJSON = string(buf)
+			}
 		}
-		buf, _ := json.Marshal(payload)
 		rows = append(rows, monitorRow{
-			Monitor:          m,
-			IntervalSec:      sec,
-			TelegramTargets:  tg,
-			DiscordReceivers: dc,
-			NotifyJSON:       string(buf),
+			Monitor:     m,
+			IntervalSec: sec,
+			NotifyJSON:  notifyJSON,
+			HTTPJSON:    httpJSON,
 		})
 	}
 	s.render(w, "monitors/monitors.html", pongo2.Context{

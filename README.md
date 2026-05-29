@@ -17,7 +17,7 @@ No agents, no Prometheus stack, no external dependencies. Point it at a URL or `
 |---|---|
 | **Small footprint** | Single binary, minimal setup, lightweight runtime requirements |
 | **Simple web UI** | Dashboard, monitor management, live status updates, dark/light theme |
-| **Flexible notifications** | Global Telegram and Discord receivers plus per-monitor overrides |
+| **Flexible notifications** | Telegram, Discord, email, and webhooks with per-monitor channel overrides |
 | **Multi-instance sync (optional)** | Sync monitors and state between multiple Beacon instances |
 
 ## When Beacon makes sense
@@ -36,8 +36,9 @@ If you need metrics storage, distributed tracing, or deep infrastructure analyti
 ## Features
 
 - HTTP and TCP checks with interval, timeout, and retry threshold
-- Down and recovery notifications via Telegram and Discord
-- Global notification settings with per-monitor overrides
+- HTTP checks: optional Basic Auth and response keyword matching
+- Down and recovery notifications via Telegram, Discord, email, and generic webhooks
+- Global notification settings with per-monitor per-channel overrides (Global / Off / Custom)
 - Real-time dashboard updates and uptime history
 - Basic authentication for web UI and API
 - CLI for managing monitors and inspecting state
@@ -80,6 +81,8 @@ Settings can be managed via the web UI or `config.json`.
 | Auth     | HTTP basic auth for UI and API                     |
 | Telegram | Up to 5 bot token + chat ID pairs                  |
 | Discord  | Up to 5 webhook URLs                               |
+| Email    | Global SMTP + up to 5 recipient addresses          |
+| Webhook  | Up to 5 generic HTTP POST endpoints                |
 | Sync     | Multi-instance monitor/state synchronization       |
 
 Legacy configuration formats are automatically migrated.
@@ -105,6 +108,26 @@ Example minimal `config.json`:
     "enabled": false,
     "webhooks": [
       { "webhook": "https://discord.com/api/webhooks/..." }
+    ]
+  },
+  "email": {
+    "enabled": false,
+    "smtp": {
+      "host": "smtp.example.com",
+      "port": 587,
+      "username": "user",
+      "password": "secret",
+      "from": "beacon@example.com",
+      "tls": "starttls"
+    },
+    "targets": [
+      { "to": "ops@example.com" }
+    ]
+  },
+  "webhook": {
+    "enabled": false,
+    "webhooks": [
+      { "url": "https://hooks.example.com/beacon" }
     ]
   },
   "notifications": {
@@ -133,7 +156,7 @@ Set the default **alert mode** and **message templates** for all receivers. Empt
 
 ### Per-receiver policy
 
-Each Telegram and Discord receiver row has a **gear** button to configure:
+Each Telegram, Discord, and webhook receiver row has a **gear** button to configure:
 
 - Alert mode (`repeat` / `once`) for that destination only
 - Custom **down** and **recovered** templates (per field; empty = use global default)
@@ -163,13 +186,17 @@ Use **Reset** on a field (or **Reset all**) to restore built-in defaults. `GET /
 
 ### Global receivers
 
-Configure Telegram and Discord receivers in Settings (up to 5 per channel). Each row supports Test, remove, and per-receiver policy.
+Configure Telegram, Discord, email, and webhook receivers in Settings (up to 5 per channel). Each row supports Test, remove, and per-receiver policy. Email alerts are always sent once on down and once on recovery (no repeat mode).
 
 ### Per-monitor overrides
 
-Override Telegram/Discord receiver lists per monitor. A non-empty list **replaces** the global list for that channel. Each override row carries its own policy (same gear modal as Settings).
+For each channel (Telegram, Discord, email, webhook), choose **Global** (follow Settings), **Off** (disable for this monitor), or **Custom** (monitor-specific receiver list). Custom lists replace global receivers for that channel only.
 
-Legacy monitor-level `notify_override.alert_mode` / `templates` are migrated onto each override row on load.
+Legacy flat `notify_override` arrays (e.g. `{ "telegram": [...] }`) are migrated to **Custom** mode on load.
+
+### HTTP monitor options
+
+For HTTP monitors, expand **HTTP options** to set Basic Auth credentials (stored server-side; password is never shown in the UI after save) and an optional response **keyword** (must appear in the body, or enable **Must not contain** to invert).
 
 ## Multi-instance sync
 

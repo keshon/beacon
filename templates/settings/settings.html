@@ -89,7 +89,7 @@
                             receiver&rsquo;s policy modal to inherit these values.
                         </p>
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-4" data-policy-alert-mode-row>
                                 <label class="form-label small" for="notifications_alert_mode">Alert mode</label>
                                 <select class="form-select" id="notifications_alert_mode" data-policy-alert-mode>
                                     <option value="repeat">Repeat while down (every check)</option>
@@ -155,6 +155,78 @@
                             <input class="form-check-input" type="checkbox" name="discord_enabled" id="discord_enabled" />
                             <label class="form-check-label small" for="discord_enabled">Enabled</label>
                         </div>
+                        <div data-notify-list></div>
+                        <div class="d-flex align-items-baseline gap-2 mt-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
+                                <i class="bi bi-plus-lg"></i>Add receiver
+                            </button>
+                            <span class="form-label small mb-0" data-notify-helper></span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12">
+                <section class="app-panel anim-fadeup anim-delay-1">
+                    <div class="app-panel-header">
+                        <span class="app-panel-title">Email</span>
+                    </div>
+                    <div class="app-panel-body p-3" id="emailPanel">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="email_enabled" id="email_enabled" />
+                            <label class="form-check-label small" for="email_enabled">Enabled</label>
+                        </div>
+                        <p class="small text-muted mb-2">Global SMTP settings. Receivers can override SMTP per row in the policy modal.</p>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small">SMTP host</label>
+                                <input type="text" class="form-control" name="email_smtp_host" placeholder="smtp.example.com" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Port</label>
+                                <input type="number" class="form-control" name="email_smtp_port" min="1" placeholder="587" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">Username</label>
+                                <input type="text" class="form-control" name="email_smtp_username" autocomplete="off" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">Password</label>
+                                <input type="password" class="form-control" name="email_smtp_password" autocomplete="new-password" placeholder="Leave blank to keep" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">From address</label>
+                                <input type="email" class="form-control" name="email_smtp_from" placeholder="beacon@example.com" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">TLS mode</label>
+                                <select class="form-select" name="email_smtp_tls">
+                                    <option value="starttls">STARTTLS</option>
+                                    <option value="ssl">SSL/TLS</option>
+                                    <option value="plain">Plain</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div data-notify-list></div>
+                        <div class="d-flex align-items-baseline gap-2 mt-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
+                                <i class="bi bi-plus-lg"></i>Add receiver
+                            </button>
+                            <span class="form-label small mb-0" data-notify-helper></span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12">
+                <section class="app-panel anim-fadeup anim-delay-1">
+                    <div class="app-panel-header">
+                        <span class="app-panel-title">Webhook</span>
+                    </div>
+                    <div class="app-panel-body p-3" id="webhookPanel">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="webhook_enabled" id="webhook_enabled" />
+                            <label class="form-check-label small" for="webhook_enabled">Enabled</label>
+                        </div>
+                        <p class="small text-muted mb-2">Generic HTTP POST webhooks (not Discord).</p>
                         <div data-notify-list></div>
                         <div class="d-flex align-items-baseline gap-2 mt-1">
                             <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
@@ -261,9 +333,11 @@
         const notify = window.Beacon.notify;
         const telegramList = notify.init(document.getElementById('telegramPanel'), 'telegram', []);
         const discordList = notify.init(document.getElementById('discordPanel'), 'discord', []);
+        const emailList = notify.init(document.getElementById('emailPanel'), 'email', []);
+        const webhookList = notify.init(document.getElementById('webhookPanel'), 'webhook', []);
         const policyPanel = document.getElementById('notificationsPolicyPanel');
         let policyForm = null;
-        window.Beacon.settings = { telegramList, discordList };
+        window.Beacon.settings = { telegramList, discordList, emailList, webhookList };
         window.Beacon.apiFetch('/api/config')
             .then((r) => {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -281,6 +355,17 @@
                     : 'Set password';
                 fieldByName(f, 'telegram_enabled').checked = cfg.telegram?.enabled || false;
                 fieldByName(f, 'discord_enabled').checked = cfg.discord?.enabled || false;
+                fieldByName(f, 'email_enabled').checked = cfg.email?.enabled || false;
+                fieldByName(f, 'webhook_enabled').checked = cfg.webhook?.enabled || false;
+                fieldByName(f, 'email_smtp_host').value = cfg.email?.smtp?.host || '';
+                fieldByName(f, 'email_smtp_port').value = cfg.email?.smtp?.port || '';
+                fieldByName(f, 'email_smtp_username').value = cfg.email?.smtp?.username || '';
+                fieldByName(f, 'email_smtp_password').value = '';
+                fieldByName(f, 'email_smtp_password').placeholder = cfg.secrets?.email_smtp
+                    ? 'Leave blank to keep current'
+                    : 'Set password';
+                fieldByName(f, 'email_smtp_from').value = cfg.email?.smtp?.from || '';
+                fieldByName(f, 'email_smtp_tls').value = cfg.email?.smtp?.tls || 'starttls';
                 fieldByName(f, 'network_enabled').checked = cfg.network?.enabled || false;
                 fieldByName(f, 'network_self_url').value = cfg.network?.self_url || '';
                 fieldByName(f, 'network_peers').value = (cfg.network?.peers || []).join('\n');
@@ -293,6 +378,8 @@
                     typeof w === 'string' ? { webhook: w } : w
                 );
                 discordList.setValues(webhooks);
+                emailList.setValues(cfg.email?.targets || []);
+                webhookList.setValues(cfg.webhook?.webhooks || []);
                 const notifications = cfg.notifications || {};
                 notify.setGlobalDefaults(notifications);
                 window.Beacon.policy.init(policyPanel, notifications, { globalMode: true }).then(function (pf) {
@@ -301,6 +388,8 @@
 
                 bindToggle('telegram_enabled');
                 bindToggle('discord_enabled');
+                bindToggle('email_enabled');
+                bindToggle('webhook_enabled');
                 bindToggle('network_enabled');
             })
             .catch(function () {
@@ -325,6 +414,8 @@
             .filter(Boolean);
         const telegramTargets = window.Beacon.settings.telegramList.values();
         const discordWebhooks = window.Beacon.settings.discordList.values();
+        const emailTargets = window.Beacon.settings.emailList.values();
+        const webhookReceivers = window.Beacon.settings.webhookList.values();
         const pp = document.getElementById('notificationsPolicyPanel');
         const notifications = {
             alert_mode: (pp.querySelector('[data-policy-alert-mode]').value || 'repeat').trim(),
@@ -342,6 +433,19 @@
             notifications: notifications,
             telegram: { enabled: namedField('telegram_enabled').checked, targets: telegramTargets },
             discord: { enabled: namedField('discord_enabled').checked, webhooks: discordWebhooks },
+            email: {
+                enabled: namedField('email_enabled').checked,
+                smtp: {
+                    host: namedField('email_smtp_host').value.trim(),
+                    port: parseInt(namedField('email_smtp_port').value) || 587,
+                    username: namedField('email_smtp_username').value.trim(),
+                    password: namedField('email_smtp_password').value,
+                    from: namedField('email_smtp_from').value.trim(),
+                    tls: namedField('email_smtp_tls').value || 'starttls',
+                },
+                targets: emailTargets,
+            },
+            webhook: { enabled: namedField('webhook_enabled').checked, webhooks: webhookReceivers },
             network: {
                 enabled: namedField('network_enabled').checked,
                 self_url: namedField('network_self_url').value.trim(),
@@ -364,6 +468,8 @@
                 typeof w === 'string' ? { webhook: w } : w
             );
             window.Beacon.settings.discordList.setValues(savedWebhooks);
+            window.Beacon.settings.emailList.setValues(saved.email?.targets || []);
+            window.Beacon.settings.webhookList.setValues(saved.webhook?.webhooks || []);
             msg.textContent = saved.requires_restart
                 ? 'Saved. Restart the Beacon process to apply listen address or worker changes.'
                 : 'Saved';

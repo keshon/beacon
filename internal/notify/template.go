@@ -145,14 +145,32 @@ func NotifyOverrideHasPolicy(o *monitor.NotifyOverride) bool {
 	if o == nil {
 		return false
 	}
-	for _, t := range o.Telegram {
-		if receiverPolicyConfigured(t.Policy) {
-			return true
+	if o.Telegram != nil {
+		for _, t := range o.Telegram.Targets {
+			if receiverPolicyConfigured(t.Policy) {
+				return true
+			}
 		}
 	}
-	for _, d := range o.Discord {
-		if receiverPolicyConfigured(d.Policy) {
-			return true
+	if o.Discord != nil {
+		for _, d := range o.Discord.Targets {
+			if receiverPolicyConfigured(d.Policy) {
+				return true
+			}
+		}
+	}
+	if o.Email != nil {
+		for _, e := range o.Email.Targets {
+			if receiverPolicyConfigured(e.Policy) {
+				return true
+			}
+		}
+	}
+	if o.Webhook != nil {
+		for _, w := range o.Webhook.Targets {
+			if receiverPolicyConfigured(w.Policy) {
+				return true
+			}
 		}
 	}
 	return false

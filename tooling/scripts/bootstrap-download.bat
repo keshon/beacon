@@ -3,7 +3,7 @@ setlocal
 
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
-set "ROOT_DIR=%SCRIPT_DIR%\.."
+set "ROOT_DIR=%SCRIPT_DIR%\..\.."
 
 set "BS_VERSION=5.3.3"
 set "VENDOR_DIR=%ROOT_DIR%\uikit\vendor\bootstrap"

@@ -110,33 +110,74 @@
     function attachNotifyToForm(form) {
         if (!form || form._notifyAttached) return form._notify;
         const overrides = form.querySelector('[data-notify-overrides]');
-        if (!overrides) return null;
-        let initial = { telegram: [], discord: [] };
+        if (!overrides || !window.Beacon.notify.initOverridePanel) return null;
+        let initial = {};
         try {
-            initial = JSON.parse(overrides.dataset.notifyOverrides || '{}') || initial;
+            initial = JSON.parse(overrides.dataset.notifyOverrides || '{}') || {};
         } catch (e) {}
-        const tgContainer = overrides.querySelector('[data-notify-channel="telegram"]');
-        const dcContainer = overrides.querySelector('[data-notify-channel="discord"]');
-        const tgList = window.Beacon.notify.init(tgContainer, 'telegram', initial.telegram || []);
-        const dcReceivers = (initial.discord || []).map((w) =>
-            typeof w === 'string' ? { webhook: w } : w
-        );
-        const dcList = window.Beacon.notify.init(dcContainer, 'discord', dcReceivers);
-        form._notify = { telegram: tgList, discord: dcList };
+        form._notify = window.Beacon.notify.initOverridePanel(overrides, initial);
         form._notifyAttached = true;
         return form._notify;
     }
 
     function collectNotifyOverride(form) {
-        const lists = attachNotifyToForm(form);
-        if (!lists) return null;
-        const tg = lists.telegram.values();
-        const dc = lists.discord.values();
-        const out = {};
-        if (tg.length > 0) out.telegram = tg;
-        if (dc.length > 0) out.discord = dc;
-        if (Object.keys(out).length === 0) return null;
+        const overrides = form.querySelector('[data-notify-overrides]');
+        if (!overrides || !window.Beacon.notify.readOverrideFromPanel) return null;
+        return window.Beacon.notify.readOverrideFromPanel(overrides);
+    }
+
+    function collectHttpOptions(form) {
+        const typeEl = form.querySelector('[data-monitor-type]');
+        if (!typeEl || typeEl.value !== 'http') return undefined;
+        const username = (form.querySelector('[data-http-username]')?.value || '').trim();
+        const password = form.querySelector('[data-http-password]')?.value || '';
+        const keyword = (form.querySelector('[data-http-keyword]')?.value || '').trim();
+        const keywordInvert = !!(form.querySelector('[data-http-keyword-invert]')?.checked);
+        if (!username && !password && !keyword && !keywordInvert) return null;
+        const out = { keyword_invert: keywordInvert };
+        if (username) out.username = username;
+        if (password) out.password = password;
+        if (keyword) out.keyword = keyword;
         return out;
+    }
+
+    function applyHttpOptions(form, raw) {
+        const wrap = form.querySelector('[data-http-options]');
+        if (!wrap) return;
+        let opts = {};
+        if (raw) {
+            try {
+                opts = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            } catch (e) {}
+        } else if (wrap.dataset.httpJson) {
+            try {
+                opts = JSON.parse(wrap.dataset.httpJson || '{}') || {};
+            } catch (e) {}
+        }
+        const userEl = form.querySelector('[data-http-username]');
+        const passEl = form.querySelector('[data-http-password]');
+        const kwEl = form.querySelector('[data-http-keyword]');
+        const invEl = form.querySelector('[data-http-keyword-invert]');
+        if (userEl) userEl.value = opts.username || '';
+        if (passEl) passEl.value = '';
+        if (kwEl) kwEl.value = opts.keyword || '';
+        if (invEl) invEl.checked = !!opts.keyword_invert;
+    }
+
+    function syncHttpOptionsVisibility(form) {
+        const typeEl = form.querySelector('[data-monitor-type]');
+        const wrap = form.querySelector('[data-http-options]');
+        if (!typeEl || !wrap) return;
+        wrap.classList.toggle('d-none', typeEl.value !== 'http');
+    }
+
+    function wireHttpOptionsForm(form) {
+        if (!form || form._httpOptionsWired) return;
+        const typeEl = form.querySelector('[data-monitor-type]');
+        if (!typeEl) return;
+        form._httpOptionsWired = true;
+        typeEl.addEventListener('change', () => syncHttpOptionsVisibility(form));
+        syncHttpOptionsVisibility(form);
     }
 
     function monitorTargetPlaceholder(type) {
@@ -196,6 +237,8 @@
     document.querySelectorAll('form').forEach((form) => {
         attachNotifyToForm(form);
         wireMonitorTargetForm(form);
+        wireHttpOptionsForm(form);
+        applyHttpOptions(form);
     });
 
     const addForm = document.getElementById('addForm');
@@ -208,6 +251,8 @@
         if (!isNaN(iv) && iv > 0) payload.interval = iv;
         const no = collectNotifyOverride(addForm);
         if (no) payload.notify_override = no;
+        const httpOpts = collectHttpOptions(addForm);
+        if (httpOpts) payload.http = httpOpts;
         const res = await window.Beacon.apiFetch('/api/monitors', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -250,6 +295,9 @@
                 f.querySelector('[name="target"]').value = b.dataset.target || '';
                 f.querySelector('[name="interval"]').value = b.dataset.interval || '';
                 wireMonitorTargetForm(f);
+                wireHttpOptionsForm(f);
+                applyHttpOptions(f);
+                attachNotifyToForm(f);
                 const typeEl = f.querySelector('[data-monitor-type]');
                 const targetEl = f.querySelector('[data-monitor-target]');
                 if (typeEl && targetEl) {
@@ -265,6 +313,8 @@
                     else if (!isNaN(iv)) patch.interval = 0;
                     const no = collectNotifyOverride(f);
                     patch.notify_override = no || {};
+                    const httpOpts = collectHttpOptions(f);
+                    if (httpOpts !== undefined) patch.http = httpOpts;
                     const r = await window.Beacon.apiFetch('/api/monitors/' + id, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },

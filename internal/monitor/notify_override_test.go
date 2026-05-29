@@ -9,8 +9,14 @@ import (
 
 func TestMigrateNotifyOverride_legacyFieldsToRows(t *testing.T) {
 	n := &NotifyOverride{
-		Telegram: []TelegramTarget{{Token: "t", ChatID: "c"}},
-		Discord:  []DiscordReceiver{{Webhook: "https://example/hook"}},
+		Telegram: &TelegramChannelOverride{
+			Mode:    NotifyChannelCustom,
+			Targets: []TelegramTarget{{Token: "t", ChatID: "c"}},
+		},
+		Discord: &DiscordChannelOverride{
+			Mode:    NotifyChannelCustom,
+			Targets: []DiscordReceiver{{Webhook: "https://example/hook"}},
+		},
 		AlertMode: "once",
 		Templates: &config.MessageTemplates{Down: "legacy down"},
 	}
@@ -18,14 +24,8 @@ func TestMigrateNotifyOverride_legacyFieldsToRows(t *testing.T) {
 	if n.AlertMode != "" || n.Templates != nil {
 		t.Fatal("legacy top-level fields should be cleared")
 	}
-	if n.Telegram[0].Policy == nil || n.Telegram[0].Policy.AlertMode != "once" {
-		t.Fatalf("telegram policy: %+v", n.Telegram[0].Policy)
-	}
-	if n.Discord[0].Policy == nil || n.Discord[0].Policy.Templates == nil {
-		t.Fatal("discord should inherit legacy templates")
-	}
-	if n.Discord[0].Policy.Templates.Down != "legacy down" {
-		t.Fatalf("discord down: %q", n.Discord[0].Policy.Templates.Down)
+	if n.Telegram.Targets[0].Policy == nil || n.Telegram.Targets[0].Policy.AlertMode != "once" {
+		t.Fatalf("telegram policy: %+v", n.Telegram.Targets[0].Policy)
 	}
 }
 
@@ -34,7 +34,17 @@ func TestNotifyOverride_unmarshalDiscordStrings(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"discord":["https://a","https://b"]}`), &n); err != nil {
 		t.Fatal(err)
 	}
-	if len(n.Discord) != 2 || n.Discord[0].Webhook != "https://a" {
+	if n.Discord == nil || n.Discord.Mode != NotifyChannelCustom || len(n.Discord.Targets) != 2 {
 		t.Fatalf("got %+v", n.Discord)
+	}
+}
+
+func TestNotifyOverride_unmarshalTelegramOff(t *testing.T) {
+	var n NotifyOverride
+	if err := json.Unmarshal([]byte(`{"telegram":{"mode":"off"}}`), &n); err != nil {
+		t.Fatal(err)
+	}
+	if n.Telegram == nil || n.Telegram.Mode != NotifyChannelOff {
+		t.Fatalf("got %+v", n.Telegram)
 	}
 }

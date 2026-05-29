@@ -3,7 +3,7 @@ setlocal
 
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
-set "ROOT_DIR=%SCRIPT_DIR%\.."
+set "ROOT_DIR=%SCRIPT_DIR%\..\.."
 
 set "INPUT=%ROOT_DIR%\uikit\scss\uikit.scss"
 set "OUTPUT=%ROOT_DIR%\static\uikit.css"

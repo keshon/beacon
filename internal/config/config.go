@@ -20,6 +20,8 @@ type Config struct {
 	Notifications   NotificationsConfig `json:"notifications"`
 	Telegram        TelegramConfig      `json:"telegram"`
 	Discord         DiscordConfig       `json:"discord"`
+	Email           EmailConfig         `json:"email"`
+	Webhook         WebhookConfig       `json:"webhook"`
 	Workers         int                 `json:"workers"`
 	DefaultInterval int                 `json:"default_interval"` // seconds, 0 = 30
 	Network         NetworkConfig       `json:"network"`
@@ -230,6 +232,9 @@ func (c *Config) Normalize() {
 
 	c.Telegram.Targets = SanitizeTelegramTargets(c.Telegram.Targets)
 	c.Discord.Webhooks = SanitizeDiscordReceivers(c.Discord.Webhooks)
+	c.Email.Targets = SanitizeEmailTargets(c.Email.Targets)
+	c.Email.SMTP = SanitizeSMTPConfig(&c.Email.SMTP)
+	c.Webhook.Webhooks = SanitizeWebhookReceivers(c.Webhook.Webhooks)
 	normalizeNotifications(&c.Notifications)
 }
 

@@ -88,6 +88,16 @@
             if (!webhook) return null;
             return { channel: 'discord', discord: { webhook: webhook } };
         }
+        if (delivery.channel === 'email' && delivery.email) {
+            var to = (delivery.email.to || '').trim();
+            if (!to) return null;
+            return { channel: 'email', email: { to: to } };
+        }
+        if (delivery.channel === 'webhook' && delivery.webhook) {
+            var url = (delivery.webhook.url || '').trim();
+            if (!url) return null;
+            return { channel: 'webhook', webhook: { url: url } };
+        }
         return null;
     }
 
@@ -157,6 +167,8 @@
                 };
                 if (creds.telegram) payload.telegram = creds.telegram;
                 if (creds.discord) payload.discord = creds.discord;
+                if (creds.email) payload.email = creds.email;
+                if (creds.webhook) payload.webhook = creds.webhook;
                 testBtn.disabled = true;
                 setStatus(testStatus, 'muted', 'Sending…');
                 postNotifyTest(payload)
@@ -206,9 +218,11 @@
         var modeSelect = root.querySelector('[data-policy-alert-mode]');
         var tplDown = root.querySelector('[data-policy-template="down"]');
         var tplRecovered = root.querySelector('[data-policy-template="recovered"]');
-        if (modeSelect) {
+        if (modeSelect && opts.channel !== 'email') {
             var mode = initial.alert_mode || (isGlobal ? def.alert_mode : '');
             modeSelect.value = mode || '';
+        } else if (modeSelect && opts.channel === 'email') {
+            modeSelect.value = '';
         }
         if (tplDown) tplDown.value = templateValue(initial, 'down', isGlobal, def);
         if (tplRecovered) tplRecovered.value = templateValue(initial, 'recovered', isGlobal, def);
@@ -220,9 +234,16 @@
     function initPolicyForm(root, initial, opts) {
         opts = opts || {};
         var isGlobal = opts.globalMode !== false;
+        var hideAlertMode = opts.channel === 'email';
         initial = initial || {};
 
         var modeSelect = root.querySelector('[data-policy-alert-mode]');
+        var modeRow =
+            modeSelect &&
+            (modeSelect.closest('[data-policy-alert-mode-row]') ||
+                modeSelect.closest('.col-md-6') ||
+                modeSelect.closest('.col-md-4'));
+        if (modeRow) modeRow.classList.toggle('d-none', hideAlertMode);
         var tplDown = root.querySelector('[data-policy-template="down"]');
         var tplRecovered = root.querySelector('[data-policy-template="recovered"]');
         var resetAll = root.querySelector('[data-policy-reset-all]');
@@ -235,7 +256,9 @@
                 });
                 if (resetAll) {
                     resetAll.addEventListener('click', function () {
-                        if (modeSelect) modeSelect.value = def.alert_mode || 'repeat';
+                        if (modeSelect && opts.channel !== 'email') {
+                            modeSelect.value = def.alert_mode || 'repeat';
+                        }
                         if (tplDown) tplDown.value = def.templates.down || '';
                         if (tplRecovered) tplRecovered.value = def.templates.recovered || '';
                         root.querySelectorAll('[data-policy-test-status]').forEach(function (el) {
@@ -249,7 +272,7 @@
             return {
                 values: function () {
                     var out = {};
-                    if (modeSelect) {
+                    if (modeSelect && opts.channel !== 'email') {
                         var m = (modeSelect.value || '').trim();
                         if (m) out.alert_mode = m;
                     }

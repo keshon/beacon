@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"math"
+	"strings"
 	"sync"
 	"time"
 )
@@ -13,6 +14,8 @@ import (
 const (
 	telegramTestCooldown = 3 * time.Second
 	discordTestCooldown  = 5 * time.Second
+	emailTestCooldown    = 10 * time.Second
+	webhookTestCooldown  = 5 * time.Second
 	clientTestWindow     = time.Minute
 	clientTestBudget     = 10
 )
@@ -48,6 +51,14 @@ func (r *RateLimiter) AllowTelegram(clientID, token, chatID string) (ok bool, re
 // webhook from clientID.
 func (r *RateLimiter) AllowDiscord(clientID, webhook string) (ok bool, retryAfter time.Duration) {
 	return r.allow(clientID, "dc:"+hashKey(webhook), discordTestCooldown)
+}
+
+func (r *RateLimiter) AllowEmail(clientID, to string) (ok bool, retryAfter time.Duration) {
+	return r.allow(clientID, "em:"+hashKey(strings.ToLower(strings.TrimSpace(to))), emailTestCooldown)
+}
+
+func (r *RateLimiter) AllowWebhook(clientID, url string) (ok bool, retryAfter time.Duration) {
+	return r.allow(clientID, "wh:"+hashKey(url), webhookTestCooldown)
 }
 
 func (r *RateLimiter) allow(clientID, destKey string, cooldown time.Duration) (bool, time.Duration) {

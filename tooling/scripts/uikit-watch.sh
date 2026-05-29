@@ -2,7 +2,7 @@
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 INPUT="$ROOT_DIR/uikit/scss/uikit.scss"
 OUTPUT="$ROOT_DIR/static/uikit.css"

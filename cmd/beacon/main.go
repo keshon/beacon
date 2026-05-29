@@ -87,6 +87,7 @@ func main() {
 
 	const alertQueueSize = 128
 	alertQueue := make(chan func(), alertQueueSize)
+	emailGuard := notify.NewEmailSendGuard()
 	go func() {
 		for fn := range alertQueue {
 			fn()
@@ -113,14 +114,20 @@ func main() {
 			base.FailCount = state.FailCount
 		}
 		job := func() {
-			for _, r := range receivers {
-				if status == "down" && !notify.ShouldSendDown(r.Policy, isRepeat) {
+			for i, r := range receivers {
+				if r.Channel == notify.ChannelEmail && !emailGuard.Allow(r.Key) {
+					log.Printf("email cooldown skip [%s]", r.Key)
+					continue
+				}
+				if status == "down" && !notify.ShouldSendDown(r.Policy, isRepeat, r.Channel) {
 					continue
 				}
 				alert := base
 				alert.Body = notify.BuildAlertBody(r.Policy, status, tplCtx)
 				if err := r.Notifier.Send(alert); err != nil {
 					log.Printf("notify error [%s]: %v", r.Key, err)
+				} else if i+1 < len(receivers) {
+					time.Sleep(250 * time.Millisecond)
 				}
 			}
 		}

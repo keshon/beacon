@@ -1,0 +1,24 @@
+<div class="col-md-6">
+    <div class="app-panel-raised">
+        <div class="app-panel-body p-3">
+            <div class="app-panel-title mb-2">{{ title }}</div>
+            <div class="notify-channel-panel" data-notify-channel-panel="{{ channel }}">
+                <div class="app-segmented mb-2" data-notify-mode role="group">
+                    <button type="button" class="btn btn-sm is-active" data-mode="inherit">Global</button>
+                    <button type="button" class="btn btn-sm" data-mode="custom">Custom</button>
+                    <button type="button" class="btn btn-sm" data-mode="off">Off</button>
+                </div>
+                <p class="small text-muted mb-2" data-notify-mode-hint>Uses global settings for this channel.</p>
+                <div data-notify-channel-body class="d-none">
+                    <div data-notify-channel="{{ channel }}">
+                        <div data-notify-list></div>
+                        <div class="d-flex align-items-baseline gap-2 mt-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add><i class="bi bi-plus-lg"></i>Add</button>
+                            <span class="form-label small mb-0" data-notify-helper></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

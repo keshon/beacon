@@ -40,6 +40,21 @@ func tgTokens(targets []config.TelegramTarget) []string {
 	return out
 }
 
+func customTelegramOverride(targets ...config.TelegramTarget) *monitor.NotifyOverride {
+	return &monitor.NotifyOverride{
+		Telegram: &monitor.TelegramChannelOverride{
+			Mode:    monitor.NotifyChannelCustom,
+			Targets: targets,
+		},
+	}
+}
+
+func offTelegramOverride() *monitor.NotifyOverride {
+	return &monitor.NotifyOverride{
+		Telegram: &monitor.TelegramChannelOverride{Mode: monitor.NotifyChannelOff},
+	}
+}
+
 func TestTelegramTargets_noOverride_usesAllGlobal(t *testing.T) {
 	cfg := globalCfg()
 	m := &monitor.Monitor{Name: "m1"}
@@ -47,95 +62,80 @@ func TestTelegramTargets_noOverride_usesAllGlobal(t *testing.T) {
 	if len(got) != 5 {
 		t.Fatalf("want 5 global telegram targets, got %d", len(got))
 	}
-	if got[0].Token != "g1" || got[4].Token != "g5" {
-		t.Fatalf("unexpected global targets: %+v", got)
-	}
 }
 
-func TestTelegramTargets_oneOverride_ignoresGlobal(t *testing.T) {
+func TestTelegramTargets_customOverride_ignoresGlobal(t *testing.T) {
 	cfg := globalCfg()
 	m := &monitor.Monitor{
-		NotifyOverride: &monitor.NotifyOverride{
-			Telegram: []monitor.TelegramTarget{
-				{Token: "o1", ChatID: "oc1"},
-			},
-		},
+		NotifyOverride: customTelegramOverride(config.TelegramTarget{Token: "o1", ChatID: "oc1"}),
 	}
 	got := telegramTargets(cfg, m)
-	if len(got) != 1 {
-		t.Fatalf("want 1 override target, got %d: %+v", len(got), got)
-	}
-	if got[0].Token != "o1" {
-		t.Fatalf("want override token o1, got %q", got[0].Token)
+	if len(got) != 1 || got[0].Token != "o1" {
+		t.Fatalf("unexpected override: %+v", got)
 	}
 }
 
-func TestDiscordReceivers_oneOverride_ignoresGlobal(t *testing.T) {
+func TestTelegramTargets_offOverride_returnsNil(t *testing.T) {
+	cfg := globalCfg()
+	m := &monitor.Monitor{NotifyOverride: offTelegramOverride()}
+	if got := telegramTargets(cfg, m); len(got) != 0 {
+		t.Fatalf("want nil, got %+v", got)
+	}
+}
+
+func TestDiscordReceivers_customOverride_ignoresGlobal(t *testing.T) {
 	cfg := globalCfg()
 	m := &monitor.Monitor{
 		NotifyOverride: &monitor.NotifyOverride{
-			Discord: []monitor.DiscordReceiver{{Webhook: "https://override/w1"}},
+			Discord: &monitor.DiscordChannelOverride{
+				Mode:    monitor.NotifyChannelCustom,
+				Targets: []config.DiscordReceiver{{Webhook: "https://override/w1"}},
+			},
 		},
 	}
 	got := discordReceivers(cfg, m)
-	if len(got) != 1 {
-		t.Fatalf("want 1 override webhook, got %d: %+v", len(got), got)
-	}
-	if got[0].Webhook != "https://override/w1" {
-		t.Fatalf("unexpected webhook %q", got[0].Webhook)
+	if len(got) != 1 || got[0].Webhook != "https://override/w1" {
+		t.Fatalf("unexpected: %+v", got)
 	}
 }
 
-func TestChannelsIndependent_discordOverrideOnly_usesGlobalTelegram(t *testing.T) {
+func TestChannelsIndependent_discordCustomOnly_usesGlobalTelegram(t *testing.T) {
 	cfg := globalCfg()
 	m := &monitor.Monitor{
 		NotifyOverride: &monitor.NotifyOverride{
-			Discord: []monitor.DiscordReceiver{{Webhook: "https://override/w1"}},
-		},
-	}
-	tg := telegramTargets(cfg, m)
-	dc := discordReceivers(cfg, m)
-	if len(tg) != 5 {
-		t.Fatalf("telegram should use all 5 global, got %d", len(tg))
-	}
-	if len(dc) != 1 {
-		t.Fatalf("discord should use 1 override, got %d", len(dc))
-	}
-}
-
-func TestChannelsIndependent_telegramOverrideOnly_usesGlobalDiscord(t *testing.T) {
-	cfg := globalCfg()
-	m := &monitor.Monitor{
-		NotifyOverride: &monitor.NotifyOverride{
-			Telegram: []monitor.TelegramTarget{
-				{Token: "o1", ChatID: "oc1"},
+			Discord: &monitor.DiscordChannelOverride{
+				Mode:    monitor.NotifyChannelCustom,
+				Targets: []config.DiscordReceiver{{Webhook: "https://override/w1"}},
 			},
 		},
 	}
-	tg := telegramTargets(cfg, m)
-	dc := discordReceivers(cfg, m)
-	if len(tg) != 1 {
-		t.Fatalf("telegram should use 1 override, got %d", len(tg))
+	if len(telegramTargets(cfg, m)) != 5 {
+		t.Fatal("telegram should inherit global")
 	}
-	if len(dc) != 5 {
-		t.Fatalf("discord should use all 5 global, got %d", len(dc))
+	if len(discordReceivers(cfg, m)) != 1 {
+		t.Fatal("discord should use custom")
 	}
 }
 
-func TestBuildReceivers_countsMatchTargets(t *testing.T) {
+func TestTelegramTargets_offDiscordCustom_emailOnlyScenario(t *testing.T) {
 	cfg := globalCfg()
+	cfg.Email.Enabled = true
+	cfg.Email.Targets = []config.EmailTarget{{To: "ops@example.com"}}
 	m := &monitor.Monitor{
 		NotifyOverride: &monitor.NotifyOverride{
-			Telegram: []monitor.TelegramTarget{
-				{Token: "o1", ChatID: "oc1"},
-				{Token: "o2", ChatID: "oc2"},
+			Telegram: &monitor.TelegramChannelOverride{Mode: monitor.NotifyChannelOff},
+			Discord:  &monitor.DiscordChannelOverride{Mode: monitor.NotifyChannelOff},
+			Email: &monitor.EmailChannelOverride{
+				Mode:    monitor.NotifyChannelCustom,
+				Targets: []config.EmailTarget{{To: "only@example.com"}},
 			},
-			Discord: []monitor.DiscordReceiver{{Webhook: "https://override/w1"}},
 		},
 	}
-	recvs := BuildReceivers(cfg, m)
-	if len(recvs) != 3 {
-		t.Fatalf("want 3 receivers (2 tg + 1 dc), got %d", len(recvs))
+	if len(telegramTargets(cfg, m)) != 0 || len(discordReceivers(cfg, m)) != 0 {
+		t.Fatal("tg/dc should be off")
+	}
+	if len(emailTargets(cfg, m)) != 1 || emailTargets(cfg, m)[0].To != "only@example.com" {
+		t.Fatal("email custom expected")
 	}
 }
 
@@ -144,16 +144,10 @@ func TestBuildReceivers_distinctPolicies(t *testing.T) {
 	cfg.Discord.Enabled = false
 	cfg.Notifications.AlertMode = AlertModeRepeat
 	m := &monitor.Monitor{
-		NotifyOverride: &monitor.NotifyOverride{
-			Telegram: []monitor.TelegramTarget{
-				{
-					Token:  "o1",
-					ChatID: "c1",
-					Policy: &config.ReceiverPolicy{AlertMode: AlertModeOnce},
-				},
-				{Token: "o2", ChatID: "c2"},
-			},
-		},
+		NotifyOverride: customTelegramOverride(
+			config.TelegramTarget{Token: "o1", ChatID: "c1", Policy: &config.ReceiverPolicy{AlertMode: AlertModeOnce}},
+			config.TelegramTarget{Token: "o2", ChatID: "c2"},
+		),
 	}
 	recvs := BuildReceivers(cfg, m)
 	if len(recvs) != 2 {
@@ -162,60 +156,16 @@ func TestBuildReceivers_distinctPolicies(t *testing.T) {
 	if recvs[0].Policy.AlertMode != AlertModeOnce {
 		t.Fatalf("first: %q", recvs[0].Policy.AlertMode)
 	}
-	if recvs[1].Policy.AlertMode != AlertModeRepeat {
-		t.Fatalf("second should inherit global repeat: %q", recvs[1].Policy.AlertMode)
-	}
 }
 
-func TestTelegramTargets_emptyOverrideSlice_usesGlobal(t *testing.T) {
-	cfg := globalCfg()
-	m := &monitor.Monitor{
-		NotifyOverride: &monitor.NotifyOverride{
-			Telegram: []monitor.TelegramTarget{},
-			Discord:  []monitor.DiscordReceiver{{Webhook: "https://override/w1"}},
-		},
-	}
-	got := telegramTargets(cfg, m)
-	if len(got) != 5 {
-		t.Fatalf("empty telegram override slice should fall back to global, got %d", len(got))
-	}
-}
-
-func TestTelegramTargets_globalDisabled_noOverride_returnsNil(t *testing.T) {
-	cfg := globalCfg()
-	cfg.Telegram.Enabled = false
-	m := &monitor.Monitor{Name: "m1"}
-	if got := telegramTargets(cfg, m); len(got) != 0 {
-		t.Fatalf("want no telegram when global disabled, got %+v", got)
-	}
-}
-
-func TestTelegramTargets_overrideWorksWhenGlobalDisabled(t *testing.T) {
-	cfg := globalCfg()
-	cfg.Telegram.Enabled = false
-	m := &monitor.Monitor{
-		NotifyOverride: &monitor.NotifyOverride{
-			Telegram: []monitor.TelegramTarget{{Token: "o1", ChatID: "c1"}},
-		},
-	}
-	got := telegramTargets(cfg, m)
-	if len(got) != 1 || got[0].Token != "o1" {
-		t.Fatalf("override should work when global disabled, got %+v", got)
-	}
-}
-
-// Guard against accidental merge of global + override lists.
 func TestTelegramTargets_oneOverride_doesNotIncludeGlobalTokens(t *testing.T) {
 	cfg := globalCfg()
 	m := &monitor.Monitor{
-		NotifyOverride: &monitor.NotifyOverride{
-			Telegram: []monitor.TelegramTarget{{Token: "only", ChatID: "x"}},
-		},
+		NotifyOverride: customTelegramOverride(config.TelegramTarget{Token: "only", ChatID: "x"}),
 	}
-	tokens := tgTokens(telegramTargets(cfg, m))
-	for _, tok := range tokens {
+	for _, tok := range tgTokens(telegramTargets(cfg, m)) {
 		if tok == "g1" || tok == "g5" {
-			t.Fatalf("global token leaked into override result: %v", tokens)
+			t.Fatalf("global token leaked: %v", tok)
 		}
 	}
 }

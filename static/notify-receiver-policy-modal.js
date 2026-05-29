@@ -34,7 +34,7 @@
                     '</p>' +
 
                     '<div class="row g-3">' +
-                        '<div class="col-md-6">' +
+                        '<div class="col-md-6" data-policy-alert-mode-row>' +
                             '<label class="form-label small">Alert mode</label>' +
 
                             '<select class="form-select" data-policy-alert-mode>' +
@@ -169,14 +169,34 @@
         }
     }
 
-    function open(initial, delivery, onSave) {
+    function open(initial, delivery, onSave, opts) {
         ensureModal();
         onSaveCb = onSave;
         currentDelivery = delivery || null;
+        opts = opts || {};
+        var channel = opts.channel || (delivery && delivery.channel) || '';
+        initial = initial || {};
+        if (channel === 'email') {
+            initial = Object.assign({}, initial);
+            delete initial.alert_mode;
+        }
+        var intro = formRoot && formRoot.querySelector('.beacon-modal__intro');
+        if (intro) {
+            if (channel === 'email') {
+                intro.textContent =
+                    'Email alerts are always sent once on down and once on recovery. ' +
+                    'Customize templates below; empty fields inherit global defaults from Settings → Notifications.';
+            } else {
+                intro.textContent =
+                    'Empty fields inherit global defaults from Settings → Notifications. ' +
+                    'Use Test to preview the template on this receiver.';
+            }
+        }
         var policy = window.Beacon && window.Beacon.policy;
-        return policy.init(formRoot, initial || {}, {
+        return policy.init(formRoot, initial, {
             globalMode: false,
             delivery: currentDelivery,
+            channel: channel,
         }).then(function (pf) {
             formRoot._policyForm = pf;
             openModal();
@@ -186,5 +206,4 @@
     var modalAPI = { open: open, close: closeModal };
     window.Beacon = window.Beacon || {};
     window.Beacon.policyModal = modalAPI;
-    window.BeaconReceiverPolicyModal = modalAPI;
 })();
