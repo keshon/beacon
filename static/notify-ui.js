@@ -40,18 +40,12 @@
 
     function globalDefaults() {
         var root = window.Beacon && window.Beacon.notify;
-        return (
-            (root && root.globalDefaults) ||
-            window.BeaconNotifyGlobalDefaults || {
-                alert_mode: 'repeat',
-                templates: {},
-            }
-        );
+        return (root && root.globalDefaults) || { alert_mode: 'repeat', templates: {} };
     }
 
     function loadBuiltins() {
         if (builtinsCache) return Promise.resolve(builtinsCache);
-        var policy = (window.Beacon && window.Beacon.policy) || window.BeaconNotifyPolicy;
+        var policy = window.Beacon && window.Beacon.policy;
         if (policy && policy.fetchDefaults) {
             return policy.fetchDefaults().then(function (d) {
                 builtinsCache = d;
@@ -322,7 +316,6 @@
         var defs = notifications || { alert_mode: 'repeat', templates: {} };
         window.Beacon = window.Beacon || { notify: {} };
         window.Beacon.notify.globalDefaults = defs;
-        window.BeaconNotifyGlobalDefaults = defs;
         document.querySelectorAll('.notify-row').forEach(updateRowMeta);
     }
 
@@ -334,5 +327,4 @@
     };
     window.Beacon = window.Beacon || {};
     window.Beacon.notify = Object.assign(window.Beacon.notify || {}, notifyAPI);
-    window.BeaconNotify = notifyAPI;
 })();

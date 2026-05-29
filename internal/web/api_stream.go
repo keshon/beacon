@@ -3,7 +3,7 @@ package web
 import "net/http"
 
 func (s *Server) apiStreamChecks(w http.ResponseWriter, r *http.Request) {
-	if s.hub == nil {
+	if s.streamHub == nil {
 		http.Error(w, "stream unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -17,7 +17,7 @@ func (s *Server) apiStreamChecks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ch, unregister := s.hub.Register(16)
+	ch, unregister := s.streamHub.Register(16)
 	defer unregister()
 
 	if _, err := w.Write([]byte(": ok\n\n")); err != nil {

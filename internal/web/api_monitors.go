@@ -1,25 +1,68 @@
 package web
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/keshon/beacon/internal/service"
 )
 
 func (s *Server) apiMonitorList(w http.ResponseWriter, r *http.Request) {
-	s.runCommand(w, r, "monitor:list")
+	list, err := service.ListMonitors(s.store)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	s.jsonResponse(w, list)
 }
 
 func (s *Server) apiMonitorCreate(w http.ResponseWriter, r *http.Request) {
-	s.runCommand(w, r, "monitor:add")
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "read body", http.StatusBadRequest)
+		return
+	}
+	m, err := service.AddMonitorFromJSON(s.store, body)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	s.jsonResponse(w, m)
 }
 
 func (s *Server) apiMonitorDelete(w http.ResponseWriter, r *http.Request) {
-	s.runCommandWithID(w, r, "monitor:delete", r.PathValue("id"))
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "missing id", http.StatusBadRequest)
+		return
+	}
+	if err := service.DeleteMonitor(s.store, id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) apiMonitorUpdate(w http.ResponseWriter, r *http.Request) {
-	s.runCommandWithID(w, r, "monitor:update", r.PathValue("id"))
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, "missing id", http.StatusBadRequest)
+		return
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "read body", http.StatusBadRequest)
+		return
+	}
+	m, err := service.UpdateMonitorFromJSON(s.store, id, body)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	s.jsonResponse(w, m)
 }
 
 func (s *Server) apiMonitorUptime(w http.ResponseWriter, r *http.Request) {
@@ -65,4 +108,16 @@ func (s *Server) apiMonitorUptime(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	s.jsonResponse(w, out)
+}
+
+func writeServiceError(w http.ResponseWriter, err error) {
+	if errors.Is(err, service.ErrInvalidJSON) {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if errors.Is(err, service.ErrMonitorNotFound) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	http.Error(w, err.Error(), http.StatusBadRequest)
 }

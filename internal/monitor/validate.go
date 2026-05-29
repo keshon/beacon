@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/keshon/beacon/internal/checks"
+	"github.com/keshon/beacon/internal/netpolicy"
 )
 
 const (
@@ -63,7 +63,7 @@ func validateHTTPTarget(target string) error {
 	if strings.EqualFold(u.Scheme, "javascript") || strings.EqualFold(u.Scheme, "data") {
 		return fmt.Errorf("HTTP target scheme is not allowed")
 	}
-	if err := checks.ResolvePublicHost(host); err != nil {
+	if err := netpolicy.ResolvePublicHost(host); err != nil {
 		return err
 	}
 	return nil
@@ -84,7 +84,7 @@ func validateTCPTarget(target string) error {
 	if err != nil || port < 1 || port > 65535 {
 		return fmt.Errorf("TCP port must be between 1 and 65535")
 	}
-	if err := checks.ResolvePublicHost(host); err != nil {
+	if err := netpolicy.ResolvePublicHost(host); err != nil {
 		return err
 	}
 	return nil

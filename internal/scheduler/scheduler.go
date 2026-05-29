@@ -21,7 +21,7 @@ type CheckJob struct {
 
 type Scheduler struct {
 	store           *store.Store
-	engine          *monitor.Engine
+	evaluator       *monitor.StatusEvaluator
 	workers         int
 	defaultInterval time.Duration
 	cfg             *config.Config
@@ -33,13 +33,13 @@ type Scheduler struct {
 	droppedChecks   atomic.Uint64
 }
 
-func New(s *store.Store, engine *monitor.Engine, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(store.CheckRecord, *monitor.MonitorState)) *Scheduler {
+func New(s *store.Store, evaluator *monitor.StatusEvaluator, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(store.CheckRecord, *monitor.MonitorState)) *Scheduler {
 	if defaultInterval <= 0 {
 		defaultInterval = 30 * time.Second
 	}
 	return &Scheduler{
 		store:           s,
-		engine:          engine,
+		evaluator:       evaluator,
 		workers:         workers,
 		defaultInterval: defaultInterval,
 		cfg:             cfg,
@@ -261,7 +261,7 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 	if st == nil {
 		st = &monitor.MonitorState{MonitorID: m.ID, Status: monitor.StatusUnknown}
 	}
-	sc.engine.Process(result, st, m)
+	sc.evaluator.Process(result, st, m)
 	if err := sc.store.SetState(st); err != nil {
 		log.Printf("[scheduler] write state: %v", err)
 		return

@@ -8,7 +8,7 @@
         if (defaultsCache) {
             return Promise.resolve(defaultsCache);
         }
-        return fetch('/api/notify/defaults')
+        return window.Beacon.apiFetch('/api/notify/defaults')
             .then(function (r) {
                 if (!r.ok) {
                     throw new Error('HTTP ' + r.status);
@@ -23,13 +23,7 @@
 
     function globalDefaults() {
         var root = window.Beacon && window.Beacon.notify;
-        return (
-            (root && root.globalDefaults) ||
-            window.BeaconNotifyGlobalDefaults || {
-                alert_mode: 'repeat',
-                templates: {},
-            }
-        );
+        return (root && root.globalDefaults) || { alert_mode: 'repeat', templates: {} };
     }
 
     function statusClass(kind) {
@@ -52,7 +46,7 @@
     }
 
     function postNotifyTest(payload) {
-        return fetch('/api/notify/test', {
+        return window.Beacon.apiFetch('/api/notify/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -277,6 +271,5 @@
     };
     window.Beacon = window.Beacon || {};
     window.Beacon.policy = policyAPI;
-    window.BeaconNotifyPolicy = policyAPI;
 })();
 

@@ -16,8 +16,9 @@ const (
 )
 
 type Session struct {
-	Username string
-	Created  time.Time
+	Username  string
+	Created   time.Time
+	CSRFToken string
 }
 
 type Auth struct {
@@ -31,16 +32,20 @@ func NewAuth() *Auth {
 	}
 }
 
-func (a *Auth) CreateSession(username string) (string, error) {
+func (a *Auth) CreateSession(username string) (sessionID, csrfToken string, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.pruneSessionsLocked()
 	sid, err := randomSessionID()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	a.sessions[sid] = Session{Username: username, Created: time.Now()}
-	return sid, nil
+	csrf, err := randomSessionID()
+	if err != nil {
+		return "", "", err
+	}
+	a.sessions[sid] = Session{Username: username, Created: time.Now(), CSRFToken: csrf}
+	return sid, csrf, nil
 }
 
 func (a *Auth) GetSession(sid string) *Session {

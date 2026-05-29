@@ -15,8 +15,8 @@ import (
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
 	"github.com/keshon/beacon/internal/notify"
-	"github.com/keshon/beacon/internal/realtime"
 	"github.com/keshon/beacon/internal/scheduler"
+	"github.com/keshon/beacon/internal/sse"
 	"github.com/keshon/beacon/internal/store"
 	"github.com/keshon/beacon/internal/sync"
 	"github.com/keshon/beacon/internal/web"
@@ -31,9 +31,9 @@ func loadConfig(st *store.Store, filePath string) *config.Config {
 	ok, err := st.GetConfig(&cfg)
 	if ok && err == nil {
 		if cfg.Auth.Password != "" {
-			cfg.RememberPlainPassword(cfg.Auth.Password)
+			_ = cfg.Auth.SetPassword(cfg.Auth.Password)
 		}
-		if err := cfg.Auth.EnsureAuthHashed(); err != nil {
+		if err := cfg.Auth.EnsureHashed(); err != nil {
 			log.Printf("auth hash: %v", err)
 		}
 		cfg.Normalize()
@@ -42,16 +42,16 @@ func loadConfig(st *store.Store, filePath string) *config.Config {
 	}
 	if c, err := config.Load(filePath); err == nil {
 		if c.Auth.Password != "" {
-			c.RememberPlainPassword(c.Auth.Password)
+			_ = c.Auth.SetPassword(c.Auth.Password)
 		}
-		_ = c.Auth.EnsureAuthHashed()
+		_ = c.Auth.EnsureHashed()
 		c.Normalize()
 		_ = st.SetConfig(c)
 		return c
 	}
 	cfg = *config.Default()
-	cfg.RememberPlainPassword(cfg.Auth.Password)
-	_ = cfg.Auth.EnsureAuthHashed()
+	_ = cfg.Auth.SetPassword(cfg.Auth.Password)
+	_ = cfg.Auth.EnsureHashed()
 	cfg.Normalize()
 	_ = st.SetConfig(&cfg)
 	log.Printf("using default config")
@@ -84,7 +84,6 @@ func main() {
 
 	cfg := loadConfig(st, cfgPath)
 	commands.RegisterAll(st)
-	commands.RegisterConfigCommands(st, cfg)
 
 	const alertQueueSize = 128
 	alertQueue := make(chan func(), alertQueueSize)
@@ -132,7 +131,7 @@ func main() {
 		}
 	}
 
-	engine := monitor.NewEngine(
+	evaluator := monitor.NewStatusEvaluator(
 		func(m *monitor.Monitor, state *monitor.MonitorState, result checks.CheckResult, isRepeat bool) {
 			sendAlerts(m, state, result, "down", "Error: "+result.Error, isRepeat)
 		},
@@ -141,15 +140,15 @@ func main() {
 		},
 	)
 
-	hub := realtime.NewHub()
-	sch := scheduler.New(st, engine, cfg.Workers, cfg.DefaultIntervalDuration(), cfg, hub.BroadcastCheck)
+	streamHub := sse.NewCheckStreamHub()
+	sch := scheduler.New(st, evaluator, cfg.Workers, cfg.DefaultIntervalDuration(), cfg, streamHub.BroadcastCheck)
 	sch.Run(ctx)
 
-	syncClient := sync.NewClient(st, cfg)
+	syncClient := sync.NewPeerSyncClient(st, cfg)
 	go syncClient.Run(ctx)
 
 	auth := web.NewAuth()
-	srv := web.NewServer(st, auth, cfg, sch, "templates", "static", hub)
+	srv := web.NewServer(st, auth, cfg, sch, "templates", "static", streamHub)
 	httpServer := &http.Server{Addr: cfg.Listen, Handler: srv.Routes()}
 
 	go func() {

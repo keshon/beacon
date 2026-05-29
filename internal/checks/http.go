@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keshon/beacon/internal/netpolicy"
 )
 
 func HTTPCheck(ctx context.Context, target string, timeout time.Duration) CheckResult {
@@ -25,7 +26,7 @@ func HTTPCheck(ctx context.Context, target string, timeout time.Duration) CheckR
 		result.Error = err.Error()
 		return result
 	}
-	if err := ResolvePublicHost(u.Hostname()); err != nil {
+	if err := netpolicy.ResolvePublicHost(u.Hostname()); err != nil {
 		result.Success = false
 		result.Error = err.Error()
 		return result
@@ -43,7 +44,7 @@ func HTTPCheck(ctx context.Context, target string, timeout time.Duration) CheckR
 			if err != nil {
 				return nil, err
 			}
-			if err := ResolvePublicHost(host); err != nil {
+			if err := netpolicy.ResolvePublicHost(host); err != nil {
 				return nil, err
 			}
 			d := &net.Dialer{Timeout: timeout}
@@ -54,7 +55,7 @@ func HTTPCheck(ctx context.Context, target string, timeout time.Duration) CheckR
 		Transport: transport,
 		Timeout:   timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if err := ResolvePublicHost(req.URL.Hostname()); err != nil {
+			if err := netpolicy.ResolvePublicHost(req.URL.Hostname()); err != nil {
 				return err
 			}
 			if len(via) >= 10 {

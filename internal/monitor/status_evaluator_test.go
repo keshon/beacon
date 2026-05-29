@@ -7,9 +7,9 @@ import (
 	"github.com/keshon/beacon/internal/checks"
 )
 
-func TestEngine_downCallback_firstAndRepeat(t *testing.T) {
+func TestStatusEvaluator_downCallback_firstAndRepeat(t *testing.T) {
 	var firstCalls, repeatCalls, recoverCalls int
-	e := NewEngine(
+	e := NewStatusEvaluator(
 		func(m *Monitor, state *MonitorState, result checks.CheckResult, isRepeat bool) {
 			if isRepeat {
 				repeatCalls++

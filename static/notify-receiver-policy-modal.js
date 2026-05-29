@@ -173,7 +173,7 @@
         ensureModal();
         onSaveCb = onSave;
         currentDelivery = delivery || null;
-        var policy = (window.Beacon && window.Beacon.policy) || window.BeaconNotifyPolicy;
+        var policy = window.Beacon && window.Beacon.policy;
         return policy.init(formRoot, initial || {}, {
             globalMode: false,
             delivery: currentDelivery,

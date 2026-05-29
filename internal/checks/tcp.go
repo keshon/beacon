@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keshon/beacon/internal/netpolicy"
 )
 
 func TCPCheck(ctx context.Context, target string, timeout time.Duration) CheckResult {
@@ -21,7 +22,7 @@ func TCPCheck(ctx context.Context, target string, timeout time.Duration) CheckRe
 		result.Error = err.Error()
 		return result
 	}
-	if err := ResolvePublicHost(host); err != nil {
+	if err := netpolicy.ResolvePublicHost(host); err != nil {
 		result.Success = false
 		result.Error = err.Error()
 		return result

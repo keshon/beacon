@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS mybuildstage
+FROM golang:1.25-alpine AS mybuildstage
 
 # Set Go proxy
 ENV GOPROXY=https://proxy.golang.org,direct

@@ -91,13 +91,9 @@ func MergeSecrets(existing, incoming *Config) error {
 		return nil
 	}
 	if pw := strings.TrimSpace(incoming.Auth.Password); pw != "" {
-		existing.RememberPlainPassword(pw)
-		hash, err := HashPassword(pw)
-		if err != nil {
+		if err := existing.Auth.SetPassword(pw); err != nil {
 			return err
 		}
-		existing.Auth.PasswordHash = hash
-		existing.Auth.Password = ""
 	}
 	existing.Auth.Username = incoming.Auth.Username
 	if existing.Auth.Username == "" {

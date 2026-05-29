@@ -224,7 +224,7 @@ CLI uses the same datastore as the server.
 
 ## HTTP API
 
-All endpoints require basic authentication unless otherwise noted.
+All endpoints require authentication (HTTP Basic or session cookie). Cookie-authenticated `POST`/`PUT`/`PATCH`/`DELETE` requests must include the `X-CSRF-Token` header matching the `beacon_csrf` cookie (see `static/beacon.js`).
 
 | Method | Path                      | Description            |
 | ------ | ------------------------- | ---------------------- |
@@ -235,7 +235,7 @@ All endpoints require basic authentication unless otherwise noted.
 | DELETE | /api/monitors/{id}        | Delete monitor         |
 | GET    | /api/monitors/{id}/uptime | Uptime samples         |
 | GET    | /api/state                | Current state          |
-| GET    | /api/events               | Event log              |
+| GET    | /api/check-records        | Check history records  |
 | GET    | /api/config               | Get config             |
 | PUT    | /api/config               | Update config          |
 | POST   | /api/notify/test          | Send test notification |
@@ -274,13 +274,16 @@ go test ./...
 cmd/beacon/              Entry point
 internal/
   checks/                HTTP and TCP probes
-  commands/              CLI + API command handlers (split by domain)
-  config/                Configuration and receiver types
-  monitor/               Monitors, state, notify overrides
+  commands/              CLI commands (commandkit)
+  config/                Configuration, AuthCredentials, receivers
+  monitor/               Monitors, StatusEvaluator, validation
+  netpolicy/             SSRF / host allowlist for probes
   notify/                Telegram/Discord delivery
   scheduler/             Check scheduling
+  service/               Shared domain logic (monitors, config, state)
+  sse/                   CheckStreamHub for live check SSE
   store/                 Persistence (CheckRecord history)
-  sync/                  Multi-instance sync
+  sync/                  PeerSyncClient for multi-instance sync
   web/                   Pages (page*) and JSON API (api*)
 templates/
   dashboard/             Dashboard page and row partials
@@ -288,8 +291,9 @@ templates/
   settings/              Settings page
   partials/              Shared head fragments
   base.html, login.html  Root layouts
-static/                  beacon.js namespace + notify UI modules
-docs/REMAINING.md        Follow-up naming/structure backlog
+static/                  beacon.js (Beacon.apiFetch, CSRF) + notify UI
+tooling/scripts/         UIKit bootstrap/build/watch helpers
+docs/REMAINING.md        Optional follow-up backlog
 ```
 
 ## License

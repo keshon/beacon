@@ -1,4 +1,4 @@
-package realtime
+package sse
 
 import (
 	"encoding/json"
@@ -10,19 +10,19 @@ import (
 	"github.com/keshon/beacon/internal/store"
 )
 
-// Hub fans out check results to SSE subscribers.
-type Hub struct {
+// CheckStreamHub fans out check results to SSE subscribers.
+type CheckStreamHub struct {
 	mu      sync.Mutex
 	clients map[chan []byte]struct{}
 }
 
-func NewHub() *Hub {
-	return &Hub{clients: make(map[chan []byte]struct{})}
+func NewCheckStreamHub() *CheckStreamHub {
+	return &CheckStreamHub{clients: make(map[chan []byte]struct{})}
 }
 
 // Register adds a subscriber. The returned channel receives complete SSE data lines
 // (including "data: " prefix and trailing newlines). Call unregister when the client disconnects.
-func (h *Hub) Register(buf int) (ch <-chan []byte, unregister func()) {
+func (h *CheckStreamHub) Register(buf int) (ch <-chan []byte, unregister func()) {
 	if buf < 4 {
 		buf = 4
 	}
@@ -39,8 +39,7 @@ func (h *Hub) Register(buf int) (ch <-chan []byte, unregister func()) {
 }
 
 // BroadcastCheck notifies subscribers of a completed check (non-blocking per client).
-// st is the persisted monitor state after the check (may be nil only if caller passes nil).
-func (h *Hub) BroadcastCheck(rec store.CheckRecord, st *monitor.MonitorState) {
+func (h *CheckStreamHub) BroadcastCheck(rec store.CheckRecord, st *monitor.MonitorState) {
 	status := monitor.StatusUnknown
 	latencyMs := "—"
 	lastCheck := "—"
@@ -83,7 +82,6 @@ func (h *Hub) BroadcastCheck(rec store.CheckRecord, st *monitor.MonitorState) {
 		select {
 		case c <- line:
 		default:
-			// Drop for slow readers; client will catch up on next poll or reconnect.
 		}
 	}
 }

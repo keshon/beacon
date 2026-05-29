@@ -208,7 +208,7 @@
         if (!isNaN(iv) && iv > 0) payload.interval = iv;
         const no = collectNotifyOverride(addForm);
         if (no) payload.notify_override = no;
-        const res = await fetch('/api/monitors', {
+        const res = await window.Beacon.apiFetch('/api/monitors', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -220,7 +220,7 @@
     document.querySelectorAll('.btn-del').forEach((b) => {
         b.onclick = async () => {
             if (!confirm('Delete this monitor?')) return;
-            const r = await fetch('/api/monitors/' + b.dataset.id, { method: 'DELETE' });
+            const r = await window.Beacon.apiFetch('/api/monitors/' + b.dataset.id, { method: 'DELETE' });
             if (r.ok) b.closest('.monitor-row').remove();
         };
     });
@@ -228,7 +228,7 @@
     document.querySelectorAll('.btn-toggle').forEach((b) => {
         b.onclick = async () => {
             const enabled = b.dataset.enabled === 'true';
-            const r = await fetch('/api/monitors/' + b.dataset.id, {
+            const r = await window.Beacon.apiFetch('/api/monitors/' + b.dataset.id, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ enabled: !enabled }),
@@ -265,7 +265,7 @@
                     else if (!isNaN(iv)) patch.interval = 0;
                     const no = collectNotifyOverride(f);
                     patch.notify_override = no || {};
-                    const r = await fetch('/api/monitors/' + id, {
+                    const r = await window.Beacon.apiFetch('/api/monitors/' + id, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(patch),

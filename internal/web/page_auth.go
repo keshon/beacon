@@ -34,7 +34,7 @@ func (s *Server) pageLogin(w http.ResponseWriter, r *http.Request) {
 		s.render(w, "login.html", pongo2.Context{"error": "Invalid credentials"})
 		return
 	}
-	sid, err := s.auth.CreateSession(user)
+	sid, csrf, err := s.auth.CreateSession(user)
 	if err != nil {
 		http.Error(w, "login failed", http.StatusInternalServerError)
 		return
@@ -44,10 +44,11 @@ func (s *Server) pageLogin(w http.ResponseWriter, r *http.Request) {
 		Value:    sid,
 		Path:     "/",
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 		Secure:   sessionCookieSecure(r),
 		MaxAge:   sessionMaxAge,
 	})
+	s.auth.issueCSRFCookie(w, r, csrf)
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
 }
 
@@ -56,5 +57,6 @@ func (s *Server) pageLogout(w http.ResponseWriter, r *http.Request) {
 		s.auth.DeleteSession(c.Value)
 	}
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: sessionCookieSecure(r)})
+	http.SetCookie(w, &http.Cookie{Name: csrfCookieName, Value: "", Path: "/", MaxAge: -1, Secure: sessionCookieSecure(r)})
 	http.Redirect(w, r, "/login", http.StatusFound)
 }

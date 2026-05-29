@@ -12,7 +12,7 @@ This folder contains the source-of-truth styles for Beacon. Bootstrap 5.3.3 SCSS
 Download Bootstrap SCSS source (no npm required):
 
 ```bash
-bash scripts/bootstrap-download.sh
+bash tooling/scripts/bootstrap-download.sh
 ```
 
 Windows:
@@ -26,18 +26,18 @@ scripts\bootstrap-download.bat
 ### One-shot build
 
 ```bash
-bash scripts/uikit-build.sh
+bash tooling/scripts/uikit-build.sh
 ```
 
 ### Watch mode
 
 ```bash
-bash scripts/uikit-watch.sh
+bash tooling/scripts/uikit-watch.sh
 ```
 
 ## Dev workflow
 
-1. Run `scripts/bootstrap-download.sh` once (if `uikit/vendor/` is empty).
+1. Run `tooling/scripts/bootstrap-download.sh` once (if `uikit/vendor/` is empty).
 2. Start the app.
 3. In a second terminal start the SCSS watcher.
 4. Edit files in `uikit/scss/`.
