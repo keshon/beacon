@@ -54,7 +54,8 @@ type NetworkConfig struct {
 	SelfURL      string   `json:"self_url"`
 	Peers        []string `json:"peers"`
 	SyncInterval int      `json:"sync_interval"` // seconds, default 60
-	DeadTimeout  int      `json:"dead_timeout"`   // seconds, default 300
+	DeadTimeout  int      `json:"dead_timeout"`  // seconds, default 300
+	SyncToken    string   `json:"sync_token,omitempty"`
 }
 
 // ReceiverPolicy holds per-receiver alert mode and templates. Empty fields

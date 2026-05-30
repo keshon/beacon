@@ -88,11 +88,23 @@ func sessionCookieSecure(r *http.Request) bool {
 	return false
 }
 
-func (a *Auth) Middleware(username string, checkPassword func(user, pass string) bool) func(http.Handler) http.Handler {
+func (a *Auth) Middleware(username string, checkPassword func(user, pass string) bool, syncToken func() string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/login" || r.URL.Path == "/logout" || r.URL.Path == "/api/health" {
 				next.ServeHTTP(w, r)
+				return
+			}
+			token := ""
+			if syncToken != nil {
+				token = strings.TrimSpace(syncToken())
+			}
+			if r.URL.Path == "/api/sync/export" && token != "" {
+				if SyncTokenMatches(r, token) {
+					next.ServeHTTP(w, r)
+					return
+				}
+				denyAuth(w, r)
 				return
 			}
 			if auth := r.Header.Get("Authorization"); auth != "" && strings.HasPrefix(auth, "Basic ") {

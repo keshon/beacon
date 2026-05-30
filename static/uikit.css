@@ -12358,13 +12358,12 @@ html[data-bs-theme=light] .dash-nav .vr {
   gap: 2px;
   min-height: 1.125rem;
   flex-wrap: nowrap;
-  max-width: 14rem;
   overflow: hidden;
 }
 
 .uptime-strip:empty {
   display: inline-block;
-  width: 8rem;
+  width: 100%;
   background: linear-gradient(90deg, var(--app-shimmer-base) 0%, var(--app-shimmer-highlight) 50%, var(--app-shimmer-base) 100%);
   background-size: 200% 100%;
   animation: shimmer var(--app-duration-shimmer) linear infinite;
@@ -12376,7 +12375,7 @@ html[data-bs-theme=light] .dash-nav .vr {
   display: inline-block;
   width: 3px;
   min-height: 1rem;
-  border-radius: 1px;
+  border-radius: var(--app-radius-2xs);
   flex-shrink: 0;
 }
 

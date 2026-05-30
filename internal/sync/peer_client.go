@@ -103,7 +103,7 @@ func (c *PeerSyncClient) syncFromPeers(ctx context.Context) {
 		if err != nil {
 			continue
 		}
-		req.SetBasicAuth(c.cfg.Auth.Username, c.cfg.Auth.PasswordForBasicAuth())
+		setPeerSyncAuth(req, c.cfg)
 		resp, err := c.client.Do(req)
 		if err != nil {
 			log.Printf("[sync] peer %s: %v", peerURL, err)
@@ -112,7 +112,15 @@ func (c *PeerSyncClient) syncFromPeers(ctx context.Context) {
 		}
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			c.recordSyncError(peerURL, fmt.Sprintf("HTTP %d", resp.StatusCode))
+			errMsg := fmt.Sprintf("HTTP %d", resp.StatusCode)
+			if resp.StatusCode == http.StatusUnauthorized {
+				if strings.TrimSpace(c.cfg.Network.SyncToken) != "" {
+					errMsg = "HTTP 401 — check sync_token matches on both nodes"
+				} else {
+					errMsg = "HTTP 401 — set matching sync_token on all nodes or use identical web credentials"
+				}
+			}
+			c.recordSyncError(peerURL, errMsg)
 			continue
 		}
 		var payload ExportPayload

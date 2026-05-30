@@ -84,7 +84,7 @@ func (s *Server) Routes() http.Handler {
 		}
 		return s.cfg.Auth.CheckPassword(pass)
 	}
-	authMw := s.auth.Middleware(s.cfg.Auth.Username, checkPassword)
+	authMw := s.auth.Middleware(s.cfg.Auth.Username, checkPassword, func() string { return s.cfg.Network.SyncToken })
 	h := s.auth.CSRFMiddleware()(authMw(mux))
 	if s.staticDir != "" {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

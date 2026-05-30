@@ -202,7 +202,7 @@ For HTTP monitors, expand **HTTP options** to set Basic Auth credentials (stored
 
 Beacon supports optional synchronization between multiple instances.
 
-When enabled, instances exchange monitor definitions and state.
+When enabled, instances exchange monitor definitions and state via `GET /api/sync/export`.
 
 This is useful for running multiple Beacon nodes in parallel environments.
 
@@ -210,8 +210,11 @@ Configuration:
 
 * self URL
 * peer list
+* **sync token** — same shared secret on every node (required for reliable sync)
 * sync interval
-* timeout settings
+* dead timeout settings
+
+Each node uses the sync token for outbound peer requests (`Authorization: Bearer …` or `X-Beacon-Sync-Token`). Web UI login credentials can differ per node. If no sync token is configured, legacy web Basic Auth is used (all nodes must share the same username and password, and outbound auth breaks after restart when only `password_hash` is stored).
 
 Export endpoint:
 
@@ -219,7 +222,7 @@ Export endpoint:
 GET /api/sync/export
 ```
 
-Requires sync to be enabled.
+Requires sync to be enabled on the exporting node and a valid sync token (when configured).
 
 ## Web UI
 

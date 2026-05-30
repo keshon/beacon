@@ -265,6 +265,11 @@
                                 <input type="number" class="form-control" name="network_dead_timeout" min="60" placeholder="300" />
                             </div>
                             <div class="col-12">
+                                <label class="form-label small">Sync token</label>
+                                <input type="password" class="form-control" name="network_sync_token" autocomplete="new-password" placeholder="Shared secret for all nodes" />
+                                <div class="form-text small">Same token on every node. Web login can differ per node.</div>
+                            </div>
+                            <div class="col-12">
                                 <label class="form-label small text-muted">Node ID</label>
                                 <input type="text" class="form-control app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
                             </div>
@@ -372,6 +377,10 @@
                 fieldByName(f, 'network_sync_interval').value = cfg.network?.sync_interval || '';
                 fieldByName(f, 'network_dead_timeout').value = cfg.network?.dead_timeout || '';
                 fieldByName(f, 'network_node_id').value = cfg.network?.node_id || '';
+                fieldByName(f, 'network_sync_token').value = '';
+                fieldByName(f, 'network_sync_token').placeholder = cfg.secrets?.sync_token
+                    ? 'Leave blank to keep current'
+                    : 'Set shared sync token';
 
                 telegramList.setValues(cfg.telegram?.targets || []);
                 const webhooks = (cfg.discord?.webhooks || []).map((w) =>
@@ -453,6 +462,7 @@
                 sync_interval: parseInt(namedField('network_sync_interval').value) || 60,
                 dead_timeout: parseInt(namedField('network_dead_timeout').value) || 300,
                 node_id: namedField('network_node_id').value.trim(),
+                sync_token: namedField('network_sync_token').value,
             },
         };
         const res = await window.Beacon.apiFetch('/api/config', {

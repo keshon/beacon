@@ -20,15 +20,6 @@
             {% endif %}
         </div>
     </div>
-    <div class="dash-list-secondary">
-        {% if row.IsPeer %}
-        <span class="badge rounded-pill badge-source-peer"><i class="bi bi-diagram-3"></i>{{ row.SourceLabel }}</span>
-        {% else %}
-        <span class="badge rounded-pill badge-source-self"><i class="bi bi-person"></i>{{ row.SourceLabel }}</span>
-        {% endif %}
-        <span class="dash-list-metric text-body-secondary dashboard-latency">{{ row.LatencyMs }}</span>
-        <span class="dash-list-metric text-body-tertiary dashboard-lastcheck">{{ row.LastCheck }}</span>
-    </div>
     <div class="dash-list-uptime">
         {% if row.IsPeer %}
         <span class="text-body-tertiary app-metric" title="Check history is recorded on the peer node">—</span>
@@ -40,5 +31,14 @@
             aria-label="Recent check results for this monitor"
         ></div>
         {% endif %}
+    </div>
+    <div class="dash-list-secondary">
+        {% if row.IsPeer %}
+        <span class="badge rounded-pill badge-source-peer"><i class="bi bi-diagram-3"></i>{{ row.SourceLabel }}</span>
+        {% else %}
+        <span class="badge rounded-pill badge-source-self"><i class="bi bi-person"></i>{{ row.SourceLabel }}</span>
+        {% endif %}
+        <span class="dash-list-metric text-body-secondary dashboard-latency">{{ row.LatencyMs }}</span>
+        <span class="dash-list-metric text-body-tertiary dashboard-lastcheck">{{ row.LastCheck }}</span>
     </div>
 </div>

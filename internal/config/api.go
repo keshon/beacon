@@ -10,6 +10,7 @@ type SecretsPresent struct {
 	EmailSMTP        bool   `json:"email_smtp"`
 	EmailSMTPPerRow  []bool `json:"email_smtp_per_row"`
 	WebhookURLs      []bool `json:"webhook_urls"`
+	SyncToken        bool   `json:"sync_token"`
 }
 
 type PublicEmailTarget struct {
@@ -98,11 +99,12 @@ func (c *Config) ToPublic() PublicConfig {
 		Notifications:   c.Notifications,
 		Workers:         c.Workers,
 		DefaultInterval: c.DefaultInterval,
-		Network:         c.Network,
+		Network:         publicNetwork(c.Network),
 		RequiresRestart: true,
 		RecommendedMinIntervalSec: int(minIntervalProbeSeconds),
 	}
 	pub.Secrets.Password = c.Auth.PasswordHash != "" || c.Auth.Password != ""
+	pub.Secrets.SyncToken = strings.TrimSpace(c.Network.SyncToken) != ""
 	pub.Telegram.Enabled = c.Telegram.Enabled
 	for _, t := range c.Telegram.Targets {
 		pub.Secrets.TelegramTokens = append(pub.Secrets.TelegramTokens, t.Token != "")
@@ -147,6 +149,12 @@ func (c *Config) ToPublic() PublicConfig {
 
 const minIntervalProbeSeconds = 5
 
+func publicNetwork(n NetworkConfig) NetworkConfig {
+	out := n
+	out.SyncToken = ""
+	return out
+}
+
 func publicSMTP(s SMTPConfig) PublicSMTPConfig {
 	s = SanitizeSMTPConfig(&s)
 	return PublicSMTPConfig{
@@ -182,6 +190,9 @@ func MergeSecrets(existing, incoming *Config) error {
 	existing.Email.SMTP = mergeSMTPConfig(existing.Email.SMTP, incoming.Email.SMTP)
 	existing.Email.Targets = mergeEmailTargets(existing.Email.Targets, incoming.Email.Targets)
 	existing.Webhook.Webhooks = mergeWebhookReceivers(existing.Webhook.Webhooks, incoming.Webhook.Webhooks)
+	if tok := strings.TrimSpace(incoming.Network.SyncToken); tok != "" {
+		existing.Network.SyncToken = tok
+	}
 	return nil
 }
 
@@ -332,5 +343,14 @@ func ApplyNonSecret(existing, incoming *Config) {
 	existing.Workers = incoming.Workers
 	existing.DefaultInterval = incoming.DefaultInterval
 	existing.Notifications = incoming.Notifications
-	existing.Network = incoming.Network
+	existing.Network = mergeNetworkConfig(existing.Network, incoming.Network)
+}
+
+func mergeNetworkConfig(existing, incoming NetworkConfig) NetworkConfig {
+	out := incoming
+	if out.NodeID == "" {
+		out.NodeID = existing.NodeID
+	}
+	out.SyncToken = existing.SyncToken
+	return out
 }

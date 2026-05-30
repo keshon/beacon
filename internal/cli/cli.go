@@ -28,16 +28,16 @@ func RunCLI(st *store.Store) bool {
 
 	switch sub {
 	case "monitor":
-		return runMonitor(ctx, st)
+		return runMonitor(ctx)
 	case "state":
-		return runState(ctx, st)
+		return runState(ctx)
 	case "events":
-		return runEvents(ctx, st)
+		return runEvents(ctx)
 	}
 	return false
 }
 
-func runMonitor(ctx context.Context, st *store.Store) bool {
+func runMonitor(ctx context.Context) bool {
 	if len(os.Args) < 3 {
 		fmt.Fprintln(os.Stderr, "Usage: Beacon <list|add|delete|update> [args]")
 		return true
@@ -123,7 +123,7 @@ func runMonitor(ctx context.Context, st *store.Store) bool {
 	}
 }
 
-func runState(ctx context.Context, st *store.Store) bool {
+func runState(ctx context.Context) bool {
 	cmd := commandkit.DefaultRegistry.Get("state:get")
 	if cmd == nil {
 		return true
@@ -133,7 +133,7 @@ func runState(ctx context.Context, st *store.Store) bool {
 	return true
 }
 
-func runEvents(ctx context.Context, st *store.Store) bool {
+func runEvents(ctx context.Context) bool {
 	if len(os.Args) < 3 {
 		cmd := commandkit.DefaultRegistry.Get("events:get")
 		if cmd == nil {
