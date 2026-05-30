@@ -299,14 +299,20 @@
     NotifyList.prototype.editPolicy = function (row) {
         var modal = window.Beacon && window.Beacon.policyModal;
         if (!modal) return;
-        var data = this.def.readRow(row);
-        modal.open(readRowPolicy(row), this.def.delivery(data), function (policy) {
+        var list = this;
+        var targetRow = row;
+        modal.open(readRowPolicy(row), null, function (policy) {
             if (this.channel === 'email' && policy) {
                 delete policy.alert_mode;
             }
             writeRowPolicy(row, policy);
             updateRowMeta(row, this.channel);
-        }.bind(this), { channel: this.channel });
+        }.bind(this), {
+            channel: this.channel,
+            getDelivery: function () {
+                return list.def.delivery(list.def.readRow(targetRow));
+            },
+        });
     };
 
     NotifyList.prototype.rows = function () {

@@ -101,6 +101,23 @@
         return null;
     }
 
+    function resolveDelivery(opts) {
+        if (!opts) return null;
+        if (typeof opts.getDelivery === 'function') {
+            return opts.getDelivery();
+        }
+        return opts.delivery || null;
+    }
+
+    function syncPolicyTestButtons(policyRoot) {
+        if (!policyRoot) return;
+        var opts = policyRoot._policyOpts || {};
+        var hasCreds = !!deliveryCredentials(resolveDelivery(opts));
+        policyRoot.querySelectorAll('[data-policy-test]').forEach(function (btn) {
+            btn.style.display = hasCreds ? '' : 'none';
+        });
+    }
+
     function placeholderChips(container, textarea) {
         if (!container || !textarea) return;
         container.innerHTML = '';
@@ -124,7 +141,7 @@
         });
     }
 
-    function wireTemplateRow(row, defaults, opts) {
+    function wireTemplateRow(row, defaults, policyRoot) {
         var ta = row.querySelector('[data-policy-template]');
         var chips = row.querySelector('[data-policy-chips]');
         var resetBtn = row.querySelector('[data-policy-reset]');
@@ -142,15 +159,11 @@
             });
         }
         if (testBtn) {
-            if (opts.delivery) {
-                testBtn.style.display = '';
-            } else {
-                testBtn.style.display = 'none';
-            }
             testBtn.addEventListener('click', function () {
                 var key = ta.getAttribute('data-policy-template');
                 if (!key) return;
-                var creds = deliveryCredentials(opts.delivery);
+                var opts = (policyRoot && policyRoot._policyOpts) || {};
+                var creds = deliveryCredentials(resolveDelivery(opts));
                 if (!creds) {
                     setStatus(testStatus, 'warn', 'Fill receiver fields first.');
                     return;
@@ -253,10 +266,11 @@
         var resetAll = root.querySelector('[data-policy-reset-all]');
 
         return fetchDefaults().then(function (def) {
+            root._policyOpts = opts;
             if (root.dataset.policyWired !== '1') {
                 root.dataset.policyWired = '1';
                 root.querySelectorAll('.policy-template-row').forEach(function (row) {
-                    wireTemplateRow(row, def, opts);
+                    wireTemplateRow(row, def, root);
                 });
                 if (resetAll) {
                     resetAll.addEventListener('click', function () {
@@ -272,6 +286,7 @@
                 }
             }
             applyPolicyValues(root, initial, opts, def);
+            syncPolicyTestButtons(root);
 
             return {
                 values: function () {

@@ -5,7 +5,6 @@
     var modalEl = null;
     var formRoot = null;
     var onSaveCb = null;
-    var currentDelivery = null;
     var lastActiveElement = null;
 
     function ensureModal() {
@@ -172,7 +171,6 @@
     function open(initial, delivery, onSave, opts) {
         ensureModal();
         onSaveCb = onSave;
-        currentDelivery = delivery || null;
         opts = opts || {};
         var channel = opts.channel || (delivery && delivery.channel) || '';
         initial = initial || {};
@@ -193,11 +191,18 @@
             }
         }
         var policy = window.Beacon && window.Beacon.policy;
-        return policy.init(formRoot, initial, {
+        var policyOpts = {
             globalMode: false,
-            delivery: currentDelivery,
             channel: channel,
-        }).then(function (pf) {
+        };
+        if (typeof opts.getDelivery === 'function') {
+            policyOpts.getDelivery = opts.getDelivery;
+        } else if (delivery) {
+            policyOpts.getDelivery = function () {
+                return delivery;
+            };
+        }
+        return policy.init(formRoot, initial, policyOpts).then(function (pf) {
             formRoot._policyForm = pf;
             openModal();
         });
