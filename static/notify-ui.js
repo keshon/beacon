@@ -430,7 +430,21 @@
         return lists;
     }
 
-    function readOverrideFromPanel(overridesEl) {
+    function readListValues(listRoot, channel) {
+        var def = channels[channel];
+        if (!def || !listRoot) return [];
+        var list = listRoot.querySelector('[data-notify-list]');
+        if (!list) return [];
+        var out = [];
+        list.querySelectorAll('.notify-row').forEach(function (row) {
+            var v = def.readRow(row);
+            if (def.isFilled(v)) out.push(v);
+        });
+        return out;
+    }
+
+    function readOverrideFromPanel(overridesEl, lists) {
+        lists = lists || {};
         var out = {};
         overridesEl.querySelectorAll('[data-notify-channel-panel]').forEach(function (panel) {
             var channel = panel.dataset.notifyChannelPanel;
@@ -438,9 +452,12 @@
             if (mode === 'inherit') return;
             var block = { mode: mode };
             if (mode === 'custom') {
-                var listRoot = panel.querySelector('[data-notify-channel-body]');
-                var tmp = init(listRoot, channel, []);
-                block.targets = tmp.values();
+                if (lists[channel] && typeof lists[channel].values === 'function') {
+                    block.targets = lists[channel].values();
+                } else {
+                    var listRoot = panel.querySelector('[data-notify-channel-body]');
+                    block.targets = readListValues(listRoot, channel);
+                }
             }
             out[channel] = block;
         });

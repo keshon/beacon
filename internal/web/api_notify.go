@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/notify"
 )
 
@@ -87,8 +88,11 @@ func (s *Server) apiNotifyTest(w http.ResponseWriter, r *http.Request) {
 		}
 		allowedToken, allowedChat, ok := s.cfg.ResolveTelegramTestCredentials(token, chat)
 		if !ok {
-			writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "credentials are not configured"})
-			return
+			if token == "" {
+				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "credentials are not configured"})
+				return
+			}
+			allowedToken, allowedChat = token, chat
 		}
 		if allowed, wait := s.testLimit.AllowTelegram(clientID, allowedToken, allowedChat); !allowed {
 			writeNotifyTest(w, http.StatusTooManyRequests, notifyTestResponse{
@@ -111,8 +115,11 @@ func (s *Server) apiNotifyTest(w http.ResponseWriter, r *http.Request) {
 		webhook := strings.TrimSpace(req.Discord.Webhook)
 		allowedWebhook, ok := s.cfg.ResolveDiscordTestWebhook(webhook)
 		if !ok {
-			writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "webhook is not configured"})
-			return
+			if err := notify.ValidateWebhookURL(webhook); err != nil {
+				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "webhook is not configured"})
+				return
+			}
+			allowedWebhook = webhook
 		}
 		if allowed, wait := s.testLimit.AllowDiscord(clientID, allowedWebhook); !allowed {
 			writeNotifyTest(w, http.StatusTooManyRequests, notifyTestResponse{
@@ -139,8 +146,15 @@ func (s *Server) apiNotifyTest(w http.ResponseWriter, r *http.Request) {
 		}
 		target, ok := s.cfg.ResolveEmailTestTarget(to)
 		if !ok {
-			writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "email is not configured"})
-			return
+			if to == "" || !strings.Contains(to, "@") {
+				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "email is not configured"})
+				return
+			}
+			if !s.cfg.Email.Enabled || strings.TrimSpace(s.cfg.Email.SMTP.Host) == "" {
+				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "email is not configured"})
+				return
+			}
+			target = config.EmailTarget{To: to}
 		}
 		if allowed, wait := s.testLimit.AllowEmail(clientID, to); !allowed {
 			writeNotifyTest(w, http.StatusTooManyRequests, notifyTestResponse{
@@ -164,8 +178,11 @@ func (s *Server) apiNotifyTest(w http.ResponseWriter, r *http.Request) {
 		rawURL := strings.TrimSpace(req.Webhook.URL)
 		allowedURL, ok := s.cfg.ResolveWebhookTestURL(rawURL)
 		if !ok {
-			writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "webhook is not configured"})
-			return
+			if err := notify.ValidateWebhookURL(rawURL); err != nil {
+				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "webhook is not configured"})
+				return
+			}
+			allowedURL = rawURL
 		}
 		if allowed, wait := s.testLimit.AllowWebhook(clientID, allowedURL); !allowed {
 			writeNotifyTest(w, http.StatusTooManyRequests, notifyTestResponse{
