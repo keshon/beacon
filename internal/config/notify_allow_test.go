@@ -15,6 +15,10 @@ func TestResolveTelegramTestCredentials(t *testing.T) {
 	if _, _, ok := cfg.ResolveTelegramTestCredentials("other", "123"); ok {
 		t.Fatal("foreign token should be rejected")
 	}
+	masked := MaskSecret("tok")
+	if token, chat, ok := cfg.ResolveTelegramTestCredentials(masked, "123"); !ok || token != "tok" || chat != "123" {
+		t.Fatalf("masked token should resolve to stored, got %q %q %v", token, chat, ok)
+	}
 }
 
 func TestResolveDiscordTestWebhook(t *testing.T) {
@@ -29,5 +33,9 @@ func TestResolveDiscordTestWebhook(t *testing.T) {
 	}
 	if _, ok := cfg.ResolveDiscordTestWebhook("https://evil.test/hook"); ok {
 		t.Fatal("unknown webhook should be rejected")
+	}
+	masked := MaskSecret("https://discord.test/hook")
+	if allowed, ok := cfg.ResolveDiscordTestWebhook(masked); !ok || allowed != "https://discord.test/hook" {
+		t.Fatalf("masked webhook should resolve to stored, got %q %v", allowed, ok)
 	}
 }

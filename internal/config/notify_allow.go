@@ -20,7 +20,7 @@ func (c *Config) ResolveTelegramTestCredentials(token, chatID string) (allowedTo
 		if stored == "" {
 			continue
 		}
-		if token == "" || token == stored {
+		if token == "" || SecretUnchanged(token, stored) {
 			return stored, chatID, true
 		}
 	}
@@ -37,8 +37,12 @@ func (c *Config) ResolveDiscordTestWebhook(webhook string) (allowed string, ok b
 		return "", false
 	}
 	for _, w := range c.Discord.Webhooks {
-		if strings.TrimSpace(w.Webhook) == webhook {
-			return webhook, true
+		stored := strings.TrimSpace(w.Webhook)
+		if stored == "" {
+			continue
+		}
+		if webhook == stored || SecretUnchanged(webhook, stored) {
+			return stored, true
 		}
 	}
 	return "", false
