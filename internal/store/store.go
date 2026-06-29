@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,8 +36,10 @@ type PeerData struct {
 	PeerURL   string                           `json:"peer_url,omitempty"`
 	Monitors  []*monitor.Monitor               `json:"monitors"`
 	State     map[string]*monitor.MonitorState `json:"state"`
-	LastSeen  time.Time                        `json:"last_seen"`
-	LastError string                           `json:"last_error,omitempty"`
+	LastSeen   time.Time                        `json:"last_seen"`
+	LastExport time.Time                        `json:"last_export,omitempty"`
+	LastError  string                           `json:"last_error,omitempty"`
+	SyncWarnings []string                       `json:"sync_warnings,omitempty"`
 }
 
 type Store struct {
@@ -46,32 +49,43 @@ type Store struct {
 	configDS   *datastore.DataStore
 	peerDS     *datastore.DataStore
 	mu         sync.RWMutex
+
+	monitorsPath string
+	statePath    string
+	eventsPath   string
+	configPath   string
+	peerPath     string
 }
 
 func New(ctx context.Context, dataDir string) (*Store, error) {
-	monitorsDS, err := datastore.New(ctx, filepath.Join(dataDir, "monitors.json"))
+	monitorsPath := filepath.Join(dataDir, "monitors.json")
+	monitorsDS, err := datastore.New(ctx, monitorsPath)
 	if err != nil {
 		return nil, err
 	}
-	stateDS, err := datastore.New(ctx, filepath.Join(dataDir, "state.json"))
+	statePath := filepath.Join(dataDir, "state.json")
+	stateDS, err := datastore.New(ctx, statePath)
 	if err != nil {
 		monitorsDS.Close()
 		return nil, err
 	}
-	eventsDS, err := datastore.New(ctx, filepath.Join(dataDir, "events.json"))
+	eventsPath := filepath.Join(dataDir, "events.json")
+	eventsDS, err := datastore.New(ctx, eventsPath)
 	if err != nil {
 		monitorsDS.Close()
 		stateDS.Close()
 		return nil, err
 	}
-	configDS, err := datastore.New(ctx, filepath.Join(dataDir, "config.json"))
+	configPath := filepath.Join(dataDir, "config.json")
+	configDS, err := datastore.New(ctx, configPath)
 	if err != nil {
 		monitorsDS.Close()
 		stateDS.Close()
 		eventsDS.Close()
 		return nil, err
 	}
-	peerDS, err := datastore.New(ctx, filepath.Join(dataDir, "peer_data.json"))
+	peerPath := filepath.Join(dataDir, "peer_data.json")
+	peerDS, err := datastore.New(ctx, peerPath)
 	if err != nil {
 		monitorsDS.Close()
 		stateDS.Close()
@@ -80,11 +94,16 @@ func New(ctx context.Context, dataDir string) (*Store, error) {
 		return nil, err
 	}
 	return &Store{
-		monitorsDS: monitorsDS,
-		stateDS:    stateDS,
-		eventsDS:   eventsDS,
-		configDS:   configDS,
-		peerDS:     peerDS,
+		monitorsDS:   monitorsDS,
+		stateDS:      stateDS,
+		eventsDS:     eventsDS,
+		configDS:     configDS,
+		peerDS:       peerDS,
+		monitorsPath: monitorsPath,
+		statePath:    statePath,
+		eventsPath:   eventsPath,
+		configPath:   configPath,
+		peerPath:     peerPath,
 	}, nil
 }
 
@@ -162,7 +181,10 @@ func (s *Store) SetMonitor(mon *monitor.Monitor) error {
 		m = make(map[string]*monitor.Monitor)
 	}
 	m[mon.ID] = mon
-	return s.monitorsDS.Set(keyMonitors, m)
+	if err := s.monitorsDS.Set(keyMonitors, m); err != nil {
+		return fmt.Errorf("write monitors: %w", err)
+	}
+	return flushJSON(s.monitorsPath, map[string]any{keyMonitors: m})
 }
 
 func (s *Store) DeleteMonitor(id string) error {
@@ -173,8 +195,8 @@ func (s *Store) DeleteMonitor(id string) error {
 	if err != nil {
 		return fmt.Errorf("read monitors: %w", err)
 	}
-	if !ok || m == nil {
-		return nil
+	if !ok || m == nil || m[id] == nil {
+		return ErrMonitorNotFound
 	}
 	delete(m, id)
 	if err := s.monitorsDS.Set(keyMonitors, m); err != nil {
@@ -187,7 +209,41 @@ func (s *Store) DeleteMonitor(id string) error {
 	}
 	if ok && st != nil {
 		delete(st, id)
-		return s.stateDS.Set(keyState, st)
+		if err := s.stateDS.Set(keyState, st); err != nil {
+			return err
+		}
+	}
+	var events []CheckRecord
+	ok, err = s.eventsDS.Get(keyEvents, &events)
+	if err != nil {
+		return fmt.Errorf("read events: %w", err)
+	}
+	if ok && events != nil {
+		filtered := events[:0]
+		for _, rec := range events {
+			if rec.MonitorID != id {
+				filtered = append(filtered, rec)
+			}
+		}
+		if len(filtered) != len(events) {
+			if err := s.eventsDS.Set(keyEvents, filtered); err != nil {
+				return err
+			}
+			events = filtered
+		}
+	}
+	if err := flushJSON(s.monitorsPath, map[string]any{keyMonitors: m}); err != nil {
+		return err
+	}
+	if st != nil {
+		if err := flushJSON(s.statePath, map[string]any{keyState: st}); err != nil {
+			return err
+		}
+	}
+	if events != nil {
+		if err := flushJSON(s.eventsPath, map[string]any{keyEvents: events}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -232,7 +288,10 @@ func (s *Store) SetState(st *monitor.MonitorState) error {
 		state = make(map[string]*monitor.MonitorState)
 	}
 	state[st.MonitorID] = st
-	return s.stateDS.Set(keyState, state)
+	if err := s.stateDS.Set(keyState, state); err != nil {
+		return err
+	}
+	return flushJSON(s.statePath, map[string]any{keyState: state})
 }
 
 func (s *Store) AppendCheckRecord(rec CheckRecord) error {
@@ -250,7 +309,10 @@ func (s *Store) AppendCheckRecord(rec CheckRecord) error {
 	if len(events) > 10000 {
 		events = events[len(events)-10000:]
 	}
-	return s.eventsDS.Set(keyEvents, events)
+	if err := s.eventsDS.Set(keyEvents, events); err != nil {
+		return err
+	}
+	return flushJSON(s.eventsPath, map[string]any{keyEvents: events})
 }
 
 func (s *Store) GetCheckRecords(limit int) ([]CheckRecord, error) {
@@ -318,7 +380,11 @@ func (s *Store) GetConfig(dest any) (bool, error) {
 func (s *Store) SetConfig(cfg any) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.configDS.Set(keyConfig, cfg)
+	if err := s.configDS.Set(keyConfig, cfg); err != nil {
+		return err
+	}
+	wrap := map[string]any{keyConfig: cfg}
+	return flushJSON(s.configPath, wrap)
 }
 
 func (s *Store) GetPeerData(nodeID string) (*PeerData, error) {
@@ -347,7 +413,74 @@ func (s *Store) SetPeerData(data *PeerData) error {
 		m = make(map[string]*PeerData)
 	}
 	m[data.NodeID] = data
-	return s.peerDS.Set(keyPeerData, m)
+	if err := s.peerDS.Set(keyPeerData, m); err != nil {
+		return err
+	}
+	return flushJSON(s.peerPath, map[string]any{keyPeerData: m})
+}
+
+// SetPeerDataError records a sync error for the peer URL without replacing cached data.
+func (s *Store) SetPeerDataError(peerURL, errMsg string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var m map[string]*PeerData
+	ok, err := s.peerDS.Get(keyPeerData, &m)
+	if err != nil {
+		return fmt.Errorf("read peer data: %w", err)
+	}
+	if !ok || m == nil {
+		return nil
+	}
+	normalized := strings.TrimSuffix(peerURL, "/")
+	for _, pd := range m {
+		if strings.TrimSuffix(pd.PeerURL, "/") == normalized {
+			pd.LastError = errMsg
+			if err := s.peerDS.Set(keyPeerData, m); err != nil {
+				return err
+			}
+			return flushJSON(s.peerPath, map[string]any{keyPeerData: m})
+		}
+	}
+	return nil
+}
+
+// PrunePeerData removes cache entries whose peer URL is not in configuredPeers.
+func (s *Store) PrunePeerData(configuredPeers []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var m map[string]*PeerData
+	ok, err := s.peerDS.Get(keyPeerData, &m)
+	if err != nil {
+		return fmt.Errorf("read peer data: %w", err)
+	}
+	if !ok || m == nil {
+		return nil
+	}
+	allowed := make(map[string]struct{}, len(configuredPeers))
+	for _, u := range configuredPeers {
+		u = strings.TrimSuffix(strings.TrimSpace(u), "/")
+		if u != "" {
+			allowed[u] = struct{}{}
+		}
+	}
+	changed := false
+	for nodeID, pd := range m {
+		key := strings.TrimSuffix(pd.PeerURL, "/")
+		if key == "" {
+			key = nodeID
+		}
+		if _, ok := allowed[key]; !ok {
+			delete(m, nodeID)
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	if err := s.peerDS.Set(keyPeerData, m); err != nil {
+		return err
+	}
+	return flushJSON(s.peerPath, map[string]any{keyPeerData: m})
 }
 
 func (s *Store) GetAllPeerData() (map[string]*PeerData, error) {

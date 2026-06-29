@@ -18,7 +18,7 @@ No agents, no Prometheus stack, no external dependencies. Point it at a URL or `
 | **Small footprint** | Single binary, minimal setup, lightweight runtime requirements |
 | **Simple web UI** | Dashboard, monitor management, live status updates, dark/light theme |
 | **Flexible notifications** | Telegram, Discord, email, and webhooks with per-monitor channel overrides |
-| **Multi-instance sync (optional)** | Sync monitors and state between multiple Beacon instances |
+| **Multi-instance sync (optional)** | Peer visibility and dead-node failover (see limitations below) |
 
 ## When Beacon makes sense
 
@@ -200,11 +200,23 @@ For HTTP monitors, expand **HTTP options** to set Basic Auth credentials (stored
 
 ## Multi-instance sync
 
-Beacon supports optional synchronization between multiple instances.
+Beacon supports optional synchronization between multiple instances for **visibility and opportunistic failover** — not full active/active HA.
 
-When enabled, instances exchange monitor definitions and state via `GET /api/sync/export`.
+When enabled, instances poll peers via `GET /api/sync/export` and cache monitor definitions and state locally. Each node still owns its own monitor definitions in `data/monitors.json`; sync does not merge config into the local store automatically.
 
-This is useful for running multiple Beacon nodes in parallel environments.
+**What sync provides:**
+
+* Dashboard view of peer monitors and status
+* Dead-peer adoption: if a peer stops responding to sync polls for longer than `dead_timeout`, one live node in the ring runs that peer's cached monitors
+* Re-export of adopted monitors so indirect peers can discover them downstream
+* State merge by latest `LastCheck` timestamp when imports conflict
+
+**Important limitations:**
+
+* A node can only adopt monitors it has previously synced from the dead peer
+* Network partitions can cause duplicate checks and duplicate alerts until connectivity is restored
+* Monitor definitions are not automatically replicated to every node — plan peer topology so each node syncs from every monitor owner, or accept failover only for previously cached peers
+* There is no distributed quorum or leader election; each node decides liveness independently from its own sync success
 
 Configuration:
 
@@ -222,7 +234,7 @@ Export endpoint:
 GET /api/sync/export
 ```
 
-Requires sync to be enabled on the exporting node and a valid sync token (when configured).
+Requires sync to be enabled on the exporting node and a valid sync token (when configured). The export includes local monitors plus monitors this node has adopted from dead peers.
 
 ## Web UI
 

@@ -53,12 +53,15 @@ func (s *Server) apiConfigSet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if s.scheduler != nil {
+		s.scheduler.ReloadConfig(s.cfg)
+	}
 	pub.RequiresRestart = s.configNeedsRestart()
 	s.jsonResponse(w, pub)
 }
 
 func (s *Server) configNeedsRestart() bool {
-	// listen and worker pool size apply only after process restart
+	// HTTP listen address applies only after process restart.
 	return true
 }
 

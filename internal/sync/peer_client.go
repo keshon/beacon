@@ -11,6 +11,7 @@ import (
 
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
+	"github.com/keshon/beacon/internal/network"
 	"github.com/keshon/beacon/internal/store"
 )
 
@@ -50,6 +51,7 @@ func (c *PeerSyncClient) Run(ctx context.Context) {
 		ticker := time.NewTicker(interval)
 
 		c.syncFromPeers(ctx)
+		_ = c.store.PrunePeerData(c.cfg.Network.Peers)
 
 	inner:
 		for {
@@ -63,27 +65,36 @@ func (c *PeerSyncClient) Run(ctx context.Context) {
 					break inner
 				}
 				c.syncFromPeers(ctx)
+				_ = c.store.PrunePeerData(c.cfg.Network.Peers)
 			}
 		}
 	}
 }
 
-func filterValidMonitors(monitors []*monitor.Monitor) []*monitor.Monitor {
+type filterResult struct {
+	monitors []*monitor.Monitor
+	warnings []string
+}
+
+func filterValidMonitors(monitors []*monitor.Monitor) filterResult {
 	if len(monitors) == 0 {
-		return nil
+		return filterResult{}
 	}
 	out := make([]*monitor.Monitor, 0, len(monitors))
+	var warnings []string
 	for _, m := range monitors {
 		if m == nil {
 			continue
 		}
 		if err := monitor.ValidateTarget(m.Type, m.Target); err != nil {
-			log.Printf("[sync] skip invalid monitor %s: %v", m.Name, err)
+			msg := fmt.Sprintf("skipped invalid monitor %q: %v", m.Name, err)
+			log.Printf("[sync] %s", msg)
+			warnings = append(warnings, msg)
 			continue
 		}
 		out = append(out, m)
 	}
-	return out
+	return filterResult{monitors: out, warnings: warnings}
 }
 
 func (c *PeerSyncClient) syncFromPeers(ctx context.Context) {
@@ -107,7 +118,7 @@ func (c *PeerSyncClient) syncFromPeers(ctx context.Context) {
 		resp, err := c.client.Do(req)
 		if err != nil {
 			log.Printf("[sync] peer %s: %v", peerURL, err)
-			c.recordSyncError(peerURL, err.Error())
+			_ = c.store.SetPeerDataError(peerURL, err.Error())
 			continue
 		}
 		if resp.StatusCode != http.StatusOK {
@@ -120,14 +131,14 @@ func (c *PeerSyncClient) syncFromPeers(ctx context.Context) {
 					errMsg = "HTTP 401 — set matching sync_token on all nodes or use identical web credentials"
 				}
 			}
-			c.recordSyncError(peerURL, errMsg)
+			_ = c.store.SetPeerDataError(peerURL, errMsg)
 			continue
 		}
 		var payload ExportPayload
 		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 			resp.Body.Close()
 			log.Printf("[sync] peer %s: decode error: %v", peerURL, err)
-			c.recordSyncError(peerURL, err.Error())
+			_ = c.store.SetPeerDataError(peerURL, err.Error())
 			continue
 		}
 		resp.Body.Close()
@@ -135,13 +146,36 @@ func (c *PeerSyncClient) syncFromPeers(ctx context.Context) {
 		if payload.NodeID == "" {
 			continue
 		}
+		filtered := filterValidMonitors(payload.Monitors)
+		exportTime := payload.Time
+		if exportTime.IsZero() {
+			exportTime = time.Now()
+		}
+
+		existing, _ := c.store.GetPeerData(payload.NodeID)
 		data := &store.PeerData{
-			NodeID:    payload.NodeID,
-			PeerURL:   peerURL,
-			Monitors:  filterValidMonitors(payload.Monitors),
-			State:     payload.State,
-			LastSeen:  time.Now(),
-			LastError: "",
+			NodeID:       payload.NodeID,
+			PeerURL:      peerURL,
+			LastSeen:     time.Now(),
+			LastError:    "",
+			SyncWarnings: filtered.warnings,
+			LastExport:   exportTime,
+		}
+		if existing != nil && !exportTime.IsZero() && existing.LastExport.After(exportTime) {
+			data.Monitors = existing.Monitors
+			data.State = existing.State
+			data.LastExport = existing.LastExport
+		} else {
+			data.Monitors = filtered.monitors
+			incoming := payload.State
+			if incoming == nil {
+				incoming = make(map[string]*monitor.MonitorState)
+			}
+			if existing != nil {
+				data.State = network.MergeStateMaps(existing.State, incoming)
+			} else {
+				data.State = incoming
+			}
 		}
 		if data.State == nil {
 			data.State = make(map[string]*monitor.MonitorState)
@@ -150,21 +184,6 @@ func (c *PeerSyncClient) syncFromPeers(ctx context.Context) {
 			log.Printf("[sync] save peer %s: %v", payload.NodeID, err)
 		} else {
 			log.Printf("[sync] peer %s: ok", peerURL)
-		}
-	}
-}
-
-func (c *PeerSyncClient) recordSyncError(peerURL, errMsg string) {
-	all, err := c.store.GetAllPeerData()
-	if err != nil {
-		return
-	}
-	normalized := strings.TrimSuffix(peerURL, "/")
-	for _, pd := range all {
-		if strings.TrimSuffix(pd.PeerURL, "/") == normalized {
-			pd.LastError = errMsg
-			_ = c.store.SetPeerData(pd)
-			return
 		}
 	}
 }

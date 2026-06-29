@@ -181,3 +181,15 @@ type Monitor struct {
 	NotifyOverride *NotifyOverride `json:"notify_override,omitempty"`
 	OwnerNodeID    string          `json:"owner_node_id,omitempty"`
 }
+
+// Redacted returns a copy safe for API responses (HTTP password omitted).
+func (m *Monitor) Redacted() *Monitor {
+	if m == nil {
+		return nil
+	}
+	out := *m
+	if out.HTTP != nil {
+		out.HTTP = out.HTTP.Redacted()
+	}
+	return &out
+}

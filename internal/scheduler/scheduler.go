@@ -3,8 +3,6 @@ package scheduler
 import (
 	"context"
 	"log"
-	"math/rand"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,11 +10,20 @@ import (
 	"github.com/keshon/beacon/internal/checks"
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
+	"github.com/keshon/beacon/internal/network"
+	"github.com/keshon/beacon/internal/notify"
 	"github.com/keshon/beacon/internal/store"
 )
 
+const (
+	jobQueueSize     = 100
+	enqueueWait      = 5 * time.Second
+	jitterMax        = 3 * time.Second
+)
+
 type CheckJob struct {
-	Monitor *monitor.Monitor
+	MonitorID       string
+	RequireLocalMon bool
 }
 
 type Scheduler struct {
@@ -31,9 +38,14 @@ type Scheduler struct {
 	inFlight        map[string]struct{}
 	inflMu          sync.Mutex
 	droppedChecks   atomic.Uint64
+	stopOnce        sync.Once
+	stopping        atomic.Bool
 }
 
 func New(s *store.Store, evaluator *monitor.StatusEvaluator, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(store.CheckRecord, *monitor.MonitorState)) *Scheduler {
+	if workers <= 0 {
+		workers = 10
+	}
 	if defaultInterval <= 0 {
 		defaultInterval = 30 * time.Second
 	}
@@ -44,13 +56,27 @@ func New(s *store.Store, evaluator *monitor.StatusEvaluator, workers int, defaul
 		defaultInterval: defaultInterval,
 		cfg:             cfg,
 		onCheckRecorded: onCheckRecorded,
-		jobs:            make(chan CheckJob, 100),
+		jobs:            make(chan CheckJob, jobQueueSize),
 		inFlight:        make(map[string]struct{}),
 	}
 }
 
 func (sc *Scheduler) DroppedChecks() uint64 {
 	return sc.droppedChecks.Load()
+}
+
+// ReloadConfig updates scheduler tuning from live config.
+func (sc *Scheduler) ReloadConfig(cfg *config.Config) {
+	if cfg == nil {
+		return
+	}
+	sc.cfg = cfg
+	if cfg.Workers > 0 {
+		sc.workers = cfg.Workers
+	}
+	if d := cfg.DefaultIntervalDuration(); d > 0 {
+		sc.defaultInterval = d
+	}
 }
 
 func (sc *Scheduler) Run(ctx context.Context) {
@@ -63,77 +89,48 @@ func (sc *Scheduler) Run(ctx context.Context) {
 }
 
 func (sc *Scheduler) getMonitorsToCheck() ([]*monitor.Monitor, error) {
-	var list []*monitor.Monitor
 	own, err := sc.store.GetMonitors()
 	if err != nil {
 		return nil, err
 	}
+	byID := make(map[string]*monitor.Monitor, len(own))
 	for _, m := range own {
-		list = append(list, m)
+		byID[m.ID] = m
 	}
+
 	if sc.cfg == nil || !sc.cfg.Network.Enabled || sc.cfg.Network.NodeID == "" {
-		return list, nil
+		return own, nil
 	}
-	deadTimeout := time.Duration(sc.cfg.Network.DeadTimeout) * time.Second
+
 	peerData, err := sc.store.GetAllPeerData()
 	if err != nil {
-		return list, err
-	}
-	if len(peerData) == 0 {
-		return list, nil
+		return own, err
 	}
 	now := time.Now()
-	var allNodes []string
-	live := make(map[string]bool)
-	allNodes = append(allNodes, sc.cfg.Network.NodeID)
-	live[sc.cfg.Network.NodeID] = true
-	for nodeID, pd := range peerData {
-		allNodes = append(allNodes, nodeID)
-		if now.Sub(pd.LastSeen) < deadTimeout {
-			live[nodeID] = true
+	adopted := network.AdoptedMonitors(sc.cfg, peerData, now)
+	for _, am := range adopted {
+		if existing, ok := byID[am.Monitor.ID]; ok {
+			log.Printf("[scheduler] monitor ID collision %s: keeping local definition over peer %s", am.Monitor.ID, am.OwnerNodeID)
+			_ = existing
+			continue
 		}
-	}
-	sort.Strings(allNodes)
-	for _, pd := range peerData {
-		if now.Sub(pd.LastSeen) >= deadTimeout {
-			deadID := pd.NodeID
-			adopter := nextLiveInRing(allNodes, deadID, live)
-			if adopter == sc.cfg.Network.NodeID {
-				for _, m := range pd.Monitors {
-					if !m.Enabled {
-						continue
-					}
-					if err := monitor.ValidateTarget(m.Type, m.Target); err != nil {
-						log.Printf("[scheduler] skip invalid peer monitor %s: %v", m.Name, err)
-						continue
-					}
-					if st, ok := pd.State[m.ID]; ok && st != nil {
-						local, _ := sc.store.GetState(m.ID)
-						if local == nil {
-							_ = sc.store.SetState(st)
-						}
-					}
-					list = append(list, m)
+		byID[am.Monitor.ID] = am.Monitor
+		if st, ok := peerData[am.OwnerNodeID]; ok && st != nil {
+			if peerSt, ok := st.State[am.Monitor.ID]; ok && peerSt != nil {
+				local, _ := sc.store.GetState(am.Monitor.ID)
+				merged := network.MergeMonitorState(local, peerSt)
+				if merged != nil && (local == nil || merged.LastCheck.After(local.LastCheck)) {
+					_ = sc.store.SetState(merged)
 				}
 			}
 		}
+	}
+
+	list := make([]*monitor.Monitor, 0, len(byID))
+	for _, m := range byID {
+		list = append(list, m)
 	}
 	return list, nil
-}
-
-func nextLiveInRing(sorted []string, after string, live map[string]bool) string {
-	for i, id := range sorted {
-		if id == after {
-			for j := 1; j < len(sorted); j++ {
-				idx := (i + j) % len(sorted)
-				if live[sorted[idx]] {
-					return sorted[idx]
-				}
-			}
-			return ""
-		}
-	}
-	return ""
 }
 
 func (sc *Scheduler) loop(ctx context.Context) {
@@ -167,33 +164,51 @@ func (sc *Scheduler) loop(ctx context.Context) {
 					if interval <= 0 {
 						interval = sc.defaultInterval
 					}
-					jitter := time.Duration(rand.Intn(3000)) * time.Millisecond
+					minInterval := notify.RecommendedMinInterval(sc.cfg, m)
+					if minInterval > interval {
+						interval = minInterval
+					}
+					jitter := stableJitter(m.ID)
 					nextCheck = st.LastCheck.Add(interval).Add(jitter)
 				} else {
 					nextCheck = now
 				}
-				if nextCheck.Before(now) || nextCheck.Equal(now) {
-					sc.inflMu.Lock()
-					if _, ok := sc.inFlight[m.ID]; ok {
-						sc.inflMu.Unlock()
-						continue
-					}
-					sc.inFlight[m.ID] = struct{}{}
+				if nextCheck.After(now) {
+					continue
+				}
+				sc.inflMu.Lock()
+				if _, ok := sc.inFlight[m.ID]; ok {
 					sc.inflMu.Unlock()
-					select {
-					case sc.jobs <- CheckJob{Monitor: m}:
-					case <-ctx.Done():
-						sc.inflMu.Lock()
-						delete(sc.inFlight, m.ID)
-						sc.inflMu.Unlock()
-						return
-					default:
-						sc.droppedChecks.Add(1)
-						sc.inflMu.Lock()
-						delete(sc.inFlight, m.ID)
-						sc.inflMu.Unlock()
-						log.Printf("[scheduler] job queue full, skipping %s (%s)", m.Name, m.ID)
+					continue
+				}
+				sc.inFlight[m.ID] = struct{}{}
+				sc.inflMu.Unlock()
+
+				job := CheckJob{MonitorID: m.ID, RequireLocalMon: true}
+				if sc.cfg != nil && sc.cfg.Network.Enabled {
+					if local, _ := sc.store.GetMonitor(m.ID); local == nil {
+						job.RequireLocalMon = false
 					}
+				}
+				if sc.stopping.Load() {
+					sc.inflMu.Lock()
+					delete(sc.inFlight, m.ID)
+					sc.inflMu.Unlock()
+					continue
+				}
+				select {
+				case sc.jobs <- job:
+				case <-ctx.Done():
+					sc.inflMu.Lock()
+					delete(sc.inFlight, m.ID)
+					sc.inflMu.Unlock()
+					return
+				case <-time.After(enqueueWait):
+					sc.droppedChecks.Add(1)
+					sc.inflMu.Lock()
+					delete(sc.inFlight, m.ID)
+					sc.inflMu.Unlock()
+					log.Printf("[scheduler] job queue full after %s, skipping %s (%s)", enqueueWait, m.Name, m.ID)
 				}
 			}
 		}
@@ -216,12 +231,21 @@ func (sc *Scheduler) worker(ctx context.Context) {
 }
 
 func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
-	m := job.Monitor
 	defer func() {
 		sc.inflMu.Lock()
-		delete(sc.inFlight, m.ID)
+		delete(sc.inFlight, job.MonitorID)
 		sc.inflMu.Unlock()
 	}()
+
+	m, err := sc.resolveMonitor(job.MonitorID)
+	if err != nil {
+		log.Printf("[scheduler] read monitor %s: %v", job.MonitorID, err)
+		return
+	}
+	if m == nil || !m.Enabled {
+		return
+	}
+
 	timeout := m.Timeout
 	if timeout <= 0 {
 		timeout = 10 * time.Second
@@ -250,9 +274,7 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 		Latency:   result.Latency,
 		Error:     result.Error,
 	}
-	if err := sc.store.AppendCheckRecord(rec); err != nil {
-		log.Printf("[scheduler] append event: %v", err)
-	}
+
 	st, err := sc.store.GetState(m.ID)
 	if err != nil {
 		log.Printf("[scheduler] read state: %v", err)
@@ -262,8 +284,12 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 		st = &monitor.MonitorState{MonitorID: m.ID, Status: monitor.StatusUnknown}
 	}
 	sc.evaluator.Process(result, st, m)
-	if err := sc.store.SetState(st); err != nil {
-		log.Printf("[scheduler] write state: %v", err)
+
+	if err := sc.store.RecordCheckResult(rec, st, job.RequireLocalMon); err != nil {
+		if err == store.ErrMonitorNotFound {
+			return
+		}
+		log.Printf("[scheduler] persist check: %v", err)
 		return
 	}
 
@@ -275,6 +301,66 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 }
 
 func (sc *Scheduler) Stop() {
-	close(sc.jobs)
+	sc.stopOnce.Do(func() {
+		sc.stopping.Store(true)
+		close(sc.jobs)
+	})
 	sc.wg.Wait()
+}
+
+// StartupDownMonitors returns monitors persisted in down state for restart notification.
+func (sc *Scheduler) StartupDownMonitors() ([]*monitor.Monitor, map[string]*monitor.MonitorState, error) {
+	monitors, err := sc.store.GetMonitors()
+	if err != nil {
+		return nil, nil, err
+	}
+	state, err := sc.store.GetAllState()
+	if err != nil {
+		return nil, nil, err
+	}
+	var down []*monitor.Monitor
+	downState := make(map[string]*monitor.MonitorState)
+	for _, m := range monitors {
+		if !m.Enabled {
+			continue
+		}
+		st := state[m.ID]
+		if st != nil && st.Status == monitor.StatusDown {
+			down = append(down, m)
+			downState[m.ID] = st
+		}
+	}
+	return down, downState, nil
+}
+
+func stableJitter(monitorID string) time.Duration {
+	var h uint32
+	for i := 0; i < len(monitorID); i++ {
+		h = h*31 + uint32(monitorID[i])
+	}
+	ms := h % uint32(jitterMax/time.Millisecond)
+	return time.Duration(ms) * time.Millisecond
+}
+
+func (sc *Scheduler) resolveMonitor(id string) (*monitor.Monitor, error) {
+	m, err := sc.store.GetMonitor(id)
+	if err != nil {
+		return nil, err
+	}
+	if m != nil {
+		return m, nil
+	}
+	if sc.cfg == nil || !sc.cfg.Network.Enabled {
+		return nil, nil
+	}
+	peerData, err := sc.store.GetAllPeerData()
+	if err != nil {
+		return nil, err
+	}
+	for _, am := range network.AdoptedMonitors(sc.cfg, peerData, time.Now()) {
+		if am.Monitor != nil && am.Monitor.ID == id {
+			return am.Monitor, nil
+		}
+	}
+	return nil, nil
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -13,7 +14,15 @@ import (
 )
 
 func ListMonitors(st *store.Store) ([]*monitor.Monitor, error) {
-	return st.GetMonitors()
+	list, err := st.GetMonitors()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*monitor.Monitor, 0, len(list))
+	for _, m := range list {
+		out = append(out, m.Redacted())
+	}
+	return out, nil
 }
 
 type AddMonitorInput struct {
@@ -68,7 +77,7 @@ func AddMonitor(st *store.Store, in AddMonitorInput) (*monitor.Monitor, error) {
 	if err := st.SetMonitor(m); err != nil {
 		return nil, err
 	}
-	return m, nil
+	return m.Redacted(), nil
 }
 
 func AddMonitorFromJSON(st *store.Store, body []byte) (*monitor.Monitor, error) {
@@ -108,77 +117,122 @@ type UpdateMonitorPatch struct {
 }
 
 func UpdateMonitor(st *store.Store, id string, patch UpdateMonitorPatch) (*monitor.Monitor, error) {
-	mon, err := st.GetMonitor(id)
+	mon, err := st.UpdateMonitor(id, func(mon *monitor.Monitor) error {
+		if patch.Enabled != nil {
+			mon.Enabled = *patch.Enabled
+		}
+		if patch.Name != nil {
+			mon.Name = *patch.Name
+		}
+		if patch.Type != nil {
+			typ, err := monitor.NormalizeType(*patch.Type)
+			if err != nil {
+				return err
+			}
+			mon.Type = typ
+		}
+		if patch.Target != nil {
+			mon.Target = strings.TrimSpace(*patch.Target)
+		}
+		if patch.Type != nil || patch.Target != nil {
+			if err := monitor.ValidateTarget(mon.Type, mon.Target); err != nil {
+				return err
+			}
+		}
+		if patch.IntervalSec != nil {
+			if *patch.IntervalSec > 0 {
+				mon.Interval = time.Duration(*patch.IntervalSec) * time.Second
+			} else {
+				mon.Interval = 0
+			}
+		}
+		if patch.HTTP != nil {
+			mon.HTTP = monitor.MergeHTTPOptions(mon.HTTP, patch.HTTP)
+		}
+		if patch.NotifyOverride != nil {
+			sanitized := monitor.SanitizeNotifyOverride(patch.NotifyOverride)
+			if sanitized != nil {
+				mon.NotifyOverride = sanitized
+			}
+		}
+		return nil
+	})
 	if err != nil {
+		if errors.Is(err, store.ErrMonitorNotFound) {
+			return nil, ErrMonitorNotFound
+		}
 		return nil, err
 	}
-	if mon == nil {
-		return nil, ErrMonitorNotFound
-	}
-	if patch.Enabled != nil {
-		mon.Enabled = *patch.Enabled
-	}
-	if patch.Name != nil {
-		mon.Name = *patch.Name
-	}
-	if patch.Type != nil {
-		typ, err := monitor.NormalizeType(*patch.Type)
-		if err != nil {
-			return nil, err
-		}
-		mon.Type = typ
-	}
-	if patch.Target != nil {
-		mon.Target = strings.TrimSpace(*patch.Target)
-	}
-	if patch.Type != nil || patch.Target != nil {
-		if err := monitor.ValidateTarget(mon.Type, mon.Target); err != nil {
-			return nil, err
-		}
-	}
-	if patch.IntervalSec != nil {
-		if *patch.IntervalSec > 0 {
-			mon.Interval = time.Duration(*patch.IntervalSec) * time.Second
-		} else {
-			mon.Interval = 0
-		}
-	}
-	if patch.HTTP != nil {
-		mon.HTTP = monitor.MergeHTTPOptions(mon.HTTP, patch.HTTP)
-	}
-	if patch.NotifyOverride != nil {
-		mon.NotifyOverride = monitor.SanitizeNotifyOverride(patch.NotifyOverride)
-	}
-	if err := st.SetMonitor(mon); err != nil {
-		return nil, err
-	}
-	return mon, nil
+	return mon.Redacted(), nil
 }
 
 func UpdateMonitorFromJSON(st *store.Store, id string, body []byte) (*monitor.Monitor, error) {
-	var patch struct {
-		Enabled        *bool                   `json:"enabled"`
-		Name           *string                 `json:"name"`
-		Type           *string                 `json:"type"`
-		Target         *string                 `json:"target"`
-		Interval       *int                    `json:"interval"`
-		HTTP           *checks.HTTPOptions     `json:"http,omitempty"`
-		NotifyOverride *monitor.NotifyOverride `json:"notify_override"`
-	}
-	if err := json.Unmarshal(body, &patch); err != nil {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, ErrInvalidJSON
 	}
-	return UpdateMonitor(st, id, UpdateMonitorPatch{
-		Enabled:        patch.Enabled,
-		Name:           patch.Name,
-		Type:           patch.Type,
-		Target:         patch.Target,
-		IntervalSec:    patch.Interval,
-		HTTP:           patch.HTTP,
-		NotifyOverride: patch.NotifyOverride,
-	})
+	patch := UpdateMonitorPatch{}
+	if v, ok := raw["enabled"]; ok {
+		var b bool
+		if err := json.Unmarshal(v, &b); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		patch.Enabled = &b
+	}
+	if v, ok := raw["name"]; ok {
+		var s string
+		if err := json.Unmarshal(v, &s); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		patch.Name = &s
+	}
+	if v, ok := raw["type"]; ok {
+		var s string
+		if err := json.Unmarshal(v, &s); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		patch.Type = &s
+	}
+	if v, ok := raw["target"]; ok {
+		var s string
+		if err := json.Unmarshal(v, &s); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		patch.Target = &s
+	}
+	if v, ok := raw["interval"]; ok {
+		var n int
+		if err := json.Unmarshal(v, &n); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		patch.IntervalSec = &n
+	}
+	if v, ok := raw["http"]; ok {
+		var h checks.HTTPOptions
+		if err := json.Unmarshal(v, &h); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		patch.HTTP = &h
+	}
+	if v, ok := raw["notify_override"]; ok {
+		trimmed := strings.TrimSpace(string(v))
+		if trimmed == "" || trimmed == "null" || trimmed == "{}" {
+			// omitted or empty — no change
+		} else {
+			var no monitor.NotifyOverride
+			if err := json.Unmarshal(v, &no); err != nil {
+				return nil, ErrInvalidJSON
+			}
+			patch.NotifyOverride = &no
+		}
+	}
+	return UpdateMonitor(st, id, patch)
 }
 
 func DeleteMonitor(st *store.Store, id string) error {
-	return st.DeleteMonitor(id)
+	err := st.DeleteMonitor(id)
+	if errors.Is(err, store.ErrMonitorNotFound) {
+		return ErrMonitorNotFound
+	}
+	return err
 }

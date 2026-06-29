@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/keshon/beacon/internal/monitor"
+	"github.com/keshon/beacon/internal/network"
 
 	"github.com/flosch/pongo2/v6"
 )
@@ -22,6 +23,7 @@ func (s *Server) pageDashboard(w http.ResponseWriter, r *http.Request) {
 		SourceLabel  string
 		SourceNodeID string
 		IsPeer       bool
+		Adopted      bool
 	}
 	var rows []dashboardRow
 	state, err := s.store.GetAllState()
@@ -66,10 +68,23 @@ func (s *Server) pageDashboard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		deadTimeout := time.Duration(s.cfg.Network.DeadTimeout) * time.Second
+		now := time.Now()
+		seen := make(map[string]struct{}, len(rows))
+		for _, row := range rows {
+			seen[row.Monitor.ID] = struct{}{}
+		}
+
 		for _, pd := range peerData {
-			if time.Since(pd.LastSeen) < deadTimeout {
-				sourceLabel := peerDisplayName(pd.PeerURL)
-				for _, m := range pd.Monitors {
+			sourceLabel := peerDisplayName(pd.PeerURL)
+			live := network.PeerLive(pd, deadTimeout, now)
+			for _, m := range pd.Monitors {
+				if m == nil {
+					continue
+				}
+				if _, ok := seen[m.ID]; ok {
+					continue
+				}
+				if live {
 					st := pd.State[m.ID]
 					if st == nil {
 						st = state[m.ID]
@@ -95,8 +110,45 @@ func (s *Server) pageDashboard(w http.ResponseWriter, r *http.Request) {
 						row.LastCheck = "—"
 					}
 					rows = append(rows, row)
+					seen[m.ID] = struct{}{}
 				}
 			}
+		}
+
+		for _, am := range network.AdoptedMonitors(s.cfg, peerData, now) {
+			if am.Monitor == nil {
+				continue
+			}
+			if _, ok := seen[am.Monitor.ID]; ok {
+				continue
+			}
+			st := state[am.Monitor.ID]
+			if st == nil && peerData[am.OwnerNodeID] != nil {
+				st = peerData[am.OwnerNodeID].State[am.Monitor.ID]
+			}
+			label := "Adopted: " + peerDisplayName(am.OwnerLabel)
+			row := dashboardRow{
+				Monitor: am.Monitor, State: st, SourceLabel: label,
+				SourceNodeID: am.OwnerNodeID, IsPeer: true, Adopted: true,
+			}
+			row.Status = "unknown"
+			if st != nil {
+				row.Status = st.Status
+				if st.Latency > 0 {
+					row.LatencyMs = strconv.FormatInt(st.Latency.Milliseconds(), 10) + "ms"
+				}
+				if !st.LastCheck.IsZero() {
+					row.LastCheck = st.LastCheck.Format("15:04:05")
+				}
+			}
+			if row.LatencyMs == "" {
+				row.LatencyMs = "—"
+			}
+			if row.LastCheck == "" {
+				row.LastCheck = "—"
+			}
+			rows = append(rows, row)
+			seen[am.Monitor.ID] = struct{}{}
 		}
 	}
 
@@ -150,7 +202,7 @@ func (s *Server) pageMonitors(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		rows = append(rows, monitorRow{
-			Monitor:     m,
+			Monitor:     m.Redacted(),
 			IntervalSec: sec,
 			NotifyJSON:  notifyJSON,
 			HTTPJSON:    httpJSON,

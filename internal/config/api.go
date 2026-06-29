@@ -262,18 +262,27 @@ func prevSMTPOrZero(t EmailTarget) SMTPConfig {
 }
 
 func mergeWebhookReceivers(existing, incoming []WebhookReceiver) []WebhookReceiver {
+	byURL := make(map[string]WebhookReceiver, len(existing))
+	ordered := make([]string, 0, len(existing))
+	for _, w := range existing {
+		if w.URL != "" {
+			byURL[w.URL] = w
+			ordered = append(ordered, w.URL)
+		}
+	}
 	out := make([]WebhookReceiver, 0, len(incoming))
 	for i, w := range incoming {
 		url := strings.TrimSpace(w.URL)
-		if url == "" && i < len(existing) {
-			url = existing[i].URL
+		if url == "" && i < len(ordered) {
+			url = ordered[i]
 		}
 		if url == "" {
 			continue
 		}
+		prev := byURL[url]
 		headers := w.Headers
-		if len(headers) == 0 && i < len(existing) {
-			headers = existing[i].Headers
+		if len(headers) == 0 && len(prev.Headers) > 0 {
+			headers = prev.Headers
 		}
 		out = append(out, WebhookReceiver{
 			URL:     url,
@@ -317,11 +326,17 @@ func mergeTelegramTargets(existing, incoming []TelegramTarget) []TelegramTarget 
 }
 
 func mergeDiscordWebhooks(existing, incoming []DiscordReceiver) []DiscordReceiver {
+	ordered := make([]string, 0, len(existing))
+	for _, w := range existing {
+		if w.Webhook != "" {
+			ordered = append(ordered, w.Webhook)
+		}
+	}
 	out := make([]DiscordReceiver, 0, len(incoming))
 	for i, w := range incoming {
 		webhook := strings.TrimSpace(w.Webhook)
-		if webhook == "" && i < len(existing) {
-			webhook = existing[i].Webhook
+		if webhook == "" && i < len(ordered) {
+			webhook = ordered[i]
 		}
 		if webhook == "" {
 			continue
@@ -342,13 +357,27 @@ func ApplyNonSecret(existing, incoming *Config) {
 	existing.Listen = incoming.Listen
 	existing.Workers = incoming.Workers
 	existing.DefaultInterval = incoming.DefaultInterval
-	existing.Notifications = incoming.Notifications
+	mergeNotifications(&existing.Notifications, incoming.Notifications)
 	existing.Network = mergeNetworkConfig(existing.Network, incoming.Network)
+}
+
+func mergeNotifications(existing *NotificationsConfig, incoming NotificationsConfig) {
+	if incoming.AlertMode != "" {
+		existing.AlertMode = incoming.AlertMode
+	}
+	if incoming.Templates.Down != "" {
+		existing.Templates.Down = incoming.Templates.Down
+	}
+	if incoming.Templates.Recovered != "" {
+		existing.Templates.Recovered = incoming.Templates.Recovered
+	}
 }
 
 func mergeNetworkConfig(existing, incoming NetworkConfig) NetworkConfig {
 	out := incoming
-	if out.NodeID == "" {
+	if existing.NodeID != "" {
+		out.NodeID = existing.NodeID
+	} else if out.NodeID == "" {
 		out.NodeID = existing.NodeID
 	}
 	out.SyncToken = existing.SyncToken

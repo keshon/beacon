@@ -23,6 +23,13 @@ func RunCLI(st *store.Store) bool {
 		return false
 	}
 
+	lock, err := acquireDataDirLock("data")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return true
+	}
+	defer releaseDataDirLock(lock)
+
 	commands.RegisterAll(st)
 	ctx := context.Background()
 

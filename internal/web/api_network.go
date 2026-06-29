@@ -16,7 +16,8 @@ type networkNode struct {
 	Status        string `json:"status"`
 	LastSeen      string `json:"last_seen,omitempty"`
 	MonitorsCount int    `json:"monitors_count"`
-	LastError     string `json:"last_error,omitempty"`
+	LastError     string   `json:"last_error,omitempty"`
+	SyncWarnings  []string `json:"sync_warnings,omitempty"`
 }
 
 func (s *Server) buildNetworkNodes() []networkNode {
@@ -81,6 +82,7 @@ func (s *Server) buildNetworkNodes() []networkNode {
 			LastSeen:      lastSeen,
 			MonitorsCount: len(pd.Monitors),
 			LastError:     pd.LastError,
+			SyncWarnings:  pd.SyncWarnings,
 		})
 	}
 	return nodes

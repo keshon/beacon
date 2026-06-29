@@ -124,11 +124,16 @@ func NewEmailSendGuard() *EmailSendGuard {
 
 const emailSafeInterval = 60 * time.Second
 
-func (g *EmailSendGuard) Allow(key string) bool {
+func (g *EmailSendGuard) Allow(monitorID, recipient string) bool {
+	key := monitorID + "\x00" + recipient
 	now := time.Now()
 	if prev, ok := g.last[key]; ok && now.Sub(prev) < emailSafeInterval {
 		return false
 	}
-	g.last[key] = now
 	return true
+}
+
+func (g *EmailSendGuard) RecordSuccess(monitorID, recipient string) {
+	key := monitorID + "\x00" + recipient
+	g.last[key] = time.Now()
 }

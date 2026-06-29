@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -18,8 +20,14 @@ import (
 	"github.com/keshon/beacon/internal/scheduler"
 	"github.com/keshon/beacon/internal/sse"
 	"github.com/keshon/beacon/internal/store"
-	"github.com/keshon/beacon/internal/sync"
+	beaconsync "github.com/keshon/beacon/internal/sync"
 	"github.com/keshon/beacon/internal/web"
+)
+
+const (
+	alertQueueSize      = 256
+	alertEnqueueTimeout = 30 * time.Second
+	alertDedupWindow    = 45 * time.Second
 )
 
 func isCLISubcommand(s string) bool {
@@ -78,6 +86,12 @@ func main() {
 	}
 	defer st.Close()
 
+	serverLock, err := cli.AcquireServerLock(dataDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.ReleaseDataDirLock(serverLock)
+
 	if cli.RunCLI(st) {
 		return
 	}
@@ -85,16 +99,36 @@ func main() {
 	cfg := loadConfig(st, cfgPath)
 	commands.RegisterAll(st)
 
-	const alertQueueSize = 128
 	alertQueue := make(chan func(), alertQueueSize)
+	var alertWG sync.WaitGroup
 	emailGuard := notify.NewEmailSendGuard()
+	alertDedup := notify.NewAlertDedup()
+	alertWG.Add(1)
 	go func() {
+		defer alertWG.Done()
 		for fn := range alertQueue {
 			fn()
 		}
 	}()
 
 	sendAlerts := func(m *monitor.Monitor, state *monitor.MonitorState, result checks.CheckResult, status, message string, isRepeat bool) {
+		if m == nil {
+			return
+		}
+		if mon, err := st.GetMonitor(m.ID); err == nil {
+			if mon == nil {
+				// Adopted peer monitor — not in local store; allow alert.
+			} else if !mon.Enabled {
+				return
+			}
+		}
+		if status == "down" && isRepeat && !alertDedup.Allow(m.ID, status, alertDedupWindow) {
+			return
+		}
+		if status == "recovered" && !alertDedup.Allow(m.ID, status, alertDedupWindow) {
+			return
+		}
+
 		receivers := notify.BuildReceivers(cfg, m)
 		if len(receivers) == 0 {
 			return
@@ -115,9 +149,11 @@ func main() {
 		}
 		job := func() {
 			for i, r := range receivers {
-				if r.Channel == notify.ChannelEmail && !emailGuard.Allow(r.Key) {
-					log.Printf("email cooldown skip [%s]", r.Key)
-					continue
+				if r.Channel == notify.ChannelEmail {
+					if !emailGuard.Allow(m.ID, r.Key) {
+						log.Printf("email cooldown skip [%s]", r.Key)
+						continue
+					}
 				}
 				if status == "down" && !notify.ShouldSendDown(r.Policy, isRepeat, r.Channel) {
 					continue
@@ -126,15 +162,20 @@ func main() {
 				alert.Body = notify.BuildAlertBody(r.Policy, status, tplCtx)
 				if err := r.Notifier.Send(alert); err != nil {
 					log.Printf("notify error [%s]: %v", r.Key, err)
-				} else if i+1 < len(receivers) {
-					time.Sleep(250 * time.Millisecond)
+				} else {
+					if r.Channel == notify.ChannelEmail {
+						emailGuard.RecordSuccess(m.ID, r.Key)
+					}
+					if i+1 < len(receivers) {
+						time.Sleep(250 * time.Millisecond)
+					}
 				}
 			}
 		}
 		select {
 		case alertQueue <- job:
-		default:
-			log.Printf("notify queue full, dropping alert for %s", m.Name)
+		case <-time.After(alertEnqueueTimeout):
+			log.Printf("notify queue full after %s, dropping alert for %s", alertEnqueueTimeout, m.Name)
 		}
 	}
 
@@ -150,9 +191,15 @@ func main() {
 	streamHub := sse.NewCheckStreamHub()
 	sch := scheduler.New(st, evaluator, cfg.Workers, cfg.DefaultIntervalDuration(), cfg, streamHub.BroadcastCheck)
 	sch.Run(ctx)
+	notifyStartupDown(sch, sendAlerts)
 
-	syncClient := sync.NewPeerSyncClient(st, cfg)
-	go syncClient.Run(ctx)
+	syncClient := beaconsync.NewPeerSyncClient(st, cfg)
+	var syncWG sync.WaitGroup
+	syncWG.Add(1)
+	go func() {
+		defer syncWG.Done()
+		syncClient.Run(ctx)
+	}()
 
 	auth := web.NewAuth()
 	srv := web.NewServer(st, auth, cfg, sch, "templates", "static", streamHub)
@@ -160,7 +207,7 @@ func main() {
 
 	go func() {
 		log.Printf("listening on http://localhost%s", cfg.Listen)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}
 	}()
@@ -170,9 +217,12 @@ func main() {
 	<-sigCh
 	log.Println("shutting down...")
 
-	cancel()
 	sch.Stop()
+	cancel()
+	syncWG.Wait()
+
 	close(alertQueue)
+	alertWG.Wait()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
@@ -181,4 +231,28 @@ func main() {
 	}
 
 	log.Println("done")
+}
+
+func notifyStartupDown(sch *scheduler.Scheduler, sendAlerts func(*monitor.Monitor, *monitor.MonitorState, checks.CheckResult, string, string, bool)) {
+	monitors, states, err := sch.StartupDownMonitors()
+	if err != nil {
+		log.Printf("startup down sweep: %v", err)
+		return
+	}
+	for _, m := range monitors {
+		st := states[m.ID]
+		if st == nil {
+			continue
+		}
+		result := checks.CheckResult{
+			MonitorID: m.ID,
+			Success:   false,
+			Error:     "still down after restart",
+			Time:      time.Now(),
+		}
+		sendAlerts(m, st, result, "down", "Monitor still DOWN after Beacon restarted", false)
+	}
+	if len(monitors) > 0 {
+		log.Printf("startup: notified %d monitor(s) still down", len(monitors))
+	}
 }
