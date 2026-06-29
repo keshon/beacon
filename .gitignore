@@ -2,4 +2,4 @@
 *.exe
 uikit/vendor/
 /tmp
-beacon
+./beacon
