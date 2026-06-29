@@ -127,6 +127,42 @@
         );
     }
 
+    function attachSecretField(input, displayValue) {
+        if (!input) return;
+        displayValue = (displayValue || '').trim();
+        if (!displayValue) return;
+
+        input.classList.add('notify-secret-field');
+        input.type = 'password';
+        input.autocomplete = 'off';
+        input.value = displayValue;
+        input.dataset.secretDisplay = displayValue;
+        input.title = 'Saved — hover to preview, click to pin reveal';
+
+        var pinned = false;
+
+        function setRevealed(on) {
+            input.type = on ? 'text' : 'password';
+            input.classList.toggle('is-revealed', on);
+        }
+
+        input.addEventListener('mouseenter', function () {
+            if (!pinned) setRevealed(true);
+        });
+        input.addEventListener('mouseleave', function () {
+            if (!pinned) setRevealed(false);
+        });
+        input.addEventListener('click', function () {
+            pinned = !pinned;
+            setRevealed(pinned);
+        });
+        input.addEventListener('focus', function () {
+            if (input.value === input.dataset.secretDisplay) {
+                input.select();
+            }
+        });
+    }
+
     function applyRowValue(row, value, channel) {
         value = value || {};
         if (value.policy) {
@@ -142,13 +178,18 @@
                 var row = el(
                     '<div class="notify-row notify-row--telegram">' +
                         '<div class="notify-row__fields">' +
-                        '<input type="text" class="form-control" data-notify-field="token" placeholder="Bot token" />' +
+                        '<input type="password" class="form-control notify-secret-field" data-notify-field="token" placeholder="Bot token" autocomplete="off" />' +
                         '<input type="text" class="form-control" data-notify-field="chat_id" placeholder="Chat ID" />' +
                         '</div>' +
                         rowActionsHtml() +
                         '</div>'
                 );
-                row.querySelector('[data-notify-field="token"]').value = value.token || '';
+                var tokenInput = row.querySelector('[data-notify-field="token"]');
+                if (value.token) {
+                    attachSecretField(tokenInput, value.token);
+                } else {
+                    tokenInput.value = '';
+                }
                 row.querySelector('[data-notify-field="chat_id"]').value = value.chat_id || '';
                 applyRowValue(row, value, 'telegram');
                 return row;
@@ -177,12 +218,17 @@
                 var row = el(
                     '<div class="notify-row notify-row--discord">' +
                         '<div class="notify-row__fields">' +
-                        '<input type="text" class="form-control" data-notify-field="webhook" placeholder="Webhook URL" />' +
+                        '<input type="password" class="form-control notify-secret-field" data-notify-field="webhook" placeholder="Webhook URL" autocomplete="off" />' +
                         '</div>' +
                         rowActionsHtml() +
                         '</div>'
                 );
-                row.querySelector('[data-notify-field="webhook"]').value = value.webhook || '';
+                var webhookInput = row.querySelector('[data-notify-field="webhook"]');
+                if (value.webhook) {
+                    attachSecretField(webhookInput, value.webhook);
+                } else {
+                    webhookInput.value = '';
+                }
                 applyRowValue(row, value, 'discord');
                 return row;
             },

@@ -109,7 +109,7 @@ func (c *Config) ToPublic() PublicConfig {
 	for _, t := range c.Telegram.Targets {
 		pub.Secrets.TelegramTokens = append(pub.Secrets.TelegramTokens, t.Token != "")
 		pub.Telegram.Targets = append(pub.Telegram.Targets, PublicTelegramTarget{
-			Token:  "",
+			Token:  MaskSecret(t.Token),
 			ChatID: t.ChatID,
 			Policy: t.Policy,
 		})
@@ -118,7 +118,7 @@ func (c *Config) ToPublic() PublicConfig {
 	for _, w := range c.Discord.Webhooks {
 		pub.Secrets.DiscordWebhooks = append(pub.Secrets.DiscordWebhooks, w.Webhook != "")
 		pub.Discord.Webhooks = append(pub.Discord.Webhooks, PublicDiscordReceiver{
-			Webhook: "",
+			Webhook: MaskSecret(w.Webhook),
 			Policy:  w.Policy,
 		})
 	}
@@ -305,9 +305,11 @@ func mergeTelegramTargets(existing, incoming []TelegramTarget) []TelegramTarget 
 	for _, t := range incoming {
 		token := strings.TrimSpace(t.Token)
 		chat := strings.TrimSpace(t.ChatID)
-		if token == "" && chat != "" {
+		if chat != "" {
 			if prev, ok := byChat[chat]; ok {
-				token = prev.Token
+				if token == "" || SecretUnchanged(token, prev.Token) {
+					token = prev.Token
+				}
 			}
 		}
 		if token == "" || chat == "" {
@@ -335,8 +337,14 @@ func mergeDiscordWebhooks(existing, incoming []DiscordReceiver) []DiscordReceive
 	out := make([]DiscordReceiver, 0, len(incoming))
 	for i, w := range incoming {
 		webhook := strings.TrimSpace(w.Webhook)
-		if webhook == "" && i < len(ordered) {
-			webhook = ordered[i]
+		var stored string
+		if i < len(ordered) {
+			stored = ordered[i]
+		}
+		if webhook == "" && stored != "" {
+			webhook = stored
+		} else if webhook != "" && stored != "" && SecretUnchanged(webhook, stored) {
+			webhook = stored
 		}
 		if webhook == "" {
 			continue

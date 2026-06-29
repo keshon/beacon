@@ -12503,6 +12503,15 @@ html[data-bs-theme=light] .dash-nav .vr {
   min-width: 0;
 }
 
+.notify-secret-field {
+  cursor: pointer;
+  font-family: var(--bs-font-monospace, ui-monospace, monospace);
+}
+
+.notify-secret-field.is-revealed {
+  cursor: text;
+}
+
 .notify-row-meta {
   display: inline-flex;
   align-items: center;
