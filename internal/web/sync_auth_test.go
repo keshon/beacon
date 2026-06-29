@@ -4,18 +4,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/keshon/beacon/internal/cluster"
 )
 
 func TestSyncTokenFromRequest(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/api/sync/export", nil)
 	r.Header.Set("Authorization", "Bearer my-token")
-	if got := SyncTokenFromRequest(r); got != "my-token" {
+	if got := cluster.SyncTokenFromRequest(r); got != "my-token" {
 		t.Fatalf("Bearer: got %q", got)
 	}
 
 	r = httptest.NewRequest(http.MethodGet, "/api/sync/export", nil)
 	r.Header.Set("X-Beacon-Sync-Token", "header-token")
-	if got := SyncTokenFromRequest(r); got != "header-token" {
+	if got := cluster.SyncTokenFromRequest(r); got != "header-token" {
 		t.Fatalf("header: got %q", got)
 	}
 }
@@ -23,10 +25,10 @@ func TestSyncTokenFromRequest(t *testing.T) {
 func TestSyncTokenMatches(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/api/sync/export", nil)
 	r.Header.Set("Authorization", "Bearer correct")
-	if !SyncTokenMatches(r, "correct") {
+	if !cluster.SyncTokenMatches(r, "correct") {
 		t.Fatal("expected match")
 	}
-	if SyncTokenMatches(r, "wrong") {
+	if cluster.SyncTokenMatches(r, "wrong") {
 		t.Fatal("expected mismatch")
 	}
 }

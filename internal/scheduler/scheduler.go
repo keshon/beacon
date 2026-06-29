@@ -10,15 +10,14 @@ import (
 	"github.com/keshon/beacon/internal/checks"
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
-	"github.com/keshon/beacon/internal/network"
 	"github.com/keshon/beacon/internal/notify"
 	"github.com/keshon/beacon/internal/store"
 )
 
 const (
-	jobQueueSize     = 100
-	enqueueWait      = 5 * time.Second
-	jitterMax        = 3 * time.Second
+	jobQueueSize = 100
+	enqueueWait  = 5 * time.Second
+	jitterMax    = 3 * time.Second
 )
 
 type CheckJob struct {
@@ -28,6 +27,7 @@ type CheckJob struct {
 
 type Scheduler struct {
 	store           *store.Store
+	source          MonitorSource
 	evaluator       *monitor.StatusEvaluator
 	workers         int
 	defaultInterval time.Duration
@@ -42,7 +42,10 @@ type Scheduler struct {
 	stopping        atomic.Bool
 }
 
-func New(s *store.Store, evaluator *monitor.StatusEvaluator, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(store.CheckRecord, *monitor.MonitorState)) *Scheduler {
+func New(s *store.Store, source MonitorSource, evaluator *monitor.StatusEvaluator, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(store.CheckRecord, *monitor.MonitorState)) *Scheduler {
+	if source == nil {
+		source = LocalSource{Store: s}
+	}
 	if workers <= 0 {
 		workers = 10
 	}
@@ -51,6 +54,7 @@ func New(s *store.Store, evaluator *monitor.StatusEvaluator, workers int, defaul
 	}
 	return &Scheduler{
 		store:           s,
+		source:          source,
 		evaluator:       evaluator,
 		workers:         workers,
 		defaultInterval: defaultInterval,
@@ -65,7 +69,6 @@ func (sc *Scheduler) DroppedChecks() uint64 {
 	return sc.droppedChecks.Load()
 }
 
-// ReloadConfig updates scheduler tuning from live config.
 func (sc *Scheduler) ReloadConfig(cfg *config.Config) {
 	if cfg == nil {
 		return
@@ -88,51 +91,6 @@ func (sc *Scheduler) Run(ctx context.Context) {
 	go sc.loop(ctx)
 }
 
-func (sc *Scheduler) getMonitorsToCheck() ([]*monitor.Monitor, error) {
-	own, err := sc.store.GetMonitors()
-	if err != nil {
-		return nil, err
-	}
-	byID := make(map[string]*monitor.Monitor, len(own))
-	for _, m := range own {
-		byID[m.ID] = m
-	}
-
-	if sc.cfg == nil || !sc.cfg.Network.Enabled || sc.cfg.Network.NodeID == "" {
-		return own, nil
-	}
-
-	peerData, err := sc.store.GetAllPeerData()
-	if err != nil {
-		return own, err
-	}
-	now := time.Now()
-	adopted := network.AdoptedMonitors(sc.cfg, peerData, now)
-	for _, am := range adopted {
-		if existing, ok := byID[am.Monitor.ID]; ok {
-			log.Printf("[scheduler] monitor ID collision %s: keeping local definition over peer %s", am.Monitor.ID, am.OwnerNodeID)
-			_ = existing
-			continue
-		}
-		byID[am.Monitor.ID] = am.Monitor
-		if st, ok := peerData[am.OwnerNodeID]; ok && st != nil {
-			if peerSt, ok := st.State[am.Monitor.ID]; ok && peerSt != nil {
-				local, _ := sc.store.GetState(am.Monitor.ID)
-				merged := network.MergeMonitorState(local, peerSt)
-				if merged != nil && (local == nil || merged.LastCheck.After(local.LastCheck)) {
-					_ = sc.store.SetState(merged)
-				}
-			}
-		}
-	}
-
-	list := make([]*monitor.Monitor, 0, len(byID))
-	for _, m := range byID {
-		list = append(list, m)
-	}
-	return list, nil
-}
-
 func (sc *Scheduler) loop(ctx context.Context) {
 	defer sc.wg.Done()
 	ticker := time.NewTicker(1 * time.Second)
@@ -144,7 +102,7 @@ func (sc *Scheduler) loop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			now := time.Now()
-			monitors, err := sc.getMonitorsToCheck()
+			monitors, err := sc.source.List(ctx)
 			if err != nil {
 				log.Printf("[scheduler] list monitors: %v", err)
 				continue
@@ -184,11 +142,9 @@ func (sc *Scheduler) loop(ctx context.Context) {
 				sc.inFlight[m.ID] = struct{}{}
 				sc.inflMu.Unlock()
 
-				job := CheckJob{MonitorID: m.ID, RequireLocalMon: true}
-				if sc.cfg != nil && sc.cfg.Network.Enabled {
-					if local, _ := sc.store.GetMonitor(m.ID); local == nil {
-						job.RequireLocalMon = false
-					}
+				job := CheckJob{
+					MonitorID:       m.ID,
+					RequireLocalMon: sc.source.RequireLocalMonitor(m.ID),
 				}
 				if sc.stopping.Load() {
 					sc.inflMu.Lock()
@@ -237,7 +193,7 @@ func (sc *Scheduler) runCheck(ctx context.Context, job CheckJob) {
 		sc.inflMu.Unlock()
 	}()
 
-	m, err := sc.resolveMonitor(job.MonitorID)
+	m, err := sc.source.Resolve(job.MonitorID)
 	if err != nil {
 		log.Printf("[scheduler] read monitor %s: %v", job.MonitorID, err)
 		return
@@ -308,7 +264,6 @@ func (sc *Scheduler) Stop() {
 	sc.wg.Wait()
 }
 
-// StartupDownMonitors returns monitors persisted in down state for restart notification.
 func (sc *Scheduler) StartupDownMonitors() ([]*monitor.Monitor, map[string]*monitor.MonitorState, error) {
 	monitors, err := sc.store.GetMonitors()
 	if err != nil {
@@ -340,27 +295,4 @@ func stableJitter(monitorID string) time.Duration {
 	}
 	ms := h % uint32(jitterMax/time.Millisecond)
 	return time.Duration(ms) * time.Millisecond
-}
-
-func (sc *Scheduler) resolveMonitor(id string) (*monitor.Monitor, error) {
-	m, err := sc.store.GetMonitor(id)
-	if err != nil {
-		return nil, err
-	}
-	if m != nil {
-		return m, nil
-	}
-	if sc.cfg == nil || !sc.cfg.Network.Enabled {
-		return nil, nil
-	}
-	peerData, err := sc.store.GetAllPeerData()
-	if err != nil {
-		return nil, err
-	}
-	for _, am := range network.AdoptedMonitors(sc.cfg, peerData, time.Now()) {
-		if am.Monitor != nil && am.Monitor.ID == id {
-			return am.Monitor, nil
-		}
-	}
-	return nil, nil
 }

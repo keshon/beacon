@@ -1,9 +1,15 @@
 package notify
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"math"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/keshon/beacon/internal/config"
+	"github.com/keshon/beacon/internal/monitor"
 )
 
 const (
@@ -149,4 +155,236 @@ func Placeholders() []PlaceholderInfo {
 		{Key: "message", Description: "Detail line (error or latency summary)"},
 		{Key: "fail_count", Description: "Failed check count before down"},
 	}
+}
+
+// ShouldSendDown returns whether a down alert should be delivered.
+// Email always uses once semantics regardless of policy alert_mode.
+func ShouldSendDown(policy ResolvedPolicy, isRepeat bool, channel string) bool {
+	if channel == ChannelEmail {
+		return !isRepeat
+	}
+	if !isRepeat {
+		return true
+	}
+	return policy.AlertMode == AlertModeRepeat
+}
+
+// AlertDedup suppresses duplicate alerts for the same monitor status within a window.
+type AlertDedup struct {
+	mu   sync.Mutex
+	last map[string]time.Time
+}
+
+func NewAlertDedup() *AlertDedup {
+	return &AlertDedup{last: make(map[string]time.Time)}
+}
+
+func alertDedupKey(monitorID, status string) string {
+	return monitorID + "\x00" + status
+}
+
+// Allow reports whether an alert should be sent (false if duplicate within window).
+func (d *AlertDedup) Allow(monitorID, status string, window time.Duration) bool {
+	key := alertDedupKey(monitorID, status)
+	now := time.Now()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if prev, ok := d.last[key]; ok && now.Sub(prev) < window {
+		return false
+	}
+	d.last[key] = now
+	return true
+}
+
+const (
+	minIntervalTelegram = 20 * time.Second
+	minIntervalDiscord  = 60 * time.Second
+	minIntervalWebhook  = 30 * time.Second
+	minIntervalProbe    = 5 * time.Second
+)
+
+// RecommendedMinInterval returns a conservative minimum check interval for a monitor.
+// Email is excluded (once-only delivery with separate send guard).
+func RecommendedMinInterval(cfg *config.Config, m *monitor.Monitor) time.Duration {
+	recvs := BuildReceivers(cfg, m)
+	if len(recvs) == 0 {
+		return minIntervalProbe
+	}
+	var max time.Duration
+	hasRepeat := false
+	for _, r := range recvs {
+		if r.Channel == ChannelEmail {
+			continue
+		}
+		floor := channelIntervalFloor(r.Channel)
+		if floor > max {
+			max = floor
+		}
+		if r.Policy.AlertMode == AlertModeRepeat {
+			hasRepeat = true
+		}
+	}
+	if !hasRepeat {
+		return minIntervalProbe
+	}
+	if max == 0 {
+		return minIntervalProbe
+	}
+	return max
+}
+
+func channelIntervalFloor(channel string) time.Duration {
+	switch channel {
+	case ChannelTelegram:
+		return minIntervalTelegram
+	case ChannelDiscord:
+		return minIntervalDiscord
+	case ChannelWebhook:
+		return minIntervalWebhook
+	default:
+		return 0
+	}
+}
+
+// IntervalWarnings returns human-readable warnings when monitor interval is below recommended.
+func IntervalWarnings(cfg *config.Config, m *monitor.Monitor) []string {
+	if m == nil {
+		return nil
+	}
+	rec := RecommendedMinInterval(cfg, m)
+	if m.Interval <= 0 {
+		return nil
+	}
+	if m.Interval >= rec {
+		return nil
+	}
+	return []string{
+		"check interval " + m.Interval.String() + " is below recommended minimum " + rec.String() + " for repeat-mode notification channels",
+	}
+}
+
+// EmailSendGuard limits production email frequency per destination.
+type EmailSendGuard struct {
+	last map[string]time.Time
+}
+
+func NewEmailSendGuard() *EmailSendGuard {
+	return &EmailSendGuard{last: make(map[string]time.Time)}
+}
+
+const emailSafeInterval = 60 * time.Second
+
+func (g *EmailSendGuard) Allow(monitorID, recipient string) bool {
+	key := monitorID + "\x00" + recipient
+	now := time.Now()
+	if prev, ok := g.last[key]; ok && now.Sub(prev) < emailSafeInterval {
+		return false
+	}
+	return true
+}
+
+func (g *EmailSendGuard) RecordSuccess(monitorID, recipient string) {
+	key := monitorID + "\x00" + recipient
+	g.last[key] = time.Now()
+}
+
+// Default cooldowns are conservative compared to provider limits so a user
+// mashing the Test button cannot get a real bot banned.
+const (
+	telegramTestCooldown = 3 * time.Second
+	discordTestCooldown  = 5 * time.Second
+	emailTestCooldown    = 10 * time.Second
+	webhookTestCooldown  = 5 * time.Second
+	clientTestWindow     = time.Minute
+	clientTestBudget     = 10
+)
+
+// RateLimiter is an in-memory limiter for outbound test notifications. It
+// enforces:
+//   - a per-destination cooldown so the same chat/webhook cannot be hammered
+//   - a per-client burst budget keyed by an opaque client id (e.g. IP)
+//
+// It is safe for concurrent use.
+type RateLimiter struct {
+	mu      sync.Mutex
+	destAt  map[string]time.Time
+	clients map[string][]time.Time
+}
+
+// NewRateLimiter constructs an empty limiter.
+func NewRateLimiter() *RateLimiter {
+	return &RateLimiter{
+		destAt:  make(map[string]time.Time),
+		clients: make(map[string][]time.Time),
+	}
+}
+
+// AllowTelegram reserves a slot for sending a test message to the given
+// Telegram destination from clientID. retryAfter is the wait time until the
+// next attempt is allowed when ok is false.
+func (r *RateLimiter) AllowTelegram(clientID, token, chatID string) (ok bool, retryAfter time.Duration) {
+	return r.allow(clientID, "tg:"+hashKey(token+"|"+chatID), telegramTestCooldown)
+}
+
+// AllowDiscord reserves a slot for sending a test message to the given Discord
+// webhook from clientID.
+func (r *RateLimiter) AllowDiscord(clientID, webhook string) (ok bool, retryAfter time.Duration) {
+	return r.allow(clientID, "dc:"+hashKey(webhook), discordTestCooldown)
+}
+
+func (r *RateLimiter) AllowEmail(clientID, to string) (ok bool, retryAfter time.Duration) {
+	return r.allow(clientID, "em:"+hashKey(strings.ToLower(strings.TrimSpace(to))), emailTestCooldown)
+}
+
+func (r *RateLimiter) AllowWebhook(clientID, url string) (ok bool, retryAfter time.Duration) {
+	return r.allow(clientID, "wh:"+hashKey(url), webhookTestCooldown)
+}
+
+func (r *RateLimiter) allow(clientID, destKey string, cooldown time.Duration) (bool, time.Duration) {
+	now := time.Now()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if last, ok := r.destAt[destKey]; ok {
+		if wait := cooldown - now.Sub(last); wait > 0 {
+			return false, wait
+		}
+	}
+
+	if clientID != "" {
+		hits := r.clients[clientID]
+		cutoff := now.Add(-clientTestWindow)
+		fresh := hits[:0]
+		for _, t := range hits {
+			if t.After(cutoff) {
+				fresh = append(fresh, t)
+			}
+		}
+		if len(fresh) >= clientTestBudget {
+			wait := clientTestWindow - now.Sub(fresh[0])
+			if wait < 0 {
+				wait = 0
+			}
+			r.clients[clientID] = fresh
+			return false, wait
+		}
+		r.clients[clientID] = append(fresh, now)
+	}
+
+	r.destAt[destKey] = now
+	return true, 0
+}
+
+// RetryAfterSeconds rounds wait up to the next whole second for HTTP response
+// bodies.
+func RetryAfterSeconds(d time.Duration) int {
+	if d <= 0 {
+		return 0
+	}
+	return int(math.Ceil(d.Seconds()))
+}
+
+func hashKey(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:8])
 }

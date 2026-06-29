@@ -1,4 +1,4 @@
-package network
+package cluster
 
 import (
 	"sort"
@@ -16,16 +16,14 @@ type AdoptedMonitor struct {
 	OwnerLabel  string
 }
 
-// PeerLive reports whether peer data is within the dead timeout window.
-func PeerLive(pd *store.PeerData, deadTimeout time.Duration, now time.Time) bool {
+func peerLive(pd *store.PeerData, deadTimeout time.Duration, now time.Time) bool {
 	if pd == nil || deadTimeout <= 0 {
 		return false
 	}
 	return now.Sub(pd.LastSeen) < deadTimeout
 }
 
-// NextLiveInRing returns the next live node after deadID in sorted ring order.
-func NextLiveInRing(sorted []string, deadID string, live map[string]bool) string {
+func nextLiveInRing(sorted []string, deadID string, live map[string]bool) string {
 	for i, id := range sorted {
 		if id == deadID {
 			for j := 1; j < len(sorted); j++ {
@@ -40,8 +38,7 @@ func NextLiveInRing(sorted []string, deadID string, live map[string]bool) string
 	return ""
 }
 
-// BuildRing collects node IDs and liveness from local config and peer cache.
-func BuildRing(cfg *config.Config, peerData map[string]*store.PeerData, now time.Time, deadTimeout time.Duration) (sorted []string, live map[string]bool) {
+func buildRing(cfg *config.Config, peerData map[string]*store.PeerData, now time.Time, deadTimeout time.Duration) (sorted []string, live map[string]bool) {
 	live = make(map[string]bool)
 	if cfg == nil || !cfg.Network.Enabled || cfg.Network.NodeID == "" {
 		return nil, live
@@ -50,7 +47,7 @@ func BuildRing(cfg *config.Config, peerData map[string]*store.PeerData, now time
 	live[cfg.Network.NodeID] = true
 	for nodeID, pd := range peerData {
 		sorted = append(sorted, nodeID)
-		if PeerLive(pd, deadTimeout, now) {
+		if peerLive(pd, deadTimeout, now) {
 			live[nodeID] = true
 		}
 	}
@@ -58,20 +55,19 @@ func BuildRing(cfg *config.Config, peerData map[string]*store.PeerData, now time
 	return sorted, live
 }
 
-// AdoptedMonitors returns enabled monitors this node should check for dead peers.
-func AdoptedMonitors(cfg *config.Config, peerData map[string]*store.PeerData, now time.Time) []AdoptedMonitor {
+func adoptedMonitors(cfg *config.Config, peerData map[string]*store.PeerData, now time.Time) []AdoptedMonitor {
 	if cfg == nil || !cfg.Network.Enabled || cfg.Network.NodeID == "" || len(peerData) == 0 {
 		return nil
 	}
 	deadTimeout := time.Duration(cfg.Network.DeadTimeout) * time.Second
-	sorted, live := BuildRing(cfg, peerData, now, deadTimeout)
+	sorted, live := buildRing(cfg, peerData, now, deadTimeout)
 	var out []AdoptedMonitor
 	seen := make(map[string]struct{})
 	for _, pd := range peerData {
-		if PeerLive(pd, deadTimeout, now) {
+		if peerLive(pd, deadTimeout, now) {
 			continue
 		}
-		if NextLiveInRing(sorted, pd.NodeID, live) != cfg.Network.NodeID {
+		if nextLiveInRing(sorted, pd.NodeID, live) != cfg.Network.NodeID {
 			continue
 		}
 		label := pd.PeerURL
@@ -101,6 +97,15 @@ func AdoptedMonitors(cfg *config.Config, peerData map[string]*store.PeerData, no
 
 // MergeMonitorState picks the newer of two states by LastCheck.
 func MergeMonitorState(a, b *monitor.MonitorState) *monitor.MonitorState {
+	return mergeMonitorState(a, b)
+}
+
+// MergeStateMaps merges incoming state into base, keeping newer LastCheck per ID.
+func MergeStateMaps(base, incoming map[string]*monitor.MonitorState) map[string]*monitor.MonitorState {
+	return mergeStateMaps(base, incoming)
+}
+
+func mergeMonitorState(a, b *monitor.MonitorState) *monitor.MonitorState {
 	if a == nil {
 		return b
 	}
@@ -113,8 +118,7 @@ func MergeMonitorState(a, b *monitor.MonitorState) *monitor.MonitorState {
 	return a
 }
 
-// MergeStateMaps merges incoming into base, keeping newer LastCheck per monitor ID.
-func MergeStateMaps(base, incoming map[string]*monitor.MonitorState) map[string]*monitor.MonitorState {
+func mergeStateMaps(base, incoming map[string]*monitor.MonitorState) map[string]*monitor.MonitorState {
 	if len(incoming) == 0 {
 		return base
 	}
@@ -125,7 +129,7 @@ func MergeStateMaps(base, incoming map[string]*monitor.MonitorState) map[string]
 		if st == nil {
 			continue
 		}
-		base[id] = MergeMonitorState(base[id], st)
+		base[id] = mergeMonitorState(base[id], st)
 	}
 	return base
 }

@@ -12,15 +12,12 @@ import (
 	"time"
 
 	"github.com/keshon/beacon/internal/checks"
-	"github.com/keshon/beacon/internal/cli"
-	"github.com/keshon/beacon/internal/commands"
+	"github.com/keshon/beacon/internal/cluster"
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
 	"github.com/keshon/beacon/internal/notify"
 	"github.com/keshon/beacon/internal/scheduler"
-	"github.com/keshon/beacon/internal/sse"
 	"github.com/keshon/beacon/internal/store"
-	beaconsync "github.com/keshon/beacon/internal/sync"
 	"github.com/keshon/beacon/internal/web"
 )
 
@@ -29,10 +26,6 @@ const (
 	alertEnqueueTimeout = 30 * time.Second
 	alertDedupWindow    = 45 * time.Second
 )
-
-func isCLISubcommand(s string) bool {
-	return s == "monitor" || s == "state" || s == "events"
-}
 
 func loadConfig(st *store.Store, filePath string) *config.Config {
 	var cfg config.Config
@@ -86,18 +79,17 @@ func main() {
 	}
 	defer st.Close()
 
-	serverLock, err := cli.AcquireServerLock(dataDir)
+	serverLock, err := acquireDataDirLock(dataDir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer cli.ReleaseDataDirLock(serverLock)
+	defer releaseDataDirLock(serverLock)
 
-	if cli.RunCLI(st) {
+	if runCLI(st) {
 		return
 	}
 
 	cfg := loadConfig(st, cfgPath)
-	commands.RegisterAll(st)
 
 	alertQueue := make(chan func(), alertQueueSize)
 	var alertWG sync.WaitGroup
@@ -188,21 +180,26 @@ func main() {
 		},
 	)
 
-	streamHub := sse.NewCheckStreamHub()
-	sch := scheduler.New(st, evaluator, cfg.Workers, cfg.DefaultIntervalDuration(), cfg, streamHub.BroadcastCheck)
+	streamHub := web.NewCheckStreamHub()
+
+	src := scheduler.MonitorSource(scheduler.LocalSource{Store: st})
+	clusterRT := cluster.New(st, cfg)
+	var clusterWG sync.WaitGroup
+	if clusterRT != nil {
+		src = clusterRT
+		clusterWG.Add(1)
+		go func() {
+			defer clusterWG.Done()
+			clusterRT.Run(ctx)
+		}()
+	}
+
+	sch := scheduler.New(st, src, evaluator, cfg.Workers, cfg.DefaultIntervalDuration(), cfg, streamHub.BroadcastCheck)
 	sch.Run(ctx)
 	notifyStartupDown(sch, sendAlerts)
 
-	syncClient := beaconsync.NewPeerSyncClient(st, cfg)
-	var syncWG sync.WaitGroup
-	syncWG.Add(1)
-	go func() {
-		defer syncWG.Done()
-		syncClient.Run(ctx)
-	}()
-
 	auth := web.NewAuth()
-	srv := web.NewServer(st, auth, cfg, sch, "templates", "static", streamHub)
+	srv := web.NewServer(st, auth, cfg, sch, clusterRT, "templates", "static", streamHub)
 	httpServer := &http.Server{Addr: cfg.Listen, Handler: srv.Routes()}
 
 	go func() {
@@ -219,7 +216,7 @@ func main() {
 
 	sch.Stop()
 	cancel()
-	syncWG.Wait()
+	clusterWG.Wait()
 
 	close(alertQueue)
 	alertWG.Wait()

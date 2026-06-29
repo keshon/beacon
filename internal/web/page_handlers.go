@@ -4,28 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/keshon/beacon/internal/monitor"
-	"github.com/keshon/beacon/internal/network"
 
 	"github.com/flosch/pongo2/v6"
 )
 
 func (s *Server) pageDashboard(w http.ResponseWriter, r *http.Request) {
-	type dashboardRow struct {
-		Monitor      *monitor.Monitor
-		State        *monitor.MonitorState
-		LatencyMs    string
-		LastCheck    string
-		Status       string
-		SourceLabel  string
-		SourceNodeID string
-		IsPeer       bool
-		Adopted      bool
-	}
-	var rows []dashboardRow
 	state, err := s.store.GetAllState()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -40,98 +26,37 @@ func (s *Server) pageDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	for _, m := range ownMonitors {
-		st := state[m.ID]
-		row := dashboardRow{Monitor: m, State: st, Status: "unknown", SourceLabel: "This node", IsPeer: false}
-		if st != nil {
-			row.Status = st.Status
-			if st.Latency > 0 {
-				row.LatencyMs = strconv.FormatInt(st.Latency.Milliseconds(), 10) + "ms"
-			}
-			if !st.LastCheck.IsZero() {
-				row.LastCheck = st.LastCheck.Format("15:04:05")
-			}
-		}
-		if row.LatencyMs == "" {
-			row.LatencyMs = "—"
-		}
-		if row.LastCheck == "" {
-			row.LastCheck = "—"
-		}
-		rows = append(rows, row)
+
+	type dashboardRow struct {
+		Monitor      *monitor.Monitor
+		State        *monitor.MonitorState
+		LatencyMs    string
+		LastCheck    string
+		Status       string
+		SourceLabel  string
+		SourceNodeID string
+		IsPeer       bool
+		Adopted      bool
 	}
 
-	if s.cfg.Network.Enabled {
-		peerData, err := s.store.GetAllPeerData()
+	var rows []dashboardRow
+	if s.cluster != nil {
+		clusterRows, err := s.cluster.DashboardRows(state, ownMonitors)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		deadTimeout := time.Duration(s.cfg.Network.DeadTimeout) * time.Second
-		now := time.Now()
-		seen := make(map[string]struct{}, len(rows))
-		for _, row := range rows {
-			seen[row.Monitor.ID] = struct{}{}
+		for _, cr := range clusterRows {
+			rows = append(rows, dashboardRow{
+				Monitor: cr.Monitor, State: cr.State, LatencyMs: cr.LatencyMs,
+				LastCheck: cr.LastCheck, Status: cr.Status, SourceLabel: cr.SourceLabel,
+				SourceNodeID: cr.SourceNodeID, IsPeer: cr.IsPeer, Adopted: cr.Adopted,
+			})
 		}
-
-		for _, pd := range peerData {
-			sourceLabel := peerDisplayName(pd.PeerURL)
-			live := network.PeerLive(pd, deadTimeout, now)
-			for _, m := range pd.Monitors {
-				if m == nil {
-					continue
-				}
-				if _, ok := seen[m.ID]; ok {
-					continue
-				}
-				if live {
-					st := pd.State[m.ID]
-					if st == nil {
-						st = state[m.ID]
-					}
-					row := dashboardRow{
-						Monitor: m, State: st, SourceLabel: "Peer: " + sourceLabel,
-						SourceNodeID: pd.NodeID, IsPeer: true,
-					}
-					row.Status = "unknown"
-					if st != nil {
-						row.Status = st.Status
-						if st.Latency > 0 {
-							row.LatencyMs = strconv.FormatInt(st.Latency.Milliseconds(), 10) + "ms"
-						}
-						if !st.LastCheck.IsZero() {
-							row.LastCheck = st.LastCheck.Format("15:04:05")
-						}
-					}
-					if row.LatencyMs == "" {
-						row.LatencyMs = "—"
-					}
-					if row.LastCheck == "" {
-						row.LastCheck = "—"
-					}
-					rows = append(rows, row)
-					seen[m.ID] = struct{}{}
-				}
-			}
-		}
-
-		for _, am := range network.AdoptedMonitors(s.cfg, peerData, now) {
-			if am.Monitor == nil {
-				continue
-			}
-			if _, ok := seen[am.Monitor.ID]; ok {
-				continue
-			}
-			st := state[am.Monitor.ID]
-			if st == nil && peerData[am.OwnerNodeID] != nil {
-				st = peerData[am.OwnerNodeID].State[am.Monitor.ID]
-			}
-			label := "Adopted: " + peerDisplayName(am.OwnerLabel)
-			row := dashboardRow{
-				Monitor: am.Monitor, State: st, SourceLabel: label,
-				SourceNodeID: am.OwnerNodeID, IsPeer: true, Adopted: true,
-			}
-			row.Status = "unknown"
+	} else {
+		for _, m := range ownMonitors {
+			st := state[m.ID]
+			row := dashboardRow{Monitor: m, State: st, Status: "unknown", SourceLabel: "This node"}
 			if st != nil {
 				row.Status = st.Status
 				if st.Latency > 0 {
@@ -148,11 +73,15 @@ func (s *Server) pageDashboard(w http.ResponseWriter, r *http.Request) {
 				row.LastCheck = "—"
 			}
 			rows = append(rows, row)
-			seen[am.Monitor.ID] = struct{}{}
 		}
 	}
 
-	networkNodes := s.buildNetworkNodes()
+	var networkNodes any
+	if s.cluster != nil {
+		nodes, _ := s.cluster.NetworkNodes()
+		networkNodes = nodes
+	}
+
 	s.render(w, "dashboard/dashboard.html", pongo2.Context{
 		"version":        buildVersion(),
 		"nav_active":     "dashboard",
@@ -160,16 +89,6 @@ func (s *Server) pageDashboard(w http.ResponseWriter, r *http.Request) {
 		"networkNodes":   networkNodes,
 		"networkEnabled": s.cfg.Network.Enabled,
 	})
-}
-
-func peerDisplayName(url string) string {
-	url = strings.TrimPrefix(url, "https://")
-	url = strings.TrimPrefix(url, "http://")
-	url = strings.TrimSuffix(url, "/")
-	if url == "" {
-		return "peer"
-	}
-	return url
 }
 
 func (s *Server) pageMonitors(w http.ResponseWriter, r *http.Request) {

@@ -1,17 +1,18 @@
 package web
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/keshon/beacon/internal/service"
+	"github.com/keshon/beacon/internal/store"
 )
 
 func (s *Server) apiMonitorList(w http.ResponseWriter, r *http.Request) {
-	list, err := service.ListMonitors(s.store)
+	list, err := listMonitorsRedacted(s.store)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -25,9 +26,9 @@ func (s *Server) apiMonitorCreate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "read body", http.StatusBadRequest)
 		return
 	}
-	m, err := service.AddMonitorFromJSON(s.store, body)
+	m, err := addMonitorFromJSON(s.store, body)
 	if err != nil {
-		writeServiceError(w, err)
+		writeMonitorError(w, err)
 		return
 	}
 	s.jsonResponse(w, m)
@@ -39,7 +40,11 @@ func (s *Server) apiMonitorDelete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing id", http.StatusBadRequest)
 		return
 	}
-	if err := service.DeleteMonitor(s.store, id); err != nil {
+	if err := s.store.DeleteMonitor(id); err != nil {
+		if errors.Is(err, store.ErrMonitorNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -57,12 +62,24 @@ func (s *Server) apiMonitorUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "read body", http.StatusBadRequest)
 		return
 	}
-	m, err := service.UpdateMonitorFromJSON(s.store, id, body)
+	m, err := updateMonitorFromJSON(s.store, id, body)
 	if err != nil {
-		writeServiceError(w, err)
+		writeMonitorError(w, err)
 		return
 	}
 	s.jsonResponse(w, m)
+}
+
+func writeMonitorError(w http.ResponseWriter, err error) {
+	if errors.Is(err, errInvalidJSON) {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if errors.Is(err, store.ErrMonitorNotFound) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	http.Error(w, err.Error(), http.StatusBadRequest)
 }
 
 func (s *Server) apiMonitorUptime(w http.ResponseWriter, r *http.Request) {
@@ -110,14 +127,20 @@ func (s *Server) apiMonitorUptime(w http.ResponseWriter, r *http.Request) {
 	s.jsonResponse(w, out)
 }
 
-func writeServiceError(w http.ResponseWriter, err error) {
-	if errors.Is(err, service.ErrInvalidJSON) {
-		http.Error(w, "invalid JSON", http.StatusBadRequest)
-		return
+func (s *Server) apiHealth(w http.ResponseWriter, r *http.Request) {
+	type health struct {
+		Status        string `json:"status"`
+		StoreOK       bool   `json:"store_ok"`
+		DroppedChecks uint64 `json:"dropped_checks"`
 	}
-	if errors.Is(err, service.ErrMonitorNotFound) {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
+	h := health{Status: "ok", StoreOK: true}
+	if err := s.store.Ping(); err != nil {
+		h.Status = "degraded"
+		h.StoreOK = false
 	}
-	http.Error(w, err.Error(), http.StatusBadRequest)
+	if s.scheduler != nil {
+		h.DroppedChecks = s.scheduler.DroppedChecks()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(h)
 }

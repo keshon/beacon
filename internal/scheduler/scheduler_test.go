@@ -40,7 +40,7 @@ func TestStartupDownMonitors(t *testing.T) {
 
 	cfg := config.Default()
 	eval := monitor.NewStatusEvaluator(nil, nil)
-	sch := scheduler.New(st, eval, 1, time.Second, cfg, nil)
+	sch := scheduler.New(st, scheduler.LocalSource{Store: st}, eval, 1, time.Second, cfg, nil)
 	down, states, err := sch.StartupDownMonitors()
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +65,7 @@ func TestReloadConfig(t *testing.T) {
 	cfg := config.Default()
 	cfg.DefaultInterval = 30
 	eval := monitor.NewStatusEvaluator(nil, nil)
-	sch := scheduler.New(st, eval, 2, 30*time.Second, cfg, nil)
+	sch := scheduler.New(st, scheduler.LocalSource{Store: st}, eval, 2, 30*time.Second, cfg, nil)
 	cfg.DefaultInterval = 60
 	cfg.Workers = 5
 	sch.ReloadConfig(cfg)

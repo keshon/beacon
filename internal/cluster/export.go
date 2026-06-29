@@ -1,4 +1,4 @@
-package network
+package cluster
 
 import (
 	"time"
@@ -8,14 +8,13 @@ import (
 	"github.com/keshon/beacon/internal/store"
 )
 
-// ExportView is the monitor/state pair served to peers and the dashboard.
+// ExportView is the monitor/state pair served to peers.
 type ExportView struct {
 	Monitors []*monitor.Monitor
 	State    map[string]*monitor.MonitorState
 }
 
-// BuildExportView returns local monitors plus adopted peer monitors for downstream sync.
-func BuildExportView(cfg *config.Config, st *store.Store) (ExportView, error) {
+func buildExportView(cfg *config.Config, st *store.Store) (ExportView, error) {
 	var view ExportView
 	snap, err := st.GetExportSnapshot()
 	if err != nil {
@@ -26,11 +25,9 @@ func BuildExportView(cfg *config.Config, st *store.Store) (ExportView, error) {
 	if view.State == nil {
 		view.State = make(map[string]*monitor.MonitorState)
 	}
-
 	if cfg == nil || !cfg.Network.Enabled || cfg.Network.NodeID == "" {
 		return view, nil
 	}
-
 	peerData, err := st.GetAllPeerData()
 	if err != nil {
 		return view, err
@@ -42,7 +39,7 @@ func BuildExportView(cfg *config.Config, st *store.Store) (ExportView, error) {
 		}
 	}
 	now := time.Now()
-	for _, am := range AdoptedMonitors(cfg, peerData, now) {
+	for _, am := range adoptedMonitors(cfg, peerData, now) {
 		if am.Monitor == nil {
 			continue
 		}
@@ -58,7 +55,7 @@ func BuildExportView(cfg *config.Config, st *store.Store) (ExportView, error) {
 		if pd := peerData[am.OwnerNodeID]; pd != nil {
 			if pst, ok := pd.State[am.Monitor.ID]; ok && pst != nil {
 				local := view.State[am.Monitor.ID]
-				view.State[am.Monitor.ID] = MergeMonitorState(local, pst)
+				view.State[am.Monitor.ID] = mergeMonitorState(local, pst)
 			}
 		}
 	}

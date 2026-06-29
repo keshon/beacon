@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/keshon/beacon/internal/cluster"
 )
 
 const (
@@ -100,7 +102,7 @@ func (a *Auth) Middleware(username string, checkPassword func(user, pass string)
 				token = strings.TrimSpace(syncToken())
 			}
 			if r.URL.Path == "/api/sync/export" && token != "" {
-				if SyncTokenMatches(r, token) {
+				if cluster.SyncTokenMatches(r, token) {
 					next.ServeHTTP(w, r)
 					return
 				}
