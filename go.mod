@@ -9,3 +9,5 @@ require (
 	github.com/keshon/datastore v0.1.1
 	golang.org/x/crypto v0.52.0
 )
+
+require github.com/keshon/command v0.1.0 // indirect

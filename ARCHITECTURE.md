@@ -83,11 +83,7 @@ handlers.
 
 ### CLI is not a second server
 
-CLI commands live in `cmd/beacon/cli.go` and talk to `store` (and `monitor`
-types) directly — same as the API, without a `commands` + `commandkit` stack.
-If CLI and API diverge, fix the duplication by sharing a function in the
-owning package (`web` for monitor CRUD used by HTTP, `store` for reads), not
-by adding a `service` layer.
+CLI commands are registered via [`github.com/keshon/command`](https://github.com/keshon/command) in [`internal/command/`](internal/command/) and dispatched from [`cmd/beacon/cli_adapter.go`](cmd/beacon/cli_adapter.go). Commands talk to `store` directly. A `WithDataDirLock` middleware prevents concurrent CLI + server access. Flock is not provided by datastore (in-process mutex only).
 
 ### Add packages for needs, not for futures
 

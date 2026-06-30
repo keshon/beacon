@@ -216,6 +216,7 @@ When enabled, instances poll peers via `GET /api/sync/export` and cache monitor 
 * A node can only adopt monitors it has previously synced from the dead peer
 * Network partitions can cause duplicate checks and duplicate alerts until connectivity is restored
 * Monitor definitions are not automatically replicated to every node — plan peer topology so each node syncs from every monitor owner, or accept failover only for previously cached peers
+* Indirect nodes (e.g. C peers with B only) display status from their direct peer's export; mesh sync from every owner is recommended for visibility-only nodes
 * There is no distributed quorum or leader election; each node decides liveness independently from its own sync success
 
 Configuration:

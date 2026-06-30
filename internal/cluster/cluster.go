@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/keshon/beacon/internal/config"
@@ -20,19 +21,39 @@ type Runtime struct {
 	cfg    *config.Config
 	client *http.Client
 
-	adopted map[string]*monitor.Monitor
+	adoptedMu sync.RWMutex
+	adopted   map[string]*monitor.Monitor
+
+	syncNow chan struct{}
 }
 
-// New creates a cluster runtime. Returns nil when network is disabled.
+// New creates a cluster runtime. Always non-nil; peer sync runs when network.enabled.
 func New(st *store.Store, cfg *config.Config) *Runtime {
-	if cfg == nil || !cfg.Network.Enabled {
-		return nil
+	if cfg == nil {
+		cfg = config.Default()
 	}
 	return &Runtime{
 		store:   st,
 		cfg:     cfg,
 		client:  &http.Client{Timeout: 15 * time.Second},
 		adopted: make(map[string]*monitor.Monitor),
+		syncNow: make(chan struct{}, 1),
+	}
+}
+
+// Enabled reports whether peer sync is active.
+func (rt *Runtime) Enabled() bool {
+	return rt != nil && rt.cfg != nil && rt.cfg.Network.Enabled
+}
+
+// NotifyConfigChange triggers an immediate peer sync (e.g. after peers list edit).
+func (rt *Runtime) NotifyConfigChange() {
+	if rt == nil {
+		return
+	}
+	select {
+	case rt.syncNow <- struct{}{}:
+	default:
 	}
 }
 
@@ -45,10 +66,10 @@ func (rt *Runtime) Run(ctx context.Context) {
 }
 
 func (rt *Runtime) refreshAdopted(peerData map[string]*store.PeerData, now time.Time) {
-	rt.adopted = make(map[string]*monitor.Monitor)
+	next := make(map[string]*monitor.Monitor)
 	for _, am := range adoptedMonitors(rt.cfg, peerData, now) {
 		if am.Monitor != nil {
-			rt.adopted[am.Monitor.ID] = am.Monitor
+			next[am.Monitor.ID] = am.Monitor
 			if st, ok := peerData[am.OwnerNodeID]; ok && st != nil {
 				if peerSt, ok := st.State[am.Monitor.ID]; ok && peerSt != nil {
 					local, _ := rt.store.GetState(am.Monitor.ID)
@@ -60,11 +81,17 @@ func (rt *Runtime) refreshAdopted(peerData map[string]*store.PeerData, now time.
 			}
 		}
 	}
+	rt.adoptedMu.Lock()
+	rt.adopted = next
+	rt.adoptedMu.Unlock()
 }
 
 // List implements scheduler.MonitorSource.
 func (rt *Runtime) List(ctx context.Context) ([]*monitor.Monitor, error) {
 	_ = ctx
+	if !rt.Enabled() {
+		return rt.store.GetMonitors()
+	}
 	own, err := rt.store.GetMonitors()
 	if err != nil {
 		return nil, err
@@ -76,11 +103,15 @@ func (rt *Runtime) List(ctx context.Context) ([]*monitor.Monitor, error) {
 	now := time.Now()
 	rt.refreshAdopted(peerData, now)
 
-	byID := make(map[string]*monitor.Monitor, len(own)+len(rt.adopted))
+	rt.adoptedMu.RLock()
+	adopted := rt.adopted
+	rt.adoptedMu.RUnlock()
+
+	byID := make(map[string]*monitor.Monitor, len(own)+len(adopted))
 	for _, m := range own {
 		byID[m.ID] = m
 	}
-	for id, m := range rt.adopted {
+	for id, m := range adopted {
 		if existing, ok := byID[id]; ok {
 			log.Printf("[cluster] monitor ID collision %s: keeping local over adopted", id)
 			_ = existing
@@ -97,6 +128,9 @@ func (rt *Runtime) List(ctx context.Context) ([]*monitor.Monitor, error) {
 
 // Resolve implements scheduler.MonitorSource.
 func (rt *Runtime) Resolve(id string) (*monitor.Monitor, error) {
+	if !rt.Enabled() {
+		return rt.store.GetMonitor(id)
+	}
 	m, err := rt.store.GetMonitor(id)
 	if err != nil {
 		return nil, err
@@ -104,7 +138,10 @@ func (rt *Runtime) Resolve(id string) (*monitor.Monitor, error) {
 	if m != nil {
 		return m, nil
 	}
-	if am, ok := rt.adopted[id]; ok {
+	rt.adoptedMu.RLock()
+	am, ok := rt.adopted[id]
+	rt.adoptedMu.RUnlock()
+	if ok {
 		return am, nil
 	}
 	peerData, err := rt.store.GetAllPeerData()
@@ -112,11 +149,17 @@ func (rt *Runtime) Resolve(id string) (*monitor.Monitor, error) {
 		return nil, err
 	}
 	rt.refreshAdopted(peerData, time.Now())
-	return rt.adopted[id], nil
+	rt.adoptedMu.RLock()
+	am = rt.adopted[id]
+	rt.adoptedMu.RUnlock()
+	return am, nil
 }
 
 // RequireLocalMonitor implements scheduler.MonitorSource.
 func (rt *Runtime) RequireLocalMonitor(id string) bool {
+	if !rt.Enabled() {
+		return true
+	}
 	m, _ := rt.store.GetMonitor(id)
 	return m != nil
 }
@@ -128,6 +171,10 @@ func (rt *Runtime) ExportView() (ExportView, error) {
 
 // HandleExport serves GET /api/sync/export.
 func (rt *Runtime) HandleExport(w http.ResponseWriter, r *http.Request) {
+	if !rt.Enabled() {
+		http.Error(w, "network not enabled", http.StatusServiceUnavailable)
+		return
+	}
 	if rt.cfg.Network.NodeID == "" {
 		http.Error(w, "network not configured", http.StatusServiceUnavailable)
 		return
@@ -180,6 +227,9 @@ func (rt *Runtime) DashboardRows(localState map[string]*monitor.MonitorState, ow
 		row := DashboardRow{Monitor: m, State: st, Status: "unknown", SourceLabel: "This node"}
 		fillRowMetrics(&row)
 		rows = append(rows, row)
+	}
+	if !rt.Enabled() {
+		return rows, nil
 	}
 	peerData, err := rt.store.GetAllPeerData()
 	if err != nil {
@@ -260,6 +310,9 @@ func fillRowMetrics(row *DashboardRow) {
 
 // NetworkNodes builds the network status node list.
 func (rt *Runtime) NetworkNodes() ([]NetworkNode, error) {
+	if !rt.Enabled() {
+		return []NetworkNode{}, nil
+	}
 	var nodes []NetworkNode
 	deadTimeout := time.Duration(rt.cfg.Network.DeadTimeout) * time.Second
 	peerData, _ := rt.store.GetAllPeerData()
@@ -324,6 +377,11 @@ func (rt *Runtime) NetworkNodes() ([]NetworkNode, error) {
 
 // HandleNetworkStatus serves GET /api/network/status.
 func (rt *Runtime) HandleNetworkStatus(w http.ResponseWriter, r *http.Request) {
+	if !rt.Enabled() {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"nodes": []NetworkNode{}})
+		return
+	}
 	nodes, err := rt.NetworkNodes()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

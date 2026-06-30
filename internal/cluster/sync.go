@@ -131,40 +131,80 @@ func filterValidMonitors(monitors []*monitor.Monitor) filterResult {
 }
 
 func (rt *Runtime) runSync(ctx context.Context) {
-	checkInterval := 10 * time.Second
-	for {
-		if !rt.cfg.Network.Enabled || len(rt.cfg.Network.Peers) == 0 {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(checkInterval):
-				continue
-			}
-		}
+	idleWait := 10 * time.Second
+	var ticker *time.Ticker
+	var tickerInterval time.Duration
 
+	stopTicker := func() {
+		if ticker != nil {
+			ticker.Stop()
+			ticker = nil
+		}
+	}
+
+	resetTicker := func() {
+		stopTicker()
+		if !rt.cfg.Network.Enabled || len(rt.cfg.Network.Peers) == 0 {
+			return
+		}
 		interval := time.Duration(rt.cfg.Network.SyncInterval) * time.Second
 		if interval < 10*time.Second {
 			interval = 10 * time.Second
 		}
-		ticker := time.NewTicker(interval)
+		if ticker != nil && interval == tickerInterval {
+			return
+		}
+		tickerInterval = interval
+		ticker = time.NewTicker(interval)
+	}
 
+	doSync := func() {
+		if !rt.cfg.Network.Enabled || len(rt.cfg.Network.Peers) == 0 {
+			return
+		}
 		rt.syncFromPeers(ctx)
 		_ = rt.store.PrunePeerData(rt.cfg.Network.Peers)
+	}
 
-	inner:
+	for {
+		if !rt.cfg.Network.Enabled || len(rt.cfg.Network.Peers) == 0 {
+			stopTicker()
+			select {
+			case <-ctx.Done():
+				return
+			case <-rt.syncNow:
+				continue
+			case <-time.After(idleWait):
+				continue
+			}
+		}
+
+		resetTicker()
+		doSync()
+
 		for {
 			select {
 			case <-ctx.Done():
-				ticker.Stop()
+				stopTicker()
 				return
+			case <-rt.syncNow:
+				doSync()
+				resetTicker()
 			case <-ticker.C:
 				if !rt.cfg.Network.Enabled || len(rt.cfg.Network.Peers) == 0 {
-					ticker.Stop()
-					break inner
+					stopTicker()
+					goto outer
 				}
-				rt.syncFromPeers(ctx)
-				_ = rt.store.PrunePeerData(rt.cfg.Network.Peers)
+				interval := time.Duration(rt.cfg.Network.SyncInterval) * time.Second
+				if interval < 10*time.Second {
+					interval = 10 * time.Second
+				}
+				if interval != tickerInterval {
+					resetTicker()
+				}
+				doSync()
 			}
 		}
+	outer:
 	}
 }

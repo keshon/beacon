@@ -52,6 +52,9 @@ func buildExportView(cfg *config.Config, st *store.Store) (ExportView, error) {
 			copy.OwnerNodeID = am.OwnerNodeID
 		}
 		view.Monitors = append(view.Monitors, &copy)
+		if adopterSt, _ := st.GetState(am.Monitor.ID); adopterSt != nil {
+			view.State[am.Monitor.ID] = mergeMonitorState(view.State[am.Monitor.ID], adopterSt)
+		}
 		if pd := peerData[am.OwnerNodeID]; pd != nil {
 			if pst, ok := pd.State[am.Monitor.ID]; ok && pst != nil {
 				local := view.State[am.Monitor.ID]

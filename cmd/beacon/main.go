@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/keshon/beacon/internal/checks"
+	beaconcmd "github.com/keshon/beacon/internal/command"
 	"github.com/keshon/beacon/internal/cluster"
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
@@ -61,7 +62,7 @@ func loadConfig(st *store.Store, filePath string) *config.Config {
 
 func main() {
 	cfgPath := "config.json"
-	if len(os.Args) > 1 && !isCLISubcommand(os.Args[1]) {
+	if len(os.Args) > 1 && !beaconcmd.IsCLISubcommand(os.Args) {
 		cfgPath = os.Args[1]
 	}
 
@@ -85,7 +86,7 @@ func main() {
 	}
 	defer releaseDataDirLock(serverLock)
 
-	if runCLI(st) {
+	if runCLI(st, dataDir) {
 		return
 	}
 
@@ -182,17 +183,15 @@ func main() {
 
 	streamHub := web.NewCheckStreamHub()
 
-	src := scheduler.MonitorSource(scheduler.LocalSource{Store: st})
 	clusterRT := cluster.New(st, cfg)
 	var clusterWG sync.WaitGroup
-	if clusterRT != nil {
-		src = clusterRT
-		clusterWG.Add(1)
-		go func() {
-			defer clusterWG.Done()
-			clusterRT.Run(ctx)
-		}()
-	}
+	clusterWG.Add(1)
+	go func() {
+		defer clusterWG.Done()
+		clusterRT.Run(ctx)
+	}()
+
+	src := scheduler.MonitorSource(clusterRT)
 
 	sch := scheduler.New(st, src, evaluator, cfg.Workers, cfg.DefaultIntervalDuration(), cfg, streamHub.BroadcastCheck)
 	sch.Run(ctx)

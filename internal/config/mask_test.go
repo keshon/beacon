@@ -79,6 +79,32 @@ func TestMergeTelegramTargets_keepsTokenWhenMasked(t *testing.T) {
 	}
 }
 
+func TestToSettings_returnsFullSecrets(t *testing.T) {
+	cfg := &Config{
+		Telegram: TelegramConfig{
+			Targets: []TelegramTarget{{Token: "full-telegram-token", ChatID: "1"}},
+		},
+		Discord: DiscordConfig{
+			Webhooks: []DiscordReceiver{{Webhook: "https://discord.com/api/webhooks/full"}},
+		},
+		Network: NetworkConfig{SyncToken: "sync-secret"},
+	}
+	settings := cfg.ToSettings()
+	if settings.Telegram.Targets[0].Token != "full-telegram-token" {
+		t.Fatalf("settings token: %q", settings.Telegram.Targets[0].Token)
+	}
+	if settings.Discord.Webhooks[0].Webhook != "https://discord.com/api/webhooks/full" {
+		t.Fatalf("settings webhook: %q", settings.Discord.Webhooks[0].Webhook)
+	}
+	if settings.Network.SyncToken != "sync-secret" {
+		t.Fatalf("settings sync token: %q", settings.Network.SyncToken)
+	}
+	pub := cfg.ToPublic()
+	if pub.Telegram.Targets[0].Token == "full-telegram-token" {
+		t.Fatal("ToPublic must still mask telegram token")
+	}
+}
+
 func TestMergeDiscordWebhooks_keepsWebhookWhenMasked(t *testing.T) {
 	existing := []DiscordReceiver{{Webhook: "https://discord.com/api/webhooks/1/abcdefghijklmnop"}}
 	incoming := []DiscordReceiver{{Webhook: MaskSecret(existing[0].Webhook)}}

@@ -335,6 +335,20 @@
         function fieldByName(form, name) {
             return form.querySelector('[name="' + name + '"]');
         }
+
+        function applySecretInput(input, value) {
+            if (!input) return;
+            value = (value || '').trim();
+            if (!value) {
+                input.value = '';
+                return;
+            }
+            if (window.Beacon.notify && window.Beacon.notify.attachSecretField) {
+                window.Beacon.notify.attachSecretField(input, value);
+            } else {
+                input.value = value;
+            }
+        }
         const notify = window.Beacon.notify;
         const telegramList = notify.init(document.getElementById('telegramPanel'), 'telegram', []);
         const discordList = notify.init(document.getElementById('discordPanel'), 'discord', []);
@@ -365,10 +379,12 @@
                 fieldByName(f, 'email_smtp_host').value = cfg.email?.smtp?.host || '';
                 fieldByName(f, 'email_smtp_port').value = cfg.email?.smtp?.port || '';
                 fieldByName(f, 'email_smtp_username').value = cfg.email?.smtp?.username || '';
-                fieldByName(f, 'email_smtp_password').value = '';
-                fieldByName(f, 'email_smtp_password').placeholder = cfg.secrets?.email_smtp
-                    ? 'Leave blank to keep current'
-                    : 'Set password';
+                applySecretInput(fieldByName(f, 'email_smtp_password'), cfg.email?.smtp?.password || '');
+                if (!cfg.email?.smtp?.password) {
+                    fieldByName(f, 'email_smtp_password').placeholder = cfg.secrets?.email_smtp
+                        ? 'Leave blank to keep current'
+                        : 'Set password';
+                }
                 fieldByName(f, 'email_smtp_from').value = cfg.email?.smtp?.from || '';
                 fieldByName(f, 'email_smtp_tls').value = cfg.email?.smtp?.tls || 'starttls';
                 fieldByName(f, 'network_enabled').checked = cfg.network?.enabled || false;
@@ -377,10 +393,12 @@
                 fieldByName(f, 'network_sync_interval').value = cfg.network?.sync_interval || '';
                 fieldByName(f, 'network_dead_timeout').value = cfg.network?.dead_timeout || '';
                 fieldByName(f, 'network_node_id').value = cfg.network?.node_id || '';
-                fieldByName(f, 'network_sync_token').value = '';
-                fieldByName(f, 'network_sync_token').placeholder = cfg.secrets?.sync_token
-                    ? 'Leave blank to keep current'
-                    : 'Set shared sync token';
+                applySecretInput(fieldByName(f, 'network_sync_token'), cfg.network?.sync_token || '');
+                if (!cfg.network?.sync_token) {
+                    fieldByName(f, 'network_sync_token').placeholder = cfg.secrets?.sync_token
+                        ? 'Leave blank to keep current'
+                        : 'Set shared sync token';
+                }
 
                 telegramList.setValues(cfg.telegram?.targets || []);
                 const webhooks = (cfg.discord?.webhooks || []).map((w) =>

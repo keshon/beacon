@@ -535,5 +535,6 @@
         readOverrideFromPanel: readOverrideFromPanel,
         setGlobalDefaults: setGlobalDefaults,
         updateRowMeta: updateRowMeta,
+        attachSecretField: attachSecretField,
     });
 })();

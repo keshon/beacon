@@ -139,12 +139,12 @@ func (s *Server) apiCheckRecords(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) apiConfigGet(w http.ResponseWriter, r *http.Request) {
-	pub, err := getPublicConfig(s.store)
+	pub, err := getSettingsConfig(s.store)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	pub.RequiresRestart = configNeedsRestart()
+	pub.RequiresRestart = false
 	s.jsonResponse(w, pub)
 }
 
@@ -154,6 +154,7 @@ func (s *Server) apiConfigSet(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "read body", http.StatusBadRequest)
 		return
 	}
+	before := *s.cfg
 	pub, err := applyConfigPatch(s.store, s.cfg, body)
 	if err != nil {
 		if err == errInvalidJSON {
@@ -166,15 +167,21 @@ func (s *Server) apiConfigSet(w http.ResponseWriter, r *http.Request) {
 	if s.scheduler != nil {
 		s.scheduler.ReloadConfig(s.cfg)
 	}
-	pub.RequiresRestart = configNeedsRestart()
+	if s.cluster != nil {
+		s.cluster.NotifyConfigChange()
+	}
+	pub.RequiresRestart = configNeedsRestart(&before, s.cfg)
 	s.jsonResponse(w, pub)
 }
 
-func configNeedsRestart() bool {
-	return true
+func configNeedsRestart(before, after *config.Config) bool {
+	if before == nil || after == nil {
+		return false
+	}
+	return before.Listen != after.Listen || before.Workers != after.Workers
 }
 
-func getPublicConfig(st *store.Store) (config.PublicConfig, error) {
+func getSettingsConfig(st *store.Store) (config.PublicConfig, error) {
 	var cfg config.Config
 	ok, err := st.GetConfig(&cfg)
 	if err != nil {
@@ -184,7 +191,7 @@ func getPublicConfig(st *store.Store) (config.PublicConfig, error) {
 		cfg = *config.Default()
 	}
 	cfg.Normalize()
-	return cfg.ToPublic(), nil
+	return cfg.ToSettings(), nil
 }
 
 func applyConfigPatch(st *store.Store, runtime *config.Config, body []byte) (config.PublicConfig, error) {
@@ -212,7 +219,7 @@ func applyConfigPatch(st *store.Store, runtime *config.Config, body []byte) (con
 		return config.PublicConfig{}, err
 	}
 	*runtime = existing
-	return existing.ToPublic(), nil
+	return existing.ToSettings(), nil
 }
 
 func parseRecordLimit(s string) int {

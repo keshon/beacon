@@ -8,11 +8,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/keshon/beacon/internal/monitorsvc"
 	"github.com/keshon/beacon/internal/store"
 )
 
 func (s *Server) apiMonitorList(w http.ResponseWriter, r *http.Request) {
-	list, err := listMonitorsRedacted(s.store)
+	list, err := monitorsvc.ListRedacted(s.store)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -40,7 +41,7 @@ func (s *Server) apiMonitorDelete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing id", http.StatusBadRequest)
 		return
 	}
-	if err := s.store.DeleteMonitor(id); err != nil {
+	if err := monitorsvc.Delete(s.store, id); err != nil {
 		if errors.Is(err, store.ErrMonitorNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return

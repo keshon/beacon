@@ -23,6 +23,7 @@ type PublicSMTPConfig struct {
 	Host     string `json:"host"`
 	Port     int    `json:"port"`
 	Username string `json:"username"`
+	Password string `json:"password,omitempty"`
 	From     string `json:"from"`
 	TLS      string `json:"tls"`
 }
@@ -140,6 +141,74 @@ func (c *Config) ToPublic() PublicConfig {
 		pub.Secrets.WebhookURLs = append(pub.Secrets.WebhookURLs, w.URL != "")
 		pub.Webhook.Webhooks = append(pub.Webhook.Webhooks, PublicWebhookReceiver{
 			URL:     "",
+			Headers: w.Headers,
+			Policy:  w.Policy,
+		})
+	}
+	return pub
+}
+
+// ToSettings returns full config for the authenticated settings UI (secrets included).
+func (c *Config) ToSettings() PublicConfig {
+	if c == nil {
+		return PublicConfig{}
+	}
+	pub := PublicConfig{
+		Listen:                    c.Listen,
+		Auth:                      PublicAuthConfig{Username: c.Auth.Username},
+		Notifications:             c.Notifications,
+		Workers:                   c.Workers,
+		DefaultInterval:           c.DefaultInterval,
+		Network:                   c.Network,
+		RecommendedMinIntervalSec: int(minIntervalProbeSeconds),
+	}
+	pub.Secrets.Password = c.Auth.PasswordHash != "" || c.Auth.Password != ""
+	pub.Secrets.SyncToken = strings.TrimSpace(c.Network.SyncToken) != ""
+	pub.Telegram.Enabled = c.Telegram.Enabled
+	for _, t := range c.Telegram.Targets {
+		pub.Secrets.TelegramTokens = append(pub.Secrets.TelegramTokens, t.Token != "")
+		pub.Telegram.Targets = append(pub.Telegram.Targets, PublicTelegramTarget{
+			Token:  t.Token,
+			ChatID: t.ChatID,
+			Policy: t.Policy,
+		})
+	}
+	pub.Discord.Enabled = c.Discord.Enabled
+	for _, w := range c.Discord.Webhooks {
+		pub.Secrets.DiscordWebhooks = append(pub.Secrets.DiscordWebhooks, w.Webhook != "")
+		pub.Discord.Webhooks = append(pub.Discord.Webhooks, PublicDiscordReceiver{
+			Webhook: w.Webhook,
+			Policy:  w.Policy,
+		})
+	}
+	pub.Email.Enabled = c.Email.Enabled
+	pub.Email.SMTP = PublicSMTPConfig{
+		Host:     c.Email.SMTP.Host,
+		Port:     c.Email.SMTP.Port,
+		Username: c.Email.SMTP.Username,
+		Password: c.Email.SMTP.Password,
+		From:     c.Email.SMTP.From,
+		TLS:      c.Email.SMTP.TLS,
+	}
+	pub.Secrets.EmailSMTP = c.Email.SMTP.Password != ""
+	for _, t := range c.Email.Targets {
+		hasRowSMTP := t.SMTP != nil && strings.TrimSpace(t.SMTP.Password) != ""
+		pub.Secrets.EmailSMTPPerRow = append(pub.Secrets.EmailSMTPPerRow, hasRowSMTP)
+		row := PublicEmailTarget{To: t.To, Policy: t.Policy}
+		if t.SMTP != nil && strings.TrimSpace(t.SMTP.Host) != "" {
+			s := SanitizeSMTPConfig(t.SMTP)
+			row.SMTP = &PublicSMTPConfig{
+				Host: s.Host, Port: s.Port, Username: s.Username,
+				Password: s.Password, From: s.From, TLS: s.TLS,
+			}
+		}
+		pub.Email.Targets = append(pub.Email.Targets, row)
+	}
+	pub.Webhook.Enabled = c.Webhook.Enabled
+	for _, w := range c.Webhook.Webhooks {
+		pub.Secrets.WebhookURLs = append(pub.Secrets.WebhookURLs, w.URL != "")
+		pub.Webhook.Webhooks = append(pub.Webhook.Webhooks, PublicWebhookReceiver{
+			URL:     w.URL,
 			Headers: w.Headers,
 			Policy:  w.Policy,
 		})
