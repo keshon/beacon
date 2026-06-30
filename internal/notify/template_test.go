@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/keshon/beacon/internal/checks"
+	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
 )
 
@@ -45,6 +46,29 @@ func TestPreviewTemplateContext_downAndRecovered(t *testing.T) {
 	rec := PreviewTemplateContext("recovered")
 	if rec.Status != "recovered" || rec.Latency == 0 {
 		t.Fatalf("recovered ctx: %+v", rec)
+	}
+}
+
+func TestRenderTemplate_nodePlaceholders(t *testing.T) {
+	ctx := PreviewTemplateContext("down")
+	ctx.Node = "node-a.example.com"
+	ctx.NodeUUID = "uuid-123"
+	out := RenderTemplate("From: {{node}} id={{node_uuid}}", ctx)
+	if !strings.Contains(out, "node-a.example.com") || !strings.Contains(out, "uuid-123") {
+		t.Fatalf("unexpected: %q", out)
+	}
+}
+
+func TestWithNodeFromConfig(t *testing.T) {
+	cfg := &config.Config{
+		Network: config.NetworkConfig{
+			NodeID:  "abc-def",
+			SelfURL: "https://beacon1.example.com",
+		},
+	}
+	ctx := WithNodeFromConfig(TestTemplateContext(), cfg)
+	if ctx.Node != "beacon1.example.com" || ctx.NodeUUID != "abc-def" {
+		t.Fatalf("got node=%q uuid=%q", ctx.Node, ctx.NodeUUID)
 	}
 }
 

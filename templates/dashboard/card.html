@@ -1,5 +1,5 @@
 {# Card grid tile for dashboard. Expects: row #}
-<article class="dash-card"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
+<article class="dash-card {% if row.Status == 'up' %}dash-card-up{% elif row.Status == 'down' %}dash-card-down{% else %}dash-card-unknown{% endif %}"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
     <div class="dash-card-head">
         <div class="dash-card-title-row">
             <div class="dash-card-title monitor-title">{{ row.Monitor.Name }}</div>

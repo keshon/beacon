@@ -9,7 +9,7 @@ type Alert struct {
 	MonitorName string
 	Status      string
 	Message     string
-	Body        string // rendered template; empty uses legacy formatAlert
+	Body        string // rendered template; empty falls back to default templates
 	Time        time.Time
 	Target      string
 	Type        string
@@ -24,8 +24,12 @@ type Notifier interface {
 
 // AlertText returns the message body to send.
 func AlertText(a Alert) string {
-	if strings.TrimSpace(a.Body) != "" {
-		return a.Body
+	if s := strings.TrimSpace(a.Body); s != "" {
+		return s
 	}
-	return FormatLegacyAlert(a)
+	status := a.Status
+	if status != "recovered" {
+		status = "down"
+	}
+	return BuildAlertBody(ResolvedPolicy{Templates: DefaultTemplates()}, status, TemplateContextFromAlert(a))
 }

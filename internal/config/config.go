@@ -34,7 +34,6 @@ type NotificationsConfig struct {
 }
 
 // MessageTemplates are plain-text alert bodies with {{placeholder}} variables.
-// Test pings use a fixed built-in message (not configurable).
 type MessageTemplates struct {
 	Down      string `json:"down"`
 	Recovered string `json:"recovered"`
@@ -43,8 +42,8 @@ type MessageTemplates struct {
 // DefaultMessageTemplates returns built-in down/recovered templates.
 func DefaultMessageTemplates() MessageTemplates {
 	return MessageTemplates{
-		Down:      "Service DOWN\n\n{{name}}\n{{message}}\nTime: {{time}}",
-		Recovered: "Service RECOVERED\n\n{{name}}\n{{message}}\nTime: {{time}}",
+		Down:      "DOWN\n{{message}}\nTime: {{time}}\nFrom: {{node}}\n{{name}}",
+		Recovered: "Service RECOVERED\n{{message}}\nTime: {{time}}\nFrom: {{node}}\n{{name}}",
 	}
 }
 

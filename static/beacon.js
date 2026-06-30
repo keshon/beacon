@@ -37,6 +37,19 @@
         });
     }
 
+    function applyAppearancePrefs() {
+        var root = document.documentElement;
+        try {
+            var up = localStorage.getItem('beaconColorizeUp') === '1';
+            var down = localStorage.getItem('beaconColorizeDown') === '1';
+            root.setAttribute('data-colorize-up', up ? '1' : '0');
+            root.setAttribute('data-colorize-down', down ? '1' : '0');
+        } catch (e) {
+            root.setAttribute('data-colorize-up', '0');
+            root.setAttribute('data-colorize-down', '0');
+        }
+    }
+
     if (!window.Beacon) {
         window.Beacon = {
             notify: {
@@ -48,11 +61,13 @@
             csrfToken: csrfToken,
             apiFetch: apiFetch,
             initCollapse: initCollapse,
+            applyAppearancePrefs: applyAppearancePrefs,
         };
     } else {
         window.Beacon.csrfToken = csrfToken;
         window.Beacon.apiFetch = apiFetch;
         window.Beacon.initCollapse = initCollapse;
+        window.Beacon.applyAppearancePrefs = applyAppearancePrefs;
     }
 
     document.addEventListener('DOMContentLoaded', function () {

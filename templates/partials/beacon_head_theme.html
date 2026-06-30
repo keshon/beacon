@@ -27,4 +27,15 @@
             document.documentElement.setAttribute('data-dashboard-view', 'cards');
         }
     })();
+    (function () {
+        try {
+            var up = localStorage.getItem('beaconColorizeUp') === '1';
+            var down = localStorage.getItem('beaconColorizeDown') === '1';
+            document.documentElement.setAttribute('data-colorize-up', up ? '1' : '0');
+            document.documentElement.setAttribute('data-colorize-down', down ? '1' : '0');
+        } catch (e) {
+            document.documentElement.setAttribute('data-colorize-up', '0');
+            document.documentElement.setAttribute('data-colorize-down', '0');
+        }
+    })();
 </script>

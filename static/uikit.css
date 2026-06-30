@@ -12503,15 +12503,6 @@ html[data-bs-theme=light] .dash-nav .vr {
   min-width: 0;
 }
 
-.notify-secret-field {
-  cursor: pointer;
-  font-family: var(--bs-font-monospace, ui-monospace, monospace);
-}
-
-.notify-secret-field.is-revealed {
-  cursor: text;
-}
-
 .notify-row-meta {
   display: inline-flex;
   align-items: center;
@@ -13180,6 +13171,32 @@ html[data-dashboard-view=table] .dashboard-view-btn[data-dashboard-view=table] {
 
 .dash-card-uptime {
   min-height: 1.125rem;
+}
+
+html[data-colorize-up="1"] .dash-card.dash-card-up {
+  background: rgba(0, 255, 112, 0.05);
+  box-shadow: 0 0 0 0.0625rem rgba(0, 255, 112, 0.18), var(--app-shadow-outline);
+}
+html[data-colorize-up="1"] .dash-list-row.dash-row-up,
+html[data-colorize-up="1"] tr.dash-row-up {
+  background: rgba(0, 255, 112, 0.05);
+}
+html[data-colorize-up="1"] tr.dash-row-up:hover,
+html[data-colorize-up="1"] .dash-list-row.dash-row-up:hover {
+  background: rgba(0, 255, 112, 0.08);
+}
+
+html[data-colorize-down="1"] .dash-card.dash-card-down {
+  background: rgba(255, 0, 0, 0.05);
+  box-shadow: 0 0 0 0.0625rem rgba(255, 0, 0, 0.18), var(--app-shadow-outline);
+}
+html[data-colorize-down="1"] .dash-list-row.dash-row-down,
+html[data-colorize-down="1"] tr.dash-row-down {
+  background: rgba(255, 0, 0, 0.05);
+}
+html[data-colorize-down="1"] tr.dash-row-down:hover,
+html[data-colorize-down="1"] .dash-list-row.dash-row-down:hover {
+  background: rgba(255, 0, 0, 0.08);
 }
 
 .dash-list {

@@ -59,7 +59,7 @@ func (s *Server) apiNotifyTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientID := clientIP(r)
-	ctx := notify.PreviewTemplateContext(status)
+	ctx := notify.WithNodeFromConfig(notify.PreviewTemplateContext(status), s.cfg)
 	body := notify.RenderTemplate(tpl, ctx)
 	alert := notify.Alert{
 		MonitorName: ctx.MonitorName,

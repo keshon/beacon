@@ -154,6 +154,8 @@ func Placeholders() []PlaceholderInfo {
 		{Key: "time", Description: "Event time"},
 		{Key: "message", Description: "Detail line (error or latency summary)"},
 		{Key: "fail_count", Description: "Failed check count before down"},
+		{Key: "node", Description: "Alerting node hostname (Self URL domain)"},
+		{Key: "node_uuid", Description: "Alerting node ID"},
 	}
 }
 

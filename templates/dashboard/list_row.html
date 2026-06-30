@@ -1,5 +1,5 @@
 {# Full-width list row — between cards and table. Expects: row #}
-<div class="dash-list-row"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
+<div class="dash-list-row {% if row.Status == 'up' %}dash-row-up{% elif row.Status == 'down' %}dash-row-down{% else %}dash-row-unknown{% endif %}"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
     <div class="dash-list-primary">
         <div class="dash-list-primary-main">
             <div class="dash-list-line1">

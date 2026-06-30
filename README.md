@@ -133,8 +133,8 @@ Example minimal `config.json`:
   "notifications": {
     "alert_mode": "repeat",
     "templates": {
-      "down": "Service DOWN\\n\\n{{name}}\\n{{message}}\\nTime: {{time}}",
-      "recovered": "Service RECOVERED\\n\\n{{name}}\\n{{message}}\\nTime: {{time}}"
+      "down": "DOWN\\n{{message}}\\nTime: {{time}}\\nFrom: {{node}}\\n{{name}}",
+      "recovered": "Service RECOVERED\\n{{message}}\\nTime: {{time}}\\nFrom: {{node}}\\n{{name}}"
     }
   },
   "network": {

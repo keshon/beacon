@@ -126,7 +126,10 @@ func main() {
 		if len(receivers) == 0 {
 			return
 		}
-		tplCtx := notify.NewTemplateContext(m, state, result, status, message)
+		tplCtx := notify.WithNodeFromConfig(
+			notify.NewTemplateContext(m, state, result, status, message),
+			cfg,
+		)
 		base := notify.Alert{
 			MonitorName: m.Name,
 			Status:      status,

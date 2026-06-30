@@ -311,6 +311,46 @@ html[data-dashboard-view="table"] .dashboard-view-btn[data-dashboard-view="table
   min-height: 1.125rem;
 }
 
+// Status tinting (optional; toggled in Settings → Appearance via data-colorize-* on <html>).
+@mixin dash-status-surface($r, $g, $b) {
+  background: rgba($r, $g, $b, 0.05);
+  box-shadow:
+    0 0 0 0.0625rem rgba($r, $g, $b, 0.18),
+    var(--app-shadow-outline);
+}
+
+html[data-colorize-up="1"] {
+  .dash-card.dash-card-up {
+    @include dash-status-surface(0, 255, 112);
+  }
+
+  .dash-list-row.dash-row-up,
+  tr.dash-row-up {
+    background: rgba(0, 255, 112, 0.05);
+  }
+
+  tr.dash-row-up:hover,
+  .dash-list-row.dash-row-up:hover {
+    background: rgba(0, 255, 112, 0.08);
+  }
+}
+
+html[data-colorize-down="1"] {
+  .dash-card.dash-card-down {
+    @include dash-status-surface(255, 0, 0);
+  }
+
+  .dash-list-row.dash-row-down,
+  tr.dash-row-down {
+    background: rgba(255, 0, 0, 0.05);
+  }
+
+  tr.dash-row-down:hover,
+  .dash-list-row.dash-row-down:hover {
+    background: rgba(255, 0, 0, 0.08);
+  }
+}
+
 // ── Dashboard: list view ──
 // Same hairline-outline pattern as .app-panel for visual parity across views.
 .dash-list {

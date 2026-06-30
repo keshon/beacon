@@ -38,16 +38,6 @@ func SendAll(notifiers []Notifier, a Alert) []error {
 	return errs
 }
 
-// TestAlert returns a mock alert used by the "Test" buttons in the UI.
-func TestAlert() Alert {
-	return Alert{
-		MonitorName: "Beacon (test)",
-		Status:      "test",
-		Message:     "This is a test notification. If you see this, delivery works.",
-		Time:        time.Now(),
-	}
-}
-
 type TelegramNotifier struct {
 	token  string
 	chatID string

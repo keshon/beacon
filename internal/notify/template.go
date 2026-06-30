@@ -1,7 +1,6 @@
 package notify
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +22,8 @@ type TemplateContext struct {
 	Time        time.Time
 	Message     string
 	FailCount   int
+	Node        string // alerting node hostname (SelfURL domain)
+	NodeUUID    string // alerting node ID
 }
 
 // NewTemplateContext builds context from a check result and monitor state.
@@ -63,6 +64,8 @@ func PreviewTemplateContext(status string) TemplateContext {
 		Time:        time.Now(),
 		StatusCode:  503,
 		FailCount:   2,
+		Node:        "beacon.example.com",
+		NodeUUID:    "00000000-0000-0000-0000-000000000001",
 	}
 	switch status {
 	case "recovered":
@@ -83,18 +86,30 @@ func TestTemplateContext() TemplateContext {
 	return PreviewTemplateContext("down")
 }
 
+// WithNodeFromConfig fills Node and NodeUUID from network settings.
+func WithNodeFromConfig(ctx TemplateContext, cfg *config.Config) TemplateContext {
+	if cfg == nil {
+		return ctx
+	}
+	ctx.Node = cfg.Network.NodeDomain()
+	ctx.NodeUUID = strings.TrimSpace(cfg.Network.NodeID)
+	return ctx
+}
+
 func (c TemplateContext) values() map[string]string {
 	return map[string]string{
-		"name":         c.MonitorName,
-		"target":       c.Target,
-		"type":         c.Type,
-		"status":       c.Status,
-		"error":        c.Error,
-		"latency":      c.Latency.String(),
-		"status_code":  strconv.Itoa(c.StatusCode),
-		"time":         c.Time.Format("2006-01-02 15:04"),
-		"message":      c.Message,
-		"fail_count":   strconv.Itoa(c.FailCount),
+		"name":        c.MonitorName,
+		"target":      c.Target,
+		"type":        c.Type,
+		"status":      c.Status,
+		"error":       c.Error,
+		"latency":     c.Latency.String(),
+		"status_code": strconv.Itoa(c.StatusCode),
+		"time":        c.Time.Format("2006-01-02 15:04"),
+		"message":     c.Message,
+		"fail_count":  strconv.Itoa(c.FailCount),
+		"node":        c.Node,
+		"node_uuid":   c.NodeUUID,
 	}
 }
 
@@ -190,16 +205,21 @@ func receiverPolicyConfigured(p *config.ReceiverPolicy) bool {
 	return false
 }
 
-// FormatLegacyAlert keeps backward-compatible formatting when Body is empty.
-func FormatLegacyAlert(a Alert) string {
-	switch a.Status {
-	case "recovered":
-		return fmt.Sprintf("Service RECOVERED\n\n%s\n%s\nTime: %s",
-			a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
-	case "test":
-		return fmt.Sprintf("Beacon TEST\n\n%s\n%s\nTime: %s",
-			a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
+// TemplateContextFromAlert builds placeholder context from an alert payload.
+func TemplateContextFromAlert(a Alert) TemplateContext {
+	ctx := TemplateContext{
+		MonitorName: a.MonitorName,
+		Target:      a.Target,
+		Type:        a.Type,
+		Status:      a.Status,
+		Message:     a.Message,
+		Time:        a.Time,
+		StatusCode:  a.StatusCode,
+		Latency:     a.Latency,
+		FailCount:   a.FailCount,
 	}
-	return fmt.Sprintf("Service DOWN\n\n%s\n%s\nTime: %s",
-		a.MonitorName, a.Message, a.Time.Format("2006-01-02 15:04"))
+	if ctx.Time.IsZero() {
+		ctx.Time = time.Now()
+	}
+	return ctx
 }

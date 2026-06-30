@@ -1,5 +1,5 @@
 {# One table row for dashboard monitor list. Expects: row #}
-<tr{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
+<tr class="{% if row.Status == 'up' %}dash-row-up{% elif row.Status == 'down' %}dash-row-down{% else %}dash-row-unknown{% endif %}"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
     <td>
         <div class="monitor-title">{{ row.Monitor.Name }}</div>
         <div class="monitor-meta">
