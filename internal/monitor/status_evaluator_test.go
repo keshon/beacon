@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keshon/beacon/internal/checks"
+	"github.com/keshon/beacon/internal/monitor/checks"
 )
 
 func TestStatusEvaluator_downCallback_firstAndRepeat(t *testing.T) {

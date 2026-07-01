@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/keshon/beacon/internal/monitor"
-	"github.com/keshon/beacon/internal/store"
+	"github.com/keshon/beacon/internal/storage"
 )
 
 func (rt *Runtime) syncFromPeers(ctx context.Context) {
@@ -69,7 +69,7 @@ func (rt *Runtime) syncFromPeers(ctx context.Context) {
 		}
 
 		existing, _ := rt.store.GetPeerData(payload.NodeID)
-		data := &store.PeerData{
+		data := &storage.PeerData{
 			NodeID:       payload.NodeID,
 			PeerURL:      peerURL,
 			LastSeen:     time.Now(),

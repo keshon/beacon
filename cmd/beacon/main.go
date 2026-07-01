@@ -11,15 +11,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/keshon/beacon/internal/checks"
-	beaconcmd "github.com/keshon/beacon/internal/command"
+	"github.com/keshon/beacon/internal/monitor/checks"
 	"github.com/keshon/beacon/internal/cluster"
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
 	"github.com/keshon/beacon/internal/notify"
-	"github.com/keshon/beacon/internal/scheduler"
-	"github.com/keshon/beacon/internal/store"
-	"github.com/keshon/beacon/internal/web"
+	"github.com/keshon/beacon/internal/monitor/scheduler"
+	"github.com/keshon/beacon/internal/storage"
+	"github.com/keshon/beacon/internal/server"
 )
 
 const (
@@ -28,7 +27,7 @@ const (
 	alertDedupWindow    = 45 * time.Second
 )
 
-func loadConfig(st *store.Store, filePath string) *config.Config {
+func loadConfig(st *storage.Store, filePath string) *config.Config {
 	var cfg config.Config
 	ok, err := st.GetConfig(&cfg)
 	if ok && err == nil {
@@ -62,7 +61,7 @@ func loadConfig(st *store.Store, filePath string) *config.Config {
 
 func main() {
 	cfgPath := "config.json"
-	if len(os.Args) > 1 && !beaconcmd.IsCLISubcommand(os.Args) {
+	if len(os.Args) > 1 {
 		cfgPath = os.Args[1]
 	}
 
@@ -74,21 +73,17 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	st, err := store.New(ctx, dataDir)
+	st, err := storage.New(ctx, dataDir)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer st.Close()
 
-	serverLock, err := acquireDataDirLock(dataDir)
+	serverLock, err := storage.AcquireDirLock(dataDir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer releaseDataDirLock(serverLock)
-
-	if runCLI(st, dataDir) {
-		return
-	}
+	defer serverLock.Release()
 
 	cfg := loadConfig(st, cfgPath)
 
@@ -184,7 +179,7 @@ func main() {
 		},
 	)
 
-	streamHub := web.NewCheckStreamHub()
+	streamHub := server.NewCheckStreamHub()
 
 	clusterRT := cluster.New(st, cfg)
 	var clusterWG sync.WaitGroup
@@ -200,8 +195,8 @@ func main() {
 	sch.Run(ctx)
 	notifyStartupDown(sch, sendAlerts)
 
-	auth := web.NewAuth()
-	srv := web.NewServer(st, auth, cfg, sch, clusterRT, "templates", "static", streamHub)
+	auth := server.NewAuth()
+	srv := server.NewServer(st, auth, cfg, sch, clusterRT, "templates", "static", streamHub)
 	httpServer := &http.Server{Addr: cfg.Listen, Handler: srv.Routes()}
 
 	go func() {

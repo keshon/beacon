@@ -5,7 +5,7 @@ import (
 
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
-	"github.com/keshon/beacon/internal/store"
+	"github.com/keshon/beacon/internal/storage"
 )
 
 // ExportView is the monitor/state pair served to peers.
@@ -14,7 +14,7 @@ type ExportView struct {
 	State    map[string]*monitor.MonitorState
 }
 
-func buildExportView(cfg *config.Config, st *store.Store) (ExportView, error) {
+func buildExportView(cfg *config.Config, st *storage.Store) (ExportView, error) {
 	var view ExportView
 	snap, err := st.GetExportSnapshot()
 	if err != nil {

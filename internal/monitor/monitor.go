@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keshon/beacon/internal/checks"
+	"github.com/keshon/beacon/internal/monitor/checks"
 	"github.com/keshon/beacon/internal/config"
 )
 

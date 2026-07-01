@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"github.com/keshon/beacon/internal/checks"
+	"github.com/keshon/beacon/internal/monitor/checks"
 )
 
 // StatusEvaluator applies check results to monitor state and invokes alert callbacks.

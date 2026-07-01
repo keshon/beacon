@@ -41,7 +41,6 @@ If you need metrics storage, distributed tracing, or deep infrastructure analyti
 - Global notification settings with per-monitor per-channel overrides (Global / Off / Custom)
 - Real-time dashboard updates and uptime history
 - Basic authentication for web UI and API
-- CLI for managing monitors and inspecting state
 - REST API for automation and integration
 
 ## Quick start
@@ -246,28 +245,20 @@ Requires sync to be enabled on the exporting node and a valid sync token (when c
 | `/settings`  | Configuration and sync           |
 | `/login`     | Authentication                   |
 
-## CLI
-
-```bash
-# Monitors
-beacon monitor list
-beacon monitor add -name "API" -type http -target https://api.example.com
-beacon monitor add -name "Redis" -type tcp -target redis.internal:6379
-beacon monitor delete <id>
-beacon monitor update <id>
-
-# State
-beacon state
-beacon events -limit 100
-```
-
-CLI uses the same datastore as the server.
-
-**Target format:** HTTP monitors need a full URL (`http://` or `https://`). TCP monitors need `host:port` with no scheme (e.g. `db.local:5432`). The API and UI validate targets on create/update.
-
 ## HTTP API
 
 All endpoints require authentication (HTTP Basic or session cookie). Cookie-authenticated `POST`/`PUT`/`PATCH`/`DELETE` requests must include the `X-CSRF-Token` header matching the `beacon_csrf` cookie (see `static/beacon.js`).
+
+Example with Basic auth:
+
+```bash
+curl -u admin:admin http://localhost:8080/api/monitors
+curl -u admin:admin -H 'Content-Type: application/json' \
+  -d '{"name":"API","type":"http","target":"https://example.com"}' \
+  http://localhost:8080/api/monitors
+```
+
+**Target format:** HTTP monitors need a full URL (`http://` or `https://`). TCP monitors need `host:port` with no scheme (e.g. `db.local:5432`). The API and UI validate targets on create/update.
 
 | Method | Path                      | Description            |
 | ------ | ------------------------- | ---------------------- |
@@ -316,18 +307,20 @@ go test ./...
 ```
 cmd/beacon/              Entry point
 internal/
-  checks/                HTTP and TCP probes
-  commands/              CLI commands (commandkit)
-  config/                Configuration, AuthCredentials, receivers
-  monitor/               Monitors, StatusEvaluator, validation
-  netpolicy/             SSRF / host allowlist for probes
-  notify/                Telegram/Discord delivery
-  scheduler/             Check scheduling
-  service/               Shared domain logic (monitors, config, state)
-  sse/                   CheckStreamHub for live check SSE
-  store/                 Persistence (CheckRecord history)
-  sync/                  PeerSyncClient for multi-instance sync
-  web/                   Pages (page*) and JSON API (api*)
+  cluster/               Optional peer sync + adoption
+  monitor/               Domain types, StatusEvaluator, validation
+    checks/              HTTP and TCP probes
+    scheduler/           Check scheduling loop
+    runner/              Monitor mutations (add/update/delete/list)
+  notify/                Alert delivery (Telegram, Discord, email, webhook)
+  server/                HTTP wiring
+    api/                 REST JSON handlers
+    page/                HTML pages
+    middleware/          Auth + CSRF
+    stream/              Live check SSE hub
+  config/                Configuration and credentials
+  storage/               JSON persistence + data-dir flock
+  netpolicy/             SSRF guard for outbound targets
 templates/
   dashboard/             Dashboard page and row partials
   monitors/              Monitors page and form partials
@@ -335,8 +328,8 @@ templates/
   partials/              Shared head fragments
   base.html, login.html  Root layouts
 static/                  beacon.js (Beacon.apiFetch, CSRF) + notify UI
+uikit/                   SCSS design system
 tooling/scripts/         UIKit bootstrap/build/watch helpers
-docs/REMAINING.md        Optional follow-up backlog
 ```
 
 ## License

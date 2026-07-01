@@ -8,7 +8,7 @@ import (
 	"github.com/keshon/beacon/internal/cluster"
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
-	"github.com/keshon/beacon/internal/store"
+	"github.com/keshon/beacon/internal/storage"
 )
 
 func TestExportView_adoptedMonitorUsesLocalState(t *testing.T) {
@@ -16,7 +16,7 @@ func TestExportView_adoptedMonitorUsesLocalState(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	st, err := store.New(ctx, dir)
+	st, err := storage.New(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestExportView_adoptedMonitorUsesLocalState(t *testing.T) {
 	staleUp := now.Add(-10 * time.Minute)
 	freshDown := now.Add(-1 * time.Minute)
 
-	peerData := map[string]*store.PeerData{
+	peerData := map[string]*storage.PeerData{
 		deadOwner: {
 			NodeID:   deadOwner,
 			PeerURL:  "https://node-a.example.com",

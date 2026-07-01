@@ -6,7 +6,7 @@ import (
 
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
-	"github.com/keshon/beacon/internal/store"
+	"github.com/keshon/beacon/internal/storage"
 )
 
 // AdoptedMonitor is a peer monitor checked locally because the owner node is dead.
@@ -16,7 +16,7 @@ type AdoptedMonitor struct {
 	OwnerLabel  string
 }
 
-func peerLive(pd *store.PeerData, deadTimeout time.Duration, now time.Time) bool {
+func peerLive(pd *storage.PeerData, deadTimeout time.Duration, now time.Time) bool {
 	if pd == nil || deadTimeout <= 0 {
 		return false
 	}
@@ -38,7 +38,7 @@ func nextLiveInRing(sorted []string, deadID string, live map[string]bool) string
 	return ""
 }
 
-func buildRing(cfg *config.Config, peerData map[string]*store.PeerData, now time.Time, deadTimeout time.Duration) (sorted []string, live map[string]bool) {
+func buildRing(cfg *config.Config, peerData map[string]*storage.PeerData, now time.Time, deadTimeout time.Duration) (sorted []string, live map[string]bool) {
 	live = make(map[string]bool)
 	if cfg == nil || !cfg.Network.Enabled || cfg.Network.NodeID == "" {
 		return nil, live
@@ -55,7 +55,7 @@ func buildRing(cfg *config.Config, peerData map[string]*store.PeerData, now time
 	return sorted, live
 }
 
-func adoptedMonitors(cfg *config.Config, peerData map[string]*store.PeerData, now time.Time) []AdoptedMonitor {
+func adoptedMonitors(cfg *config.Config, peerData map[string]*storage.PeerData, now time.Time) []AdoptedMonitor {
 	if cfg == nil || !cfg.Network.Enabled || cfg.Network.NodeID == "" || len(peerData) == 0 {
 		return nil
 	}

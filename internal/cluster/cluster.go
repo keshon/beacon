@@ -12,12 +12,12 @@ import (
 
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
-	"github.com/keshon/beacon/internal/store"
+	"github.com/keshon/beacon/internal/storage"
 )
 
 // Runtime owns peer sync and adoption. It implements scheduler.MonitorSource when enabled.
 type Runtime struct {
-	store  *store.Store
+	store  *storage.Store
 	cfg    *config.Config
 	client *http.Client
 
@@ -28,7 +28,7 @@ type Runtime struct {
 }
 
 // New creates a cluster runtime. Always non-nil; peer sync runs when network.enabled.
-func New(st *store.Store, cfg *config.Config) *Runtime {
+func New(st *storage.Store, cfg *config.Config) *Runtime {
 	if cfg == nil {
 		cfg = config.Default()
 	}
@@ -65,7 +65,7 @@ func (rt *Runtime) Run(ctx context.Context) {
 	rt.runSync(ctx)
 }
 
-func (rt *Runtime) refreshAdopted(peerData map[string]*store.PeerData, now time.Time) {
+func (rt *Runtime) refreshAdopted(peerData map[string]*storage.PeerData, now time.Time) {
 	next := make(map[string]*monitor.Monitor)
 	for _, am := range adoptedMonitors(rt.cfg, peerData, now) {
 		if am.Monitor != nil {
@@ -326,7 +326,7 @@ func (rt *Runtime) NetworkNodes() ([]NetworkNode, error) {
 		MonitorsCount: len(ownMonitors),
 	})
 
-	peerURLToData := make(map[string]*store.PeerData)
+	peerURLToData := make(map[string]*storage.PeerData)
 	for _, pd := range peerData {
 		key := strings.TrimSuffix(pd.PeerURL, "/")
 		if key == "" {
