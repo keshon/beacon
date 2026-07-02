@@ -39,7 +39,6 @@ func (n *NotifyOverride) UnmarshalJSON(data []byte) error {
 	n.Discord = unmarshalDiscordChannel(raw.Discord)
 	n.Email = unmarshalEmailChannel(raw.Email)
 	n.Webhook = unmarshalWebhookChannel(raw.Webhook)
-	MigrateNotifyOverride(n)
 	return nil
 }
 
@@ -193,3 +192,115 @@ func (m *Monitor) Redacted() *Monitor {
 	}
 	return &out
 }
+
+// HasLegacyNotifyFields reports deprecated top-level notify_override fields.
+func HasLegacyNotifyFields(n *NotifyOverride) bool {
+	if n == nil {
+		return false
+	}
+	if strings.TrimSpace(n.AlertMode) != "" {
+		return true
+	}
+	if n.Templates != nil {
+		if strings.TrimSpace(n.Templates.Down) != "" || strings.TrimSpace(n.Templates.Recovered) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// MigrateNotifyOverride copies deprecated top-level alert_mode/templates onto
+// each receiver row that has no policy, then clears the legacy fields.
+func MigrateNotifyOverride(n *NotifyOverride) {
+	if n == nil {
+		return
+	}
+	legacyMode := strings.TrimSpace(n.AlertMode)
+	var legacyTpl *config.MessageTemplates
+	if n.Templates != nil {
+		t := *n.Templates
+		if strings.TrimSpace(t.Down) != "" || strings.TrimSpace(t.Recovered) != "" {
+			legacyTpl = &t
+		}
+	}
+	if legacyMode == "" && legacyTpl == nil {
+		return
+	}
+	legacy := &config.ReceiverPolicy{
+		AlertMode: legacyMode,
+		Templates: legacyTpl,
+	}
+	if n.Telegram != nil {
+		for i := range n.Telegram.Targets {
+			if receiverPolicyEmpty(n.Telegram.Targets[i].Policy) {
+				n.Telegram.Targets[i].Policy = cloneReceiverPolicy(legacy)
+			}
+		}
+	}
+	if n.Discord != nil {
+		for i := range n.Discord.Targets {
+			if receiverPolicyEmpty(n.Discord.Targets[i].Policy) {
+				n.Discord.Targets[i].Policy = cloneReceiverPolicy(legacy)
+			}
+		}
+	}
+	if n.Email != nil {
+		for i := range n.Email.Targets {
+			if receiverPolicyEmpty(n.Email.Targets[i].Policy) {
+				n.Email.Targets[i].Policy = cloneReceiverPolicy(legacy)
+			}
+		}
+	}
+	if n.Webhook != nil {
+		for i := range n.Webhook.Targets {
+			if receiverPolicyEmpty(n.Webhook.Targets[i].Policy) {
+				n.Webhook.Targets[i].Policy = cloneReceiverPolicy(legacy)
+			}
+		}
+	}
+	n.AlertMode = ""
+	n.Templates = nil
+}
+
+func receiverPolicyEmpty(p *config.ReceiverPolicy) bool {
+	if p == nil {
+		return true
+	}
+	if strings.TrimSpace(p.AlertMode) != "" {
+		return false
+	}
+	if p.Templates == nil {
+		return true
+	}
+	return strings.TrimSpace(p.Templates.Down) == "" && strings.TrimSpace(p.Templates.Recovered) == ""
+}
+
+func cloneReceiverPolicy(p *config.ReceiverPolicy) *config.ReceiverPolicy {
+	if p == nil {
+		return nil
+	}
+	out := &config.ReceiverPolicy{AlertMode: strings.TrimSpace(p.AlertMode)}
+	if p.Templates != nil {
+		t := *p.Templates
+		out.Templates = &t
+	}
+	if out.AlertMode == "" && out.Templates == nil {
+		return nil
+	}
+	return out
+}
+
+type MonitorState struct {
+	MonitorID   string        `json:"monitor_id"`
+	Status      string        `json:"status"` // up, down, unknown
+	FailCount   int           `json:"fail_count"`
+	LastCheck   time.Time     `json:"last_check"`
+	LastSuccess time.Time     `json:"last_success"`
+	Latency     time.Duration `json:"latency"`
+}
+
+const (
+	StatusUp      = "up"
+	StatusDown    = "down"
+	StatusUnknown = "unknown"
+)

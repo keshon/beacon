@@ -86,6 +86,7 @@ func main() {
 	defer serverLock.Release()
 
 	cfg := loadConfig(st, cfgPath)
+	migrateLegacyNotifyOverrides(st)
 
 	alertQueue := make(chan func(), alertQueueSize)
 	var alertWG sync.WaitGroup
@@ -110,12 +111,6 @@ func main() {
 				return
 			}
 		}
-		if status == "down" && isRepeat && !alertDedup.Allow(m.ID, status, alertDedupWindow) {
-			return
-		}
-		if status == "recovered" && !alertDedup.Allow(m.ID, status, alertDedupWindow) {
-			return
-		}
 
 		receivers := notify.BuildReceivers(cfg, m)
 		if len(receivers) == 0 {
@@ -139,29 +134,9 @@ func main() {
 			base.FailCount = state.FailCount
 		}
 		job := func() {
-			for i, r := range receivers {
-				if r.Channel == notify.ChannelEmail {
-					if !emailGuard.Allow(m.ID, r.Key) {
-						log.Printf("email cooldown skip [%s]", r.Key)
-						continue
-					}
-				}
-				if status == "down" && !notify.ShouldSendDown(r.Policy, isRepeat, r.Channel) {
-					continue
-				}
-				alert := base
-				alert.Body = notify.BuildAlertBody(r.Policy, status, tplCtx)
-				if err := r.Notifier.Send(alert); err != nil {
-					log.Printf("notify error [%s]: %v", r.Key, err)
-				} else {
-					if r.Channel == notify.ChannelEmail {
-						emailGuard.RecordSuccess(m.ID, r.Key)
-					}
-					if i+1 < len(receivers) {
-						time.Sleep(250 * time.Millisecond)
-					}
-				}
-			}
+			notify.SendResolved(m.ID, status, isRepeat, receivers, base, tplCtx, emailGuard, alertDedup, alertDedupWindow, func(format string, args ...any) {
+				log.Printf(format, args...)
+			})
 		}
 		select {
 		case alertQueue <- job:
@@ -225,6 +200,29 @@ func main() {
 	}
 
 	log.Println("done")
+}
+
+func migrateLegacyNotifyOverrides(st *storage.Store) {
+	monitors, err := st.GetMonitors()
+	if err != nil {
+		return
+	}
+	for _, m := range monitors {
+		if m == nil || m.NotifyOverride == nil {
+			continue
+		}
+		if !monitor.HasLegacyNotifyFields(m.NotifyOverride) {
+			continue
+		}
+		if _, err := st.UpdateMonitor(m.ID, func(mon *monitor.Monitor) error {
+			if mon.NotifyOverride != nil {
+				monitor.MigrateNotifyOverride(mon.NotifyOverride)
+			}
+			return nil
+		}); err != nil {
+			log.Printf("legacy notify migrate %s: %v", m.ID, err)
+		}
+	}
 }
 
 func notifyStartupDown(sch *scheduler.Scheduler, sendAlerts func(*monitor.Monitor, *monitor.MonitorState, checks.CheckResult, string, string, bool)) {

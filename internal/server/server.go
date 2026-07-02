@@ -12,24 +12,27 @@ import (
 	"github.com/keshon/beacon/internal/server/api"
 	"github.com/keshon/beacon/internal/server/middleware"
 	"github.com/keshon/beacon/internal/server/page"
-	"github.com/keshon/beacon/internal/server/stream"
 	"github.com/keshon/beacon/internal/storage"
 )
+
+type Deps struct {
+	Store     *storage.Store
+	Cfg       *config.Config
+	Scheduler *scheduler.Scheduler
+	Cluster   *cluster.Runtime
+	StreamHub *CheckStreamHub
+	Auth      *middleware.Auth
+	TplDir    string
+	StaticDir string
+	TestLimit *notify.RateLimiter
+}
 
 func init() {
 	_ = mime.AddExtensionType(".css", "text/css")
 }
 
-// CheckStreamHub is the live check SSE fan-out hub.
-type CheckStreamHub = stream.Hub
-
 // Auth is the web session authenticator.
 type Auth = middleware.Auth
-
-// NewCheckStreamHub creates a new SSE hub for check results.
-func NewCheckStreamHub() *stream.Hub {
-	return stream.NewHub()
-}
 
 // NewAuth creates a new session store.
 func NewAuth() *middleware.Auth {
@@ -40,7 +43,7 @@ type Server struct {
 	deps Deps
 }
 
-func NewServer(s *storage.Store, auth *middleware.Auth, cfg *config.Config, sch *scheduler.Scheduler, clusterRT *cluster.Runtime, tplDir, staticDir string, hub *stream.Hub) *Server {
+func NewServer(s *storage.Store, auth *middleware.Auth, cfg *config.Config, sch *scheduler.Scheduler, clusterRT *cluster.Runtime, tplDir, staticDir string, hub *CheckStreamHub) *Server {
 	return &Server{
 		deps: Deps{
 			Store:     s,
@@ -88,6 +91,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/monitors/{id}", monAPI.Delete)
 	mux.HandleFunc("PATCH /api/monitors/{id}", monAPI.Update)
 	mux.HandleFunc("GET /api/monitors/{id}/uptime", monAPI.Uptime)
+	mux.HandleFunc("GET /api/uptime", monAPI.UptimeBatch)
 
 	cfgAPI := &api.Config{Store: d.Store, Cfg: d.Cfg, Scheduler: d.Scheduler, Cluster: d.Cluster}
 	mux.HandleFunc("GET /api/config", cfgAPI.Get)
@@ -102,8 +106,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/notify/test", notifyAPI.Test)
 	mux.HandleFunc("GET /api/notify/defaults", notifyAPI.Defaults)
 
-	streamAPI := &api.Stream{Hub: d.StreamHub}
-	mux.HandleFunc("GET /api/stream/checks", streamAPI.Checks)
+	mux.HandleFunc("GET /api/stream/checks", s.handleStreamChecks)
 
 	if d.Cluster != nil {
 		mux.HandleFunc("GET /api/sync/export", d.Cluster.HandleExport)

@@ -1,8 +1,10 @@
 package page
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/keshon/beacon/internal/cluster"
 	"github.com/keshon/beacon/internal/config"
@@ -11,6 +13,7 @@ import (
 	"github.com/keshon/beacon/internal/storage"
 
 	"github.com/flosch/pongo2/v6"
+	"github.com/keshon/buildinfo"
 )
 
 type Dashboard struct {
@@ -49,19 +52,21 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rows []dashboardRow
+	var networkNodes any
 	if h.Cluster != nil {
-		clusterRows, err := h.Cluster.DashboardRows(state, ownMonitors)
+		view, err := h.Cluster.DashboardView(state, ownMonitors)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		for _, cr := range clusterRows {
+		for _, cr := range view.Rows {
 			rows = append(rows, dashboardRow{
 				Monitor: cr.Monitor, State: cr.State, LatencyMs: cr.LatencyMs,
 				LastCheck: cr.LastCheck, Status: cr.Status, SourceLabel: cr.SourceLabel,
 				SourceNodeID: cr.SourceNodeID, IsPeer: cr.IsPeer, Adopted: cr.Adopted,
 			})
 		}
+		networkNodes = view.NetworkNodes
 	} else {
 		for _, m := range ownMonitors {
 			st := state[m.ID]
@@ -85,17 +90,56 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var networkNodes any
-	if h.Cluster != nil {
-		nodes, _ := h.Cluster.NetworkNodes()
-		networkNodes = nodes
+	const uptimeLimit = 45
+	ids := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if row.IsPeer || row.Monitor == nil || row.Monitor.ID == "" {
+			continue
+		}
+		ids = append(ids, row.Monitor.ID)
+	}
+	type point struct {
+		Time    string `json:"time"`
+		Success bool   `json:"success"`
+	}
+	bootstrap := map[string][]point{}
+	if len(ids) > 0 {
+		samplesByID, err := h.Store.GetUptimeSamplesBatch(ids, uptimeLimit)
+		if err == nil && samplesByID != nil {
+			for id, samples := range samplesByID {
+				pts := make([]point, 0, len(samples))
+				for _, rec := range samples {
+					pts = append(pts, point{
+						Time:    rec.Time.UTC().Format("2006-01-02T15:04:05.999999999Z07:00"),
+						Success: rec.Success,
+					})
+				}
+				bootstrap[id] = pts
+			}
+		}
+	}
+	bootstrapJSON := []byte("{}")
+	if b, err := json.Marshal(bootstrap); err == nil {
+		bootstrapJSON = b
+	}
+
+	view := strings.TrimSpace(r.URL.Query().Get("view"))
+	if view != "list" && view != "table" && view != "cards" {
+		view = "cards"
 	}
 
 	_ = httpx.Render(w, h.TplDir, "dashboard/dashboard.html", pongo2.Context{
-		"version":        buildVersion(),
-		"nav_active":     "dashboard",
-		"rows":           rows,
-		"networkNodes":   networkNodes,
-		"networkEnabled": h.Cfg.Network.Enabled,
+		"version":         buildVersion(),
+		"nav_active":      "dashboard",
+		"rows":            rows,
+		"networkNodes":    networkNodes,
+		"networkEnabled":  h.Cfg.Network.Enabled,
+		"uptimeBootstrap": string(bootstrapJSON),
+		"dashboardView":   view,
 	})
+}
+
+func buildVersion() string {
+	bi := buildinfo.Get()
+	return bi.BuildTime + " " + bi.GoVersion + " (" + bi.Commit + ")"
 }

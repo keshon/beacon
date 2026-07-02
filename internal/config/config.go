@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -345,4 +346,62 @@ func (c *Config) DefaultIntervalDuration() time.Duration {
 		return time.Duration(c.DefaultInterval) * time.Second
 	}
 	return 30 * time.Second
+}
+
+
+// NodeDomain returns the hostname from SelfURL (e.g. beacon.example.com).
+func (n NetworkConfig) NodeDomain() string {
+	raw := strings.TrimSpace(n.SelfURL)
+	if raw == "" {
+		return ""
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(u.Hostname())
+}
+
+
+// MaskSecret returns a display-safe preview of a secret (first/last runes visible).
+func MaskSecret(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	runes := []rune(s)
+	n := len(runes)
+	if n <= 8 {
+		return strings.Repeat("•", n)
+	}
+	var b strings.Builder
+	b.Grow(n)
+	for i, r := range runes {
+		if i < 4 || i >= n-4 {
+			b.WriteRune(r)
+		} else {
+			b.WriteRune('•')
+		}
+	}
+	return b.String()
+}
+
+// SecretUnchanged reports whether incoming is empty or matches the stored secret
+// (including a masked preview from GET /api/config).
+func SecretUnchanged(incoming, stored string) bool {
+	stored = strings.TrimSpace(stored)
+	if stored == "" {
+		return false
+	}
+	incoming = strings.TrimSpace(incoming)
+	if incoming == "" {
+		return true
+	}
+	if incoming == stored {
+		return true
+	}
+	return incoming == MaskSecret(stored)
 }

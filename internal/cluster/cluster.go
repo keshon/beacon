@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -219,8 +220,42 @@ type NetworkNode struct {
 	SyncWarnings  []string `json:"sync_warnings,omitempty"`
 }
 
+// DashboardView bundles dashboard rows and network nodes with one peer-data read.
+type DashboardView struct {
+	Rows         []DashboardRow
+	NetworkNodes []NetworkNode
+}
+
+// DashboardView returns dashboard rows and network nodes using a single peer-data read.
+func (rt *Runtime) DashboardView(localState map[string]*monitor.MonitorState, ownMonitors []*monitor.Monitor) (DashboardView, error) {
+	var view DashboardView
+	if rt == nil || !rt.Enabled() {
+		view.Rows = dashboardRowsLocal(localState, ownMonitors)
+		return view, nil
+	}
+	peerData, err := rt.store.GetAllPeerData()
+	if err != nil {
+		view.Rows = dashboardRowsLocal(localState, ownMonitors)
+		return view, err
+	}
+	view.Rows = rt.dashboardRowsWithPeerData(localState, ownMonitors, peerData)
+	view.NetworkNodes = rt.networkNodesWithPeerData(peerData, ownMonitors)
+	return view, nil
+}
+
 // DashboardRows returns local monitors plus peer and adopted rows for the dashboard.
 func (rt *Runtime) DashboardRows(localState map[string]*monitor.MonitorState, ownMonitors []*monitor.Monitor) ([]DashboardRow, error) {
+	if rt == nil || !rt.Enabled() {
+		return dashboardRowsLocal(localState, ownMonitors), nil
+	}
+	peerData, err := rt.store.GetAllPeerData()
+	if err != nil {
+		return dashboardRowsLocal(localState, ownMonitors), err
+	}
+	return rt.dashboardRowsWithPeerData(localState, ownMonitors, peerData), nil
+}
+
+func dashboardRowsLocal(localState map[string]*monitor.MonitorState, ownMonitors []*monitor.Monitor) []DashboardRow {
 	var rows []DashboardRow
 	for _, m := range ownMonitors {
 		st := localState[m.ID]
@@ -228,12 +263,13 @@ func (rt *Runtime) DashboardRows(localState map[string]*monitor.MonitorState, ow
 		fillRowMetrics(&row)
 		rows = append(rows, row)
 	}
+	return rows
+}
+
+func (rt *Runtime) dashboardRowsWithPeerData(localState map[string]*monitor.MonitorState, ownMonitors []*monitor.Monitor, peerData map[string]*storage.PeerData) []DashboardRow {
+	rows := dashboardRowsLocal(localState, ownMonitors)
 	if !rt.Enabled() {
-		return rows, nil
-	}
-	peerData, err := rt.store.GetAllPeerData()
-	if err != nil {
-		return rows, err
+		return rows
 	}
 	deadTimeout := time.Duration(rt.cfg.Network.DeadTimeout) * time.Second
 	now := time.Now()
@@ -286,7 +322,7 @@ func (rt *Runtime) DashboardRows(localState map[string]*monitor.MonitorState, ow
 		rows = append(rows, row)
 		seen[am.Monitor.ID] = struct{}{}
 	}
-	return rows, nil
+	return rows
 }
 
 func fillRowMetrics(row *DashboardRow) {
@@ -310,13 +346,20 @@ func fillRowMetrics(row *DashboardRow) {
 
 // NetworkNodes builds the network status node list.
 func (rt *Runtime) NetworkNodes() ([]NetworkNode, error) {
-	if !rt.Enabled() {
+	if rt == nil || !rt.Enabled() {
 		return []NetworkNode{}, nil
+	}
+	peerData, _ := rt.store.GetAllPeerData()
+	ownMonitors, _ := rt.store.GetMonitors()
+	return rt.networkNodesWithPeerData(peerData, ownMonitors), nil
+}
+
+func (rt *Runtime) networkNodesWithPeerData(peerData map[string]*storage.PeerData, ownMonitors []*monitor.Monitor) []NetworkNode {
+	if rt == nil || !rt.Enabled() {
+		return []NetworkNode{}
 	}
 	var nodes []NetworkNode
 	deadTimeout := time.Duration(rt.cfg.Network.DeadTimeout) * time.Second
-	peerData, _ := rt.store.GetAllPeerData()
-	ownMonitors, _ := rt.store.GetMonitors()
 
 	nodes = append(nodes, NetworkNode{
 		NodeID:        rt.cfg.Network.NodeID,
@@ -372,7 +415,7 @@ func (rt *Runtime) NetworkNodes() ([]NetworkNode, error) {
 			SyncWarnings:  pd.SyncWarnings,
 		})
 	}
-	return nodes, nil
+	return nodes
 }
 
 // HandleNetworkStatus serves GET /api/network/status.
@@ -432,4 +475,117 @@ func formatTimeAgo(t time.Time) string {
 		return "1 day ago"
 	}
 	return strconv.Itoa(days) + " days ago"
+}
+
+
+// ExportPayload is returned by GET /api/sync/export.
+type ExportPayload struct {
+	NodeID   string                           `json:"node_id"`
+	Monitors []*monitor.Monitor               `json:"monitors"`
+	State    map[string]*monitor.MonitorState `json:"state"`
+	Time     time.Time                        `json:"time"`
+}
+
+
+const syncTokenHeader = "X-Beacon-Sync-Token"
+
+// SyncTokenFromRequest reads a peer sync token from Bearer or X-Beacon-Sync-Token.
+func SyncTokenFromRequest(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	if h := strings.TrimSpace(r.Header.Get(syncTokenHeader)); h != "" {
+		return h
+	}
+	auth := r.Header.Get("Authorization")
+	if strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
+	}
+	return ""
+}
+
+// SyncTokenMatches reports whether the request carries the expected sync token.
+func SyncTokenMatches(r *http.Request, expected string) bool {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return false
+	}
+	got := SyncTokenFromRequest(r)
+	if got == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(got), []byte(expected)) == 1
+}
+
+func setOutboundSyncAuth(req *http.Request, cfg *config.Config) {
+	if cfg == nil || req == nil {
+		return
+	}
+	if token := strings.TrimSpace(cfg.Network.SyncToken); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+		return
+	}
+	pw := cfg.Auth.PasswordForBasicAuth()
+	if pw == "" {
+		log.Printf("[cluster] warning: no sync_token and no web password for outbound peer auth")
+	}
+	req.SetBasicAuth(cfg.Auth.Username, pw)
+}
+
+
+// ExportView is the monitor/state pair served to peers.
+type ExportView struct {
+	Monitors []*monitor.Monitor
+	State    map[string]*monitor.MonitorState
+}
+
+func buildExportView(cfg *config.Config, st *storage.Store) (ExportView, error) {
+	var view ExportView
+	snap, err := st.GetExportSnapshot()
+	if err != nil {
+		return view, err
+	}
+	view.Monitors = append(view.Monitors, snap.Monitors...)
+	view.State = snap.State
+	if view.State == nil {
+		view.State = make(map[string]*monitor.MonitorState)
+	}
+	if cfg == nil || !cfg.Network.Enabled || cfg.Network.NodeID == "" {
+		return view, nil
+	}
+	peerData, err := st.GetAllPeerData()
+	if err != nil {
+		return view, err
+	}
+	seen := make(map[string]struct{}, len(view.Monitors))
+	for _, m := range view.Monitors {
+		if m != nil {
+			seen[m.ID] = struct{}{}
+		}
+	}
+	now := time.Now()
+	for _, am := range adoptedMonitors(cfg, peerData, now) {
+		if am.Monitor == nil {
+			continue
+		}
+		if _, ok := seen[am.Monitor.ID]; ok {
+			continue
+		}
+		seen[am.Monitor.ID] = struct{}{}
+		copy := *am.Monitor
+		if copy.OwnerNodeID == "" {
+			copy.OwnerNodeID = am.OwnerNodeID
+		}
+		view.Monitors = append(view.Monitors, &copy)
+		if adopterSt, _ := st.GetState(am.Monitor.ID); adopterSt != nil {
+			view.State[am.Monitor.ID] = mergeMonitorState(view.State[am.Monitor.ID], adopterSt)
+		}
+		if pd := peerData[am.OwnerNodeID]; pd != nil {
+			if pst, ok := pd.State[am.Monitor.ID]; ok && pst != nil {
+				local := view.State[am.Monitor.ID]
+				view.State[am.Monitor.ID] = mergeMonitorState(local, pst)
+			}
+		}
+	}
+	return view, nil
 }

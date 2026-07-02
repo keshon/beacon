@@ -94,9 +94,7 @@
 {% endblock %}
 {% block scripts %}
 <script src="/static/beacon.js"></script>
-<script src="/static/notify-policy-ui.js"></script>
-<script src="/static/notify-receiver-policy-modal.js"></script>
-<script src="/static/notify-ui.js"></script>
+<script src="/static/notify.js"></script>
 <script>
     fetch('/api/config')
         .then((r) => r.json())

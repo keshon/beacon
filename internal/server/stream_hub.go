@@ -1,4 +1,4 @@
-package stream
+package server
 
 import (
 	"encoding/json"
@@ -10,19 +10,22 @@ import (
 	"github.com/keshon/beacon/internal/storage"
 )
 
-// Hub fans out check results to SSE subscribers.
-type Hub struct {
+const defaultClientBuf = 64
+
+// CheckStreamHub fans out check results to SSE subscribers.
+type CheckStreamHub struct {
 	mu      sync.Mutex
 	clients map[chan []byte]struct{}
 }
 
-func NewHub() *Hub {
-	return &Hub{clients: make(map[chan []byte]struct{})}
+// NewCheckStreamHub creates a new SSE hub for check results.
+func NewCheckStreamHub() *CheckStreamHub {
+	return &CheckStreamHub{clients: make(map[chan []byte]struct{})}
 }
 
-func (h *Hub) Register(buf int) (ch <-chan []byte, unregister func()) {
-	if buf < 4 {
-		buf = 4
+func (h *CheckStreamHub) Register(buf int) (ch <-chan []byte, unregister func()) {
+	if buf < defaultClientBuf {
+		buf = defaultClientBuf
 	}
 	c := make(chan []byte, buf)
 	h.mu.Lock()
@@ -36,7 +39,23 @@ func (h *Hub) Register(buf int) (ch <-chan []byte, unregister func()) {
 	}
 }
 
-func (h *Hub) BroadcastCheck(rec storage.CheckRecord, st *monitor.MonitorState) {
+func (h *CheckStreamHub) BroadcastCheck(rec storage.CheckRecord, st *monitor.MonitorState) {
+	h.broadcast(formatCheckEvent(rec.MonitorID, rec.Success, rec.Time, st))
+}
+
+func formatStateEvent(monitorID string, st *monitor.MonitorState) []byte {
+	if st == nil {
+		return nil
+	}
+	success := st.Status == monitor.StatusUp
+	t := st.LastCheck
+	if t.IsZero() {
+		t = time.Now()
+	}
+	return formatCheckEvent(monitorID, success, t, st)
+}
+
+func formatCheckEvent(monitorID string, success bool, at time.Time, st *monitor.MonitorState) []byte {
 	status := monitor.StatusUnknown
 	latencyMs := "—"
 	lastCheck := "—"
@@ -58,27 +77,35 @@ func (h *Hub) BroadcastCheck(rec storage.CheckRecord, st *monitor.MonitorState) 
 		LastCheck string `json:"last_check"`
 	}
 	payload, err := json.Marshal(wire{
-		MonitorID: rec.MonitorID,
-		Success:   rec.Success,
-		Time:      rec.Time.UTC().Format(time.RFC3339Nano),
+		MonitorID: monitorID,
+		Success:   success,
+		Time:      at.UTC().Format(time.RFC3339Nano),
 		Status:    status,
 		LatencyMs: latencyMs,
 		LastCheck: lastCheck,
 	})
 	if err != nil {
-		return
+		return nil
 	}
 	line := make([]byte, 0, len(payload)+8)
 	line = append(line, "data: "...)
 	line = append(line, payload...)
 	line = append(line, '\n', '\n')
+	return line
+}
 
+func (h *CheckStreamHub) broadcast(line []byte) {
+	if len(line) == 0 {
+		return
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for c := range h.clients {
 		select {
 		case c <- line:
 		default:
+			close(c)
+			delete(h.clients, c)
 		}
 	}
 }

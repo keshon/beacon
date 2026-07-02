@@ -126,6 +126,52 @@ func (h *Monitors) Uptime(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, out)
 }
 
+func (h *Monitors) UptimeBatch(w http.ResponseWriter, r *http.Request) {
+	raw := strings.TrimSpace(r.URL.Query().Get("ids"))
+	if raw == "" {
+		http.Error(w, "missing ids", http.StatusBadRequest)
+		return
+	}
+	ids := strings.Split(raw, ",")
+	if len(ids) > 500 {
+		http.Error(w, "too many ids", http.StatusBadRequest)
+		return
+	}
+	for i := range ids {
+		ids[i] = strings.TrimSpace(ids[i])
+	}
+
+	limit := 120
+	if q := r.URL.Query().Get("limit"); q != "" {
+		if n, err := strconv.Atoi(q); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	samplesByID, err := h.Store.GetUptimeSamplesBatch(ids, limit)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type point struct {
+		Time    string `json:"time"`
+		Success bool   `json:"success"`
+	}
+	out := make(map[string][]point, len(samplesByID))
+	for id, samples := range samplesByID {
+		pts := make([]point, 0, len(samples))
+		for _, rec := range samples {
+			pts = append(pts, point{
+				Time:    rec.Time.UTC().Format(time.RFC3339Nano),
+				Success: rec.Success,
+			})
+		}
+		out[id] = pts
+	}
+	httpx.JSON(w, out)
+}
+
 func writeMonitorError(w http.ResponseWriter, err error) {
 	if errors.Is(err, errInvalidJSON) {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)

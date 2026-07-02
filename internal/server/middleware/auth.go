@@ -62,15 +62,16 @@ func (a *Auth) CreateSession(username string) (sessionID, csrfToken string, err 
 }
 
 func (a *Auth) GetSession(sid string) *Session {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.pruneSessionsLocked()
+	a.mu.RLock()
 	s, ok := a.sessions[sid]
+	a.mu.RUnlock()
 	if !ok {
 		return nil
 	}
 	if time.Since(s.Created) > sessionTTL {
+		a.mu.Lock()
 		delete(a.sessions, sid)
+		a.mu.Unlock()
 		return nil
 	}
 	return &s
@@ -153,4 +154,62 @@ func denyAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/login", http.StatusFound)
+}
+
+const (
+	CSRFCookieName = "beacon_csrf"
+	csrfHeaderName = "X-CSRF-Token"
+)
+
+func (a *Auth) IssueCSRFCookie(w http.ResponseWriter, r *http.Request, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     CSRFCookieName,
+		Value:    token,
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,
+		Secure:   SessionCookieSecure(r),
+		MaxAge:   SessionMaxAge,
+	})
+}
+
+func readCSRFCookie(r *http.Request) string {
+	c, err := r.Cookie(CSRFCookieName)
+	if err != nil || c == nil {
+		return ""
+	}
+	return c.Value
+}
+
+func usesBasicAuth(r *http.Request) bool {
+	auth := r.Header.Get("Authorization")
+	return auth != "" && strings.HasPrefix(auth, "Basic ")
+}
+
+// CSRFMiddleware validates double-submit token for cookie-authenticated mutating API requests.
+func (a *Auth) CSRFMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if usesBasicAuth(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			switch r.Method {
+			case http.MethodGet, http.MethodHead, http.MethodOptions:
+				next.ServeHTTP(w, r)
+				return
+			}
+			if !strings.HasPrefix(r.URL.Path, "/api/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			cookieToken := readCSRFCookie(r)
+			headerToken := strings.TrimSpace(r.Header.Get(csrfHeaderName))
+			if cookieToken == "" || headerToken == "" ||
+				subtle.ConstantTimeCompare([]byte(cookieToken), []byte(headerToken)) != 1 {
+				http.Error(w, "invalid csrf token", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

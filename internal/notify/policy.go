@@ -181,13 +181,13 @@ func NewAlertDedup() *AlertDedup {
 	return &AlertDedup{last: make(map[string]time.Time)}
 }
 
-func alertDedupKey(monitorID, status string) string {
-	return monitorID + "\x00" + status
+func alertDedupKey(monitorID, status, receiverKey string) string {
+	return monitorID + "\x00" + status + "\x00" + receiverKey
 }
 
 // Allow reports whether an alert should be sent (false if duplicate within window).
-func (d *AlertDedup) Allow(monitorID, status string, window time.Duration) bool {
-	key := alertDedupKey(monitorID, status)
+func (d *AlertDedup) Allow(monitorID, status, receiverKey string, window time.Duration) bool {
+	key := alertDedupKey(monitorID, status, receiverKey)
 	now := time.Now()
 	d.mu.Lock()
 	defer d.mu.Unlock()

@@ -60,7 +60,11 @@ type Store struct {
 	eventsPath   string
 	configPath   string
 	peerPath     string
+
+	uptimeIdx map[string][]CheckRecord // per-monitor ring buffer, oldest first
 }
+
+const uptimeIndexLimit = 500
 
 func New(ctx context.Context, dataDir string) (*Store, error) {
 	monitorsPath := filepath.Join(dataDir, "monitors.json")
@@ -98,7 +102,7 @@ func New(ctx context.Context, dataDir string) (*Store, error) {
 		configDS.Close()
 		return nil, err
 	}
-	return &Store{
+	s := &Store{
 		monitorsDS:   monitorsDS,
 		stateDS:      stateDS,
 		eventsDS:     eventsDS,
@@ -109,7 +113,33 @@ func New(ctx context.Context, dataDir string) (*Store, error) {
 		eventsPath:   eventsPath,
 		configPath:   configPath,
 		peerPath:     peerPath,
-	}, nil
+		uptimeIdx:    make(map[string][]CheckRecord),
+	}
+	s.rebuildUptimeIndex()
+	return s, nil
+}
+
+func (s *Store) rebuildUptimeIndex() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.uptimeIdx = make(map[string][]CheckRecord)
+	var events []CheckRecord
+	ok, err := s.eventsDS.Get(keyEvents, &events)
+	if err != nil || !ok || events == nil {
+		return
+	}
+	for _, rec := range events {
+		s.indexUptimeRecordLocked(rec)
+	}
+}
+
+func (s *Store) indexUptimeRecordLocked(rec CheckRecord) {
+	buf := s.uptimeIdx[rec.MonitorID]
+	buf = append(buf, rec)
+	if len(buf) > uptimeIndexLimit {
+		buf = buf[len(buf)-uptimeIndexLimit:]
+	}
+	s.uptimeIdx[rec.MonitorID] = buf
 }
 
 func (s *Store) Close() error {
@@ -237,6 +267,7 @@ func (s *Store) DeleteMonitor(id string) error {
 			events = filtered
 		}
 	}
+	delete(s.uptimeIdx, id)
 	if err := flushJSON(s.monitorsPath, map[string]any{keyMonitors: m}); err != nil {
 		return err
 	}
@@ -317,6 +348,7 @@ func (s *Store) AppendCheckRecord(rec CheckRecord) error {
 	if err := s.eventsDS.Set(keyEvents, events); err != nil {
 		return err
 	}
+	s.indexUptimeRecordLocked(rec)
 	return flushJSON(s.eventsPath, map[string]any{keyEvents: events})
 }
 
@@ -352,22 +384,54 @@ func (s *Store) GetUptimeSamples(monitorID string, limit int) ([]CheckRecord, er
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var events []CheckRecord
-	ok, err := s.eventsDS.Get(keyEvents, &events)
-	if err != nil {
-		return nil, fmt.Errorf("read events: %w", err)
+	return s.uptimeSamplesLocked(monitorID, limit), nil
+}
+
+func (s *Store) uptimeSamplesLocked(monitorID string, limit int) []CheckRecord {
+	buf := s.uptimeIdx[monitorID]
+	if len(buf) == 0 {
+		return nil
 	}
-	if !ok || events == nil {
-		return nil, nil
+	if limit > len(buf) {
+		limit = len(buf)
 	}
-	out := make([]CheckRecord, 0, limit)
-	for i := len(events) - 1; i >= 0 && len(out) < limit; i-- {
-		if events[i].MonitorID == monitorID {
-			out = append(out, events[i])
+	start := len(buf) - limit
+	out := make([]CheckRecord, limit)
+	copy(out, buf[start:])
+	return out
+}
+
+// GetUptimeSamplesBatch returns the last limit check outcomes for each monitor ID, oldest first.
+// It scans the events log once and keeps up to limit records per ID.
+func (s *Store) GetUptimeSamplesBatch(monitorIDs []string, limit int) (map[string][]CheckRecord, error) {
+	if len(monitorIDs) == 0 {
+		return map[string][]CheckRecord{}, nil
+	}
+	if limit <= 0 {
+		limit = 120
+	}
+	const maxLimit = 500
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+
+	want := make(map[string]struct{}, len(monitorIDs))
+	for _, id := range monitorIDs {
+		if id == "" {
+			continue
 		}
+		want[id] = struct{}{}
 	}
-	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-		out[i], out[j] = out[j], out[i]
+	if len(want) == 0 {
+		return map[string][]CheckRecord{}, nil
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	out := make(map[string][]CheckRecord, len(want))
+	for id := range want {
+		out[id] = s.uptimeSamplesLocked(id, limit)
 	}
 	return out, nil
 }
@@ -646,6 +710,7 @@ func (s *Store) RecordCheckResult(rec CheckRecord, st *monitor.MonitorState, req
 	if err := s.stateDS.Set(keyState, state); err != nil {
 		return err
 	}
+	s.indexUptimeRecordLocked(rec)
 
 	if err := flushJSON(s.eventsPath, map[string]any{keyEvents: events}); err != nil {
 		return err

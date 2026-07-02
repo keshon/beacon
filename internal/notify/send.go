@@ -17,25 +17,71 @@ import (
 	"github.com/keshon/beacon/internal/netpolicy"
 )
 
+type Alert struct {
+	MonitorName string
+	Status      string
+	Message     string
+	Body        string // rendered template; empty falls back to default templates
+	Time        time.Time
+	Target      string
+	Type        string
+	StatusCode  int
+	Latency     time.Duration
+	FailCount   int
+}
+
+type Notifier interface {
+	Send(Alert) error
+}
+
+// AlertText returns the message body to send.
+func AlertText(a Alert) string {
+	if s := strings.TrimSpace(a.Body); s != "" {
+		return s
+	}
+	status := a.Status
+	if status != "recovered" {
+		status = "down"
+	}
+	return BuildAlertBody(ResolvedPolicy{Templates: DefaultTemplates()}, status, TemplateContextFromAlert(a))
+}
+
 // staggerDelay spaces real fan-out sends so a single monitor flip with several
 // recipients does not hit provider burst rate limits at once.
 const staggerDelay = 250 * time.Millisecond
 
-// SendAll delivers alert through every notifier sequentially, pausing briefly
-// between recipients. It returns the per-notifier errors in input order with
-// nil entries on success.
-func SendAll(notifiers []Notifier, a Alert) []error {
-	if len(notifiers) == 0 {
-		return nil
-	}
-	errs := make([]error, len(notifiers))
-	for i, n := range notifiers {
-		if i > 0 {
+// SendResolved delivers an alert through resolved receivers with stagger and per-receiver dedup.
+func SendResolved(monitorID, status string, isRepeat bool, receivers []ResolvedReceiver, base Alert, tplCtx TemplateContext, emailGuard *EmailSendGuard, dedup *AlertDedup, dedupWindow time.Duration, logf func(string, ...any)) {
+	for i, r := range receivers {
+		if r.Channel == ChannelEmail && emailGuard != nil && !emailGuard.Allow(monitorID, r.Key) {
+			if logf != nil {
+				logf("email cooldown skip [%s]", r.Key)
+			}
+			continue
+		}
+		if status == "down" && !ShouldSendDown(r.Policy, isRepeat, r.Channel) {
+			continue
+		}
+		if dedup != nil && ((status == "down" && isRepeat) || status == "recovered") {
+			if !dedup.Allow(monitorID, status, r.Key, dedupWindow) {
+				continue
+			}
+		}
+		alert := base
+		alert.Body = BuildAlertBody(r.Policy, status, tplCtx)
+		if err := r.Notifier.Send(alert); err != nil {
+			if logf != nil {
+				logf("notify error [%s]: %v", r.Key, err)
+			}
+			continue
+		}
+		if r.Channel == ChannelEmail && emailGuard != nil {
+			emailGuard.RecordSuccess(monitorID, r.Key)
+		}
+		if i+1 < len(receivers) {
 			time.Sleep(staggerDelay)
 		}
-		errs[i] = n.Send(a)
 	}
-	return errs
 }
 
 type TelegramNotifier struct {

@@ -16,6 +16,56 @@ import (
 
 const maxHTTPBodyBytes = 1 << 20 // 1 MiB
 
+type CheckResult struct {
+	MonitorID  string
+	Success    bool
+	StatusCode int
+	Latency    time.Duration
+	Error      string
+	Time       time.Time
+}
+
+// HTTPOptions holds optional HTTP check settings.
+type HTTPOptions struct {
+	Username      string `json:"username,omitempty"`
+	Password      string `json:"password,omitempty"`
+	Keyword       string `json:"keyword,omitempty"`
+	KeywordInvert bool   `json:"keyword_invert,omitempty"`
+}
+
+// Redacted returns a copy without password.
+func (o *HTTPOptions) Redacted() *HTTPOptions {
+	if o == nil {
+		return nil
+	}
+	c := *o
+	c.Password = ""
+	return &c
+}
+
+// MergeHTTPOptions applies patch semantics.
+func MergeHTTPOptions(existing, incoming *HTTPOptions) *HTTPOptions {
+	if incoming == nil {
+		return existing
+	}
+	out := HTTPOptions{}
+	if existing != nil {
+		out = *existing
+	}
+	if u := strings.TrimSpace(incoming.Username); u != "" {
+		out.Username = u
+	}
+	if incoming.Password != "" {
+		out.Password = incoming.Password
+	}
+	out.Keyword = strings.TrimSpace(incoming.Keyword)
+	out.KeywordInvert = incoming.KeywordInvert
+	if out.Username == "" && out.Password == "" && out.Keyword == "" && !out.KeywordInvert {
+		return nil
+	}
+	return &out
+}
+
 // HTTPCheck performs a GET request and optionally validates response body.
 func HTTPCheck(ctx context.Context, target string, timeout time.Duration, opts *HTTPOptions) CheckResult {
 	start := time.Now()
