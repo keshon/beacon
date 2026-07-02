@@ -44,7 +44,7 @@ type MessageTemplates struct {
 func DefaultMessageTemplates() MessageTemplates {
 	return MessageTemplates{
 		Down:      "DOWN\n{{message}}\nTime: {{time}}\nFrom: {{node}}\n{{name}}",
-		Recovered: "Service RECOVERED\n{{message}}\nTime: {{time}}\nFrom: {{node}}\n{{name}}",
+		Recovered: "RECOVERED\n{{message}}\nTime: {{time}}\nFrom: {{node}}\n{{name}}",
 	}
 }
 
@@ -348,7 +348,6 @@ func (c *Config) DefaultIntervalDuration() time.Duration {
 	return 30 * time.Second
 }
 
-
 // NodeDomain returns the hostname from SelfURL (e.g. beacon.example.com).
 func (n NetworkConfig) NodeDomain() string {
 	raw := strings.TrimSpace(n.SelfURL)
@@ -364,7 +363,6 @@ func (n NetworkConfig) NodeDomain() string {
 	}
 	return strings.TrimSpace(u.Hostname())
 }
-
 
 // MaskSecret returns a display-safe preview of a secret (first/last runes visible).
 func MaskSecret(s string) string {
