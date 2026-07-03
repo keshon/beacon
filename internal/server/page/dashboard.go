@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
+	"time"
 
 	"github.com/keshon/beacon/internal/cluster"
 	"github.com/keshon/beacon/internal/config"
@@ -23,6 +23,69 @@ type Dashboard struct {
 	TplDir  string
 }
 
+type dashboardRow struct {
+	Monitor      *monitor.Monitor
+	State        *monitor.MonitorState
+	LatencyMs    string
+	LastCheck    string
+	Status       string
+	SourceLabel  string
+	SourceNodeID string
+	IsPeer       bool
+	Adopted      bool
+	IntervalSec  int
+	NotifyJSON   string
+	HTTPJSON     string
+	Enabled      bool
+	ConfigJSON   string
+}
+
+func enrichDashboardRowFromMonitor(row *dashboardRow, m *monitor.Monitor) {
+	if row == nil || m == nil {
+		return
+	}
+	row.Enabled = m.Enabled
+	if m.Interval > 0 {
+		row.IntervalSec = int(m.Interval / time.Second)
+	}
+	notifyJSON := "{}"
+	if m.NotifyOverride != nil {
+		if buf, err := json.Marshal(m.NotifyOverride); err == nil {
+			notifyJSON = string(buf)
+		}
+	}
+	row.NotifyJSON = notifyJSON
+	httpJSON := "{}"
+	if m.HTTP != nil {
+		if buf, err := json.Marshal(m.HTTP.Redacted()); err == nil {
+			httpJSON = string(buf)
+		}
+	}
+	row.HTTPJSON = httpJSON
+	cfg := struct {
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		Type        string `json:"type"`
+		Target      string `json:"target"`
+		IntervalSec int    `json:"interval_sec"`
+		Enabled     bool   `json:"enabled"`
+		NotifyJSON  string `json:"notify_json"`
+		HTTPJSON    string `json:"http_json"`
+	}{
+		ID:          m.ID,
+		Name:        m.Name,
+		Type:        m.Type,
+		Target:      m.Target,
+		IntervalSec: row.IntervalSec,
+		Enabled:     m.Enabled,
+		NotifyJSON:  notifyJSON,
+		HTTPJSON:    httpJSON,
+	}
+	if buf, err := json.Marshal(cfg); err == nil {
+		row.ConfigJSON = string(buf)
+	}
+}
+
 func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	state, err := h.Store.GetAllState()
 	if err != nil {
@@ -38,17 +101,9 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	type dashboardRow struct {
-		Monitor      *monitor.Monitor
-		State        *monitor.MonitorState
-		LatencyMs    string
-		LastCheck    string
-		Status       string
-		SourceLabel  string
-		SourceNodeID string
-		IsPeer       bool
-		Adopted      bool
+	ownByID := make(map[string]*monitor.Monitor, len(ownMonitors))
+	for _, m := range ownMonitors {
+		ownByID[m.ID] = m
 	}
 
 	var rows []dashboardRow
@@ -90,7 +145,16 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	const uptimeLimit = 45
+	for i := range rows {
+		if rows[i].IsPeer || rows[i].Monitor == nil || rows[i].Monitor.ID == "" {
+			continue
+		}
+		if m, ok := ownByID[rows[i].Monitor.ID]; ok {
+			enrichDashboardRowFromMonitor(&rows[i], m)
+		}
+	}
+
+	const uptimeBootstrapLimit = 200
 	ids := make([]string, 0, len(rows))
 	for _, row := range rows {
 		if row.IsPeer || row.Monitor == nil || row.Monitor.ID == "" {
@@ -104,7 +168,7 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 	bootstrap := map[string][]point{}
 	if len(ids) > 0 {
-		samplesByID, err := h.Store.GetUptimeSamplesBatch(ids, uptimeLimit)
+		samplesByID, err := h.Store.GetUptimeSamplesBatch(ids, uptimeBootstrapLimit)
 		if err == nil && samplesByID != nil {
 			for id, samples := range samplesByID {
 				pts := make([]point, 0, len(samples))
@@ -123,9 +187,12 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		bootstrapJSON = b
 	}
 
-	view := strings.TrimSpace(r.URL.Query().Get("view"))
-	if view != "list" && view != "table" && view != "cards" {
-		view = "cards"
+	hasNetwork := false
+	if h.Cfg.Network.Enabled && networkNodes != nil {
+		switch nodes := networkNodes.(type) {
+		case []cluster.NetworkNode:
+			hasNetwork = len(nodes) > 0
+		}
 	}
 
 	_ = httpx.Render(w, h.TplDir, "dashboard/dashboard.html", pongo2.Context{
@@ -134,8 +201,8 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		"rows":            rows,
 		"networkNodes":    networkNodes,
 		"networkEnabled":  h.Cfg.Network.Enabled,
+		"hasNetwork":      hasNetwork,
 		"uptimeBootstrap": string(bootstrapJSON),
-		"dashboardView":   view,
 	})
 }
 

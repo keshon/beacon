@@ -1,7 +1,12 @@
 {# One table row for dashboard monitor list. Expects: row #}
-<tr class="{% if row.Status == 'up' %}dash-row-up{% elif row.Status == 'down' %}dash-row-down{% else %}dash-row-unknown{% endif %}"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
+<tr class="{% if row.Status == 'up' %}dash-row-up{% elif row.Status == 'down' %}dash-row-down{% else %}dash-row-unknown{% endif %}"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}"{% endif %}{% endif %}>
     <td>
-        <div class="monitor-title">{{ row.Monitor.Name }}</div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="monitor-title">{{ row.Monitor.Name }}</span>
+            {% if not row.IsPeer and not row.Enabled %}
+            <span class="badge rounded-pill badge-xs badge-paused">Paused</span>
+            {% endif %}
+        </div>
         <div class="monitor-meta">
             {% include "../monitors/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
             · <code class="text-secondary">{{ row.Monitor.Type }}</code>
@@ -37,4 +42,7 @@
     </td>
     <td class="text-body-secondary app-metric dashboard-latency">{{ row.LatencyMs }}</td>
     <td class="text-body-tertiary app-metric dashboard-lastcheck">{{ row.LastCheck }}</td>
+    <td class="text-end">
+        {% include "monitor_actions.html" with row=row %}
+    </td>
 </tr>

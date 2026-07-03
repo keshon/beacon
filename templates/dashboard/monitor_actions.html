@@ -1,0 +1,23 @@
+{# Kebab action menu for local monitors. Expects: row #}
+{% if not row.IsPeer %}
+<div class="app-action-menu" data-monitor-actions>
+    <button type="button" class="app-action-menu__trigger" aria-haspopup="true" aria-expanded="false" title="Monitor actions">
+        <i class="bi bi-three-dots" aria-hidden="true"></i>
+    </button>
+    <div class="app-action-menu__panel" hidden role="menu">
+        <button type="button" class="app-action-menu__item" role="menuitem" data-monitor-action="edit">
+            <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+        </button>
+        <button type="button" class="app-action-menu__item" role="menuitem" data-monitor-action="toggle" data-enabled="{% if row.Enabled %}true{% else %}false{% endif %}">
+            {% if row.Enabled %}
+            <i class="bi bi-pause" aria-hidden="true"></i> Pause
+            {% else %}
+            <i class="bi bi-play" aria-hidden="true"></i> Resume
+            {% endif %}
+        </button>
+        <button type="button" class="app-action-menu__item app-action-menu__item--danger" role="menuitem" data-monitor-action="delete">
+            <i class="bi bi-trash" aria-hidden="true"></i> Delete
+        </button>
+    </div>
+</div>
+{% endif %}

@@ -238,12 +238,12 @@ Requires sync to be enabled on the exporting node and a valid sync token (when c
 
 ## Web UI
 
-| Route        | Purpose                          |
-| ------------ | -------------------------------- |
-| `/dashboard` | Status overview and live updates |
-| `/monitors`  | Manage monitors                  |
-| `/settings`  | Configuration and sync           |
-| `/login`     | Authentication                   |
+| Route        | Purpose                                          |
+| ------------ | ------------------------------------------------ |
+| `/dashboard` | Status overview, live updates, and monitor CRUD  |
+| `/monitors`  | Redirects to `/dashboard` (legacy bookmark)      |
+| `/settings`  | Configuration and sync                           |
+| `/login`     | Authentication                                   |
 
 ## HTTP API
 

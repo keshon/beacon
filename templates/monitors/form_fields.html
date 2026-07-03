@@ -1,8 +1,8 @@
-{# Shared monitor fields for add and inline edit. Expects: mode = "add"|"edit"; in edit, loop variable m must be in scope. #}
+{# Shared monitor fields for add and inline edit. Expects: mode = "add"|"edit"|"modal"; in edit, loop variable m must be in scope. #}
 <div class="row g-2 align-items-end">
-    <div class="col-md-2">
+    <div class="col-md-3">
         <label class="form-label small">Name</label>
-        <input type="text" class="form-control" name="name" {% if mode == "add" %}placeholder="e.g. Google" required{% else %}placeholder="Name"{% endif %} />
+        <input type="text" class="form-control" name="name" {% if mode == "add" or mode == "modal" %}placeholder="e.g. Google" required{% else %}placeholder="Name"{% endif %} />
     </div>
     <div class="col-md-2">
         <label class="form-label small">Type</label>
@@ -13,26 +13,28 @@
     </div>
     <div class="col-md-4">
         <label class="form-label small">Target</label>
-        <input type="text" class="form-control" name="target" data-monitor-target {% if mode == "add" %}placeholder="https://example.com" required{% else %}placeholder="Target"{% endif %} />
+        <input type="text" class="form-control" name="target" data-monitor-target {% if mode == "add" or mode == "modal" %}placeholder="https://example.com" required{% else %}placeholder="Target"{% endif %} />
         <div class="form-text small text-danger d-none" data-monitor-target-error role="alert"></div>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-3">
         <label class="form-label small">Interval (sec)</label>
         <input type="number" class="form-control" name="interval" min="0" placeholder="default" />
     </div>
+    {% if mode == "add" %}
     <div class="col-md-2">
-        {% if mode == "add" %}
         <button type="submit" class="btn btn-primary w-100 d-grid">Add</button>
-        {% else %}
-        <button type="submit" class="btn btn-primary w-100 d-grid">Save</button>
-        {% endif %}
     </div>
+    {% elif mode == "edit" %}
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100 d-grid">Save</button>
+    </div>
+    {% endif %}
 </div>
 <div class="mt-3" data-http-options {% if mode == "edit" %}data-http-json="{{ m.HTTPJSON }}"{% endif %}>
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "modal" %}modalHttp{% elif mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
         <i class="bi bi-chevron-down"></i> HTTP options
     </button>
-    <div class="collapse mt-2" id="{% if mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
+    <div class="collapse mt-2" id="{% if mode == "modal" %}modalHttp{% elif mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
         <div class="row g-2">
             <div class="col-md-3">
                 <label class="form-label small">Basic auth user</label>
@@ -48,18 +50,18 @@
             </div>
             <div class="col-md-2 d-flex align-items-end">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="http_keyword_invert" id="http_keyword_invert_{% if mode == "add" %}add{% else %}{{ m.ID }}{% endif %}" data-http-keyword-invert />
-                    <label class="form-check-label small" for="http_keyword_invert_{% if mode == "add" %}add{% else %}{{ m.ID }}{% endif %}">Must not contain</label>
+                    <input class="form-check-input" type="checkbox" name="http_keyword_invert" id="http_keyword_invert_{% if mode == "modal" %}modal{% elif mode == "add" %}add{% else %}{{ m.ID }}{% endif %}" data-http-keyword-invert />
+                    <label class="form-check-label small" for="http_keyword_invert_{% if mode == "modal" %}modal{% elif mode == "add" %}add{% else %}{{ m.ID }}{% endif %}">Must not contain</label>
                 </div>
             </div>
         </div>
     </div>
 </div>
 <div class="mt-3">
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "modal" %}modalAdvanced{% elif mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}">
         <i class="bi bi-chevron-down"></i> Notification overrides
     </button>
-    <div class="collapse mt-2 notify-overrides" id="{% if mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}" {% if mode == "edit" %}data-notify-overrides="{{ m.NotifyJSON }}"{% else %}data-notify-overrides="{}"{% endif %}>
+    <div class="collapse mt-2 notify-overrides" id="{% if mode == "modal" %}modalAdvanced{% elif mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}" {% if mode == "edit" %}data-notify-overrides="{{ m.NotifyJSON }}"{% else %}data-notify-overrides="{}"{% endif %}>
         <p class="form-label small mb-3">
             Per channel: <strong>Global</strong> follows Settings, <strong>Off</strong> disables alerts, <strong>Custom</strong> uses a monitor-specific receiver list.
         </p>

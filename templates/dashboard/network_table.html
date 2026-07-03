@@ -1,0 +1,66 @@
+{# Network nodes table panel. Expects: networkNodes #}
+<section class="app-panel mb-3">
+    <div class="app-panel-header">
+        <span class="app-panel-title">Network</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover app-table mb-0">
+            <thead>
+                <tr>
+                    <th>Node</th>
+                    <th>URL</th>
+                    <th>Status</th>
+                    <th>Last seen</th>
+                    <th>Monitors</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for n in networkNodes %}
+                <tr>
+                    <td>
+                        {% if n.NodeID %}
+                        <code class="app-code">{{ n.NodeID }}</code>
+                        {% else %}
+                        <code class="app-code">{{ n.NodeIDShort }}</code>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="monitor-meta">
+                            <a href="{{ n.URL }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ n.URL }}</a>
+                        </div>
+                    </td>
+                    <td>
+                        {% if n.Status == 'self' %}
+                        <span class="badge rounded-pill badge-self"><span class="dot"></span>Self</span>
+                        {% elif n.Status == 'live' %}
+                        <span class="badge rounded-pill badge-live"><span class="dot"></span>Live</span>
+                        {% elif n.Status == 'dead' %}
+                        <span class="badge rounded-pill badge-dead"><span class="dot"></span>Dead</span>
+                        {% else %}
+                        <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-body-tertiary app-metric">{{ n.LastSeen }}</td>
+                    <td class="text-body-secondary app-metric">{{ n.MonitorsCount }}</td>
+                </tr>
+                {% if n.LastError %}
+                <tr>
+                    <td colspan="5" class="table-alert-cell">
+                        <i class="bi bi-exclamation-circle me-1"></i>{{ n.LastError }}
+                    </td>
+                </tr>
+                {% endif %}
+                {% if n.SyncWarnings %}
+                {% for w in n.SyncWarnings %}
+                <tr>
+                    <td colspan="5" class="table-alert-cell text-warning">
+                        <i class="bi bi-exclamation-triangle me-1"></i>{{ w }}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>

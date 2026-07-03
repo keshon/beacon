@@ -1,0 +1,44 @@
+{# Network node card tile. Expects: n #}
+<article class="dash-card dash-network-card">
+    <div class="dash-card-head">
+        <div class="dash-card-title-row">
+            <div class="dash-card-title">
+                {% if n.NodeID %}
+                <code class="app-code">{{ n.NodeID }}</code>
+                {% else %}
+                <code class="app-code">{{ n.NodeIDShort }}</code>
+                {% endif %}
+            </div>
+            <div class="dashboard-status">
+                {% if n.Status == 'self' %}
+                <span class="badge rounded-pill badge-self"><span class="dot"></span>Self</span>
+                {% elif n.Status == 'live' %}
+                <span class="badge rounded-pill badge-live"><span class="dot"></span>Live</span>
+                {% elif n.Status == 'dead' %}
+                <span class="badge rounded-pill badge-dead"><span class="dot"></span>Dead</span>
+                {% else %}
+                <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="monitor-meta dash-card-target text-truncate">
+            <a href="{{ n.URL }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ n.URL }}</a>
+        </div>
+    </div>
+    <div class="dash-card-meta-row">
+        <span class="text-body-tertiary app-metric">Last seen {{ n.LastSeen }}</span>
+        <span class="text-body-secondary app-metric">{{ n.MonitorsCount }} monitor{% if n.MonitorsCount != 1 %}s{% endif %}</span>
+    </div>
+    {% if n.LastError %}
+    <div class="small text-danger">
+        <i class="bi bi-exclamation-circle me-1"></i>{{ n.LastError }}
+    </div>
+    {% endif %}
+    {% if n.SyncWarnings %}
+    {% for w in n.SyncWarnings %}
+    <div class="small text-warning">
+        <i class="bi bi-exclamation-triangle me-1"></i>{{ w }}
+    </div>
+    {% endfor %}
+    {% endif %}
+</article>

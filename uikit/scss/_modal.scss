@@ -64,12 +64,67 @@ html[data-bs-theme="light"] {
   animation: beacon-modal-backdrop-in 0.2s var(--app-easing-standard);
 }
 
+.beacon-modal--wide {
+  --app-modal-max-width: 56rem;
+
+  .beacon-modal__dialog {
+    max-width: 56rem;
+  }
+}
+
+.beacon-modal--confirm {
+  --app-modal-max-width: 24rem;
+}
+
+.beacon-modal--confirm .beacon-modal__body {
+  padding-top: 0.625rem;
+}
+
+// Scrollport wrapper — pseudo-element fades stay fixed while .beacon-modal__body scrolls.
+.beacon-modal__scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1.5rem;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  &::before {
+    top: 0;
+    background: linear-gradient(180deg, var(--app-surface-panel) 0%, transparent 100%);
+  }
+
+  &::after {
+    bottom: 0;
+    background: linear-gradient(0deg, var(--app-surface-panel) 0%, transparent 100%);
+  }
+}
+
+.beacon-modal__message {
+  margin: 0;
+  font-size: var(--app-text-secondary);
+  line-height: var(--app-leading-cozy);
+  color: var(--bs-body-color);
+}
+
 .beacon-modal__dialog {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-height: 0;
   max-width: var(--app-modal-max-width);
   max-height: min(90vh, 100%);
   border-radius: var(--app-modal-radius);
@@ -88,8 +143,8 @@ html[data-bs-theme="light"] {
   flex-shrink: 0;
   min-height: 2.75rem;
   padding: 0 0.75rem;
-  border-bottom: 0.0625rem solid var(--c-border);
-  background: var(--app-panel-header-bg);
+  // border-bottom: 0.0625rem solid var(--c-border);
+  // background: var(--app-panel-header-bg);
 }
 
 .beacon-modal__title {
@@ -152,12 +207,14 @@ html[data-bs-theme="light"] {
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.625rem 0.75rem;
-  border-top: 0.0625rem solid var(--c-border);
-  background: var(--app-surface-panel);
+  // border-top: 0.0625rem solid var(--c-border);
+  // background: var(--app-surface-panel);
 }
 
+html.beacon-modal-open,
 body.beacon-modal-open {
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 @media (max-width: 575.98px) {

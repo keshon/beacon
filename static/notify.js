@@ -345,6 +345,7 @@
                     '</button>' +
                 '</header>' +
 
+                '<div class="beacon-modal__scroll">' +
                 '<div class="beacon-modal__body" data-receiver-policy-form>' +
                     '<p class="beacon-modal__intro">' +
                         'Empty fields inherit global defaults from Settings → Notifications. ' +
@@ -427,6 +428,7 @@
                         '</div></div>' +
                     '</div>' +
                 '</div>' +
+                '</div>' +
 
                 '<footer class="beacon-modal__footer">' +
                     '<button type="button" class="btn btn-outline-secondary" data-beacon-modal-close>' +
@@ -469,7 +471,12 @@
         if (!modalEl) return;
         modalEl.hidden = true;
         modalEl.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('beacon-modal-open');
+        if (window.Beacon && window.Beacon.modal && window.Beacon.modal.unlockScroll) {
+            window.Beacon.modal.unlockScroll();
+        } else {
+            document.documentElement.classList.remove('beacon-modal-open');
+            document.body.classList.remove('beacon-modal-open');
+        }
         if (lastActiveElement && typeof lastActiveElement.focus === 'function') {
             lastActiveElement.focus();
         }
@@ -480,7 +487,12 @@
         lastActiveElement = document.activeElement;
         modalEl.hidden = false;
         modalEl.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('beacon-modal-open');
+        if (window.Beacon && window.Beacon.modal && window.Beacon.modal.lockScroll) {
+            window.Beacon.modal.lockScroll();
+        } else {
+            document.documentElement.classList.add('beacon-modal-open');
+            document.body.classList.add('beacon-modal-open');
+        }
         var dialog = modalEl.querySelector('.beacon-modal__dialog');
         if (dialog) {
             dialog.focus();

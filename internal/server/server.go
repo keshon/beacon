@@ -71,7 +71,7 @@ func (s *Server) Routes() http.Handler {
 	dashboard := &page.Dashboard{Store: d.Store, Cfg: d.Cfg, Cluster: d.Cluster, TplDir: d.TplDir}
 	mux.HandleFunc("GET /dashboard", dashboard.Serve)
 
-	monitorsPage := &page.Monitors{Store: d.Store, TplDir: d.TplDir}
+	monitorsPage := &page.Monitors{TplDir: d.TplDir}
 	mux.HandleFunc("GET /monitors", monitorsPage.Serve)
 
 	settingsPage := &page.Settings{TplDir: d.TplDir}

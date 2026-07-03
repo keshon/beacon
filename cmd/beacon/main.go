@@ -186,18 +186,25 @@ func main() {
 	<-sigCh
 	log.Println("shutting down...")
 
-	sch.Stop()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	httpDone := make(chan struct{})
+	go func() {
+		defer close(httpDone)
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			log.Printf("http shutdown: %v", err)
+		}
+	}()
+
 	cancel()
+	sch.Stop()
 	clusterWG.Wait()
 
 	close(alertQueue)
 	alertWG.Wait()
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
-	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		log.Printf("http shutdown: %v", err)
-	}
+	<-httpDone
 
 	log.Println("done")
 }

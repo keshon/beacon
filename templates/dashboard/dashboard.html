@@ -5,10 +5,10 @@
     <div class="app-page-toolbar anim-fadeup">
         <div class="app-page-toolbar-start">
             <h1 class="app-page-title mb-0">Dashboard</h1>
-            <p class="app-page-subtitle mb-0 d-none d-md-block">Live status · cards, list, or table</p>
+            <p class="app-page-subtitle mb-0 d-none d-md-block">Live status · manage monitors</p>
         </div>
         <div class="app-page-toolbar-actions">
-            {% if rows %}
+            {% if rows or hasNetwork %}
             <div class="btn-group dashboard-view-toggle" role="group" aria-label="Dashboard layout">
                 <button type="button" class="btn btn-sm btn-outline-secondary dashboard-view-btn" data-dashboard-view="cards" title="Cards">
                     <i class="bi bi-grid-3x2-gap"></i><span class="d-none d-sm-inline ms-1">Cards</span>
@@ -21,86 +21,74 @@
                 </button>
             </div>
             {% endif %}
-            <a href="/monitors" class="btn btn-sm btn-primary">
+            <button type="button" class="btn btn-sm btn-primary" data-monitor-add>
                 <i class="bi bi-plus-lg"></i><span class="d-none d-sm-inline ms-1">Add monitor</span>
-            </a>
+            </button>
         </div>
     </div>
 
-    {% if networkEnabled and networkNodes %}
-    <section class="app-panel anim-fadeup anim-delay-1 mb-3">
-        <div class="app-panel-header">
-            <span class="app-panel-title">Network</span>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover app-table mb-0">
-                <thead>
-                    <tr>
-                        <th>Node</th>
-                        <th>URL</th>
-                        <th>Status</th>
-                        <th>Last seen</th>
-                        <th>Monitors</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for n in networkNodes %}
-                    <tr>
-                        <td><code class="app-code">{{ n.NodeID }}</code></td>
-                        <td>
-                            <div class="monitor-meta">
-                                <a href="{{ n.URL }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ n.URL }}</a>
-                            </div>
-                        </td>
-                        <td>
-                            {% if n.Status == 'self' %}
-                            <span class="badge rounded-pill badge-self"><span class="dot"></span>Self</span>
-                            {% elif n.Status == 'live' %}
-                            <span class="badge rounded-pill badge-live"><span class="dot"></span>Live</span>
-                            {% elif n.Status == 'dead' %}
-                            <span class="badge rounded-pill badge-dead"><span class="dot"></span>Dead</span>
-                            {% else %}
-                            <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-body-tertiary app-metric">{{ n.LastSeen }}</td>
-                        <td class="text-body-secondary app-metric">{{ n.MonitorsCount }}</td>
-                    </tr>
-                    {% if n.LastError %}
-                    <tr>
-                        <td colspan="5" class="table-alert-cell">
-                            <i class="bi bi-exclamation-circle me-1"></i>{{ n.LastError }}
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
-    {% endif %}
-
-    {% if rows %}
-    <div id="dashboardViews" class="dashboard-views anim-fadeup anim-delay-2" data-initial-view="{{ dashboardView }}">
-        {% if dashboardView == "cards" %}
+    {% if rows or hasNetwork %}
+    <div id="dashboardViews" class="dashboard-views anim-fadeup anim-delay-1">
         <div class="dashboard-view dashboard-view-cards" data-dashboard-view-panel="cards">
-            <div class="dash-card-grid">
-                {% for row in rows %}
-                {% include "card.html" with row=row %}
-                {% endfor %}
-            </div>
+            {% if networkEnabled and hasNetwork %}
+            <section class="mb-3">
+                <div class="app-panel-header px-0 pt-0 mb-2 border-0 bg-transparent">
+                    <span class="app-panel-title">Network</span>
+                </div>
+                <div class="dash-card-grid">
+                    {% for n in networkNodes %}
+                    {% include "network_card.html" with n=n %}
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+            {% if rows %}
+            <section>
+                <div class="app-panel-header px-0 pt-0 mb-2 border-0 bg-transparent">
+                    <span class="app-panel-title">Monitors</span>
+                </div>
+                <div class="dash-card-grid">
+                    {% for row in rows %}
+                    {% include "card.html" with row=row %}
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
         </div>
-        {% elif dashboardView == "list" %}
+
         <div class="dashboard-view dashboard-view-list" data-dashboard-view-panel="list">
-            <div class="dash-list">
-                {% for row in rows %}
-                {% include "list_row.html" with row=row %}
-                {% endfor %}
-            </div>
+            {% if networkEnabled and hasNetwork %}
+            <section class="mb-3">
+                <div class="app-panel-header px-0 pt-0 mb-2 border-0 bg-transparent">
+                    <span class="app-panel-title">Network</span>
+                </div>
+                <div class="dash-list">
+                    {% for n in networkNodes %}
+                    {% include "network_list_row.html" with n=n %}
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+            {% if rows %}
+            <section>
+                <div class="app-panel-header px-0 pt-0 mb-2 border-0 bg-transparent">
+                    <span class="app-panel-title">Monitors</span>
+                </div>
+                <div class="dash-list">
+                    {% for row in rows %}
+                    {% include "list_row.html" with row=row %}
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
         </div>
-        {% else %}
+
         <div class="dashboard-view dashboard-view-table" data-dashboard-view-panel="table">
-            <section class="app-panel">
+            {% if networkEnabled and hasNetwork %}
+            {% include "network_table.html" with networkNodes=networkNodes %}
+            {% endif %}
+            {% if rows %}
+            <section class="app-panel{% if networkEnabled and hasNetwork %} mb-0{% endif %}">
                 <div class="app-panel-header">
                     <span class="app-panel-title">Monitors</span>
                 </div>
@@ -114,6 +102,7 @@
                                 <th>Status</th>
                                 <th>Latency</th>
                                 <th>Last check</th>
+                                <th class="text-end" style="width: 3rem;"><span class="visually-hidden">Actions</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -124,145 +113,45 @@
                     </table>
                 </div>
             </section>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
     {% else %}
-    <div class="app-panel empty-panel anim-fadeup anim-delay-2">
+    <div class="app-panel empty-panel anim-fadeup anim-delay-1">
         <div class="empty-state py-5">
             <div class="empty-icon"><i class="bi bi-activity"></i></div>
-            <p>No monitors yet. <a href="/monitors">Add one</a> to get started.</p>
+            <p>No monitors yet. <button type="button" class="btn btn-link p-0 align-baseline" data-monitor-add>Add one</button> to get started.</p>
         </div>
     </div>
     {% endif %}
 </div>
+
+<div class="beacon-modal beacon-modal--wide" id="monitorModal" hidden role="dialog" aria-modal="true" aria-labelledby="monitorModalTitle">
+    <button type="button" class="beacon-modal__backdrop" data-beacon-modal-close aria-label="Close dialog"></button>
+    <div class="beacon-modal__dialog" tabindex="-1">
+        <header class="beacon-modal__header">
+            <h2 class="beacon-modal__title" id="monitorModalTitle">Add monitor</h2>
+            <button type="button" class="beacon-modal__close" data-beacon-modal-close aria-label="Close">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </header>
+        <div class="beacon-modal__scroll">
+            <div class="beacon-modal__body">
+                <form id="monitorModalForm">
+                    {% include "../monitors/form_fields.html" with mode="modal" %}
+                </form>
+            </div>
+        </div>
+        <footer class="beacon-modal__footer">
+            <button type="button" class="btn btn-outline-secondary" data-beacon-modal-close>Cancel</button>
+            <button type="submit" class="btn btn-primary" form="monitorModalForm" id="monitorModalSave">Save</button>
+        </footer>
+    </div>
+</div>
 {% endblock %}
 {% block scripts %}
-<script>
-    (function () {
-        var MAX = 45;
-        var BOOTSTRAP = {};
-        try {
-            BOOTSTRAP = {{ uptimeBootstrap|safe }};
-        } catch (e) {
-            BOOTSTRAP = {};
-        }
-        function barEl(ok) {
-            var d = document.createElement("span");
-            d.className = "uptime-seg " + (ok ? "uptime-seg-up" : "uptime-seg-down");
-            d.setAttribute("aria-hidden", "true");
-            return d;
-        }
-        function statusBadgeHtml(status) {
-            var labels = { up: "Up", down: "Down", unknown: "Unknown" };
-            var classes = { up: "badge-up", down: "badge-down", unknown: "badge-unknown" };
-            var s = status && classes[status] ? status : "unknown";
-            return (
-                '<span class="badge rounded-pill ' +
-                classes[s] +
-                '"><span class="dot"></span>' +
-                (labels[s] || labels.unknown) +
-                "</span>"
-            );
-        }
-        function trim(strip) {
-            while (strip.children.length > MAX) {
-                strip.removeChild(strip.firstChild);
-            }
-        }
-        function render(strip, points) {
-            strip.textContent = "";
-            for (var i = 0; i < points.length; i++) {
-                strip.appendChild(barEl(points[i].success));
-            }
-            trim(strip);
-        }
-        function updateRowFromSSE(data) {
-            if (!data.monitor_id) return;
-            document.querySelectorAll('[data-dashboard-monitor="' + data.monitor_id + '"]').forEach(function (root) {
-                var lat = root.querySelector(".dashboard-latency");
-                var lc = root.querySelector(".dashboard-lastcheck");
-                var stCell = root.querySelector(".dashboard-status");
-                if (lat && data.latency_ms != null) lat.textContent = data.latency_ms;
-                if (lc && data.last_check != null) lc.textContent = data.last_check;
-                if (stCell && data.status) stCell.innerHTML = statusBadgeHtml(data.status);
-                var strip = root.querySelector('.uptime-strip[data-monitor-id="' + data.monitor_id + '"]');
-                if (strip) {
-                    strip.appendChild(barEl(!!data.success));
-                    trim(strip);
-                }
-            });
-        }
-        var retryMs = 1000;
-        function connectSSE() {
-            var es = new EventSource("/api/stream/checks");
-            es.onmessage = function (ev) {
-                retryMs = 1000;
-                try {
-                    var data = JSON.parse(ev.data);
-                    updateRowFromSSE(data);
-                } catch (e) {}
-            };
-            es.onerror = function () {
-                es.close();
-                setTimeout(connectSSE, retryMs);
-                retryMs = Math.min(retryMs * 2, 30000);
-            };
-        }
-        connectSSE();
-
-        var strips = document.querySelectorAll(".uptime-strip[data-monitor-id]");
-        if (strips.length) {
-            var seen = Object.create(null);
-            Array.prototype.forEach.call(strips, function (strip) {
-                var id = strip.getAttribute("data-monitor-id");
-                if (!id || seen[id]) return;
-                seen[id] = true;
-                var pts = BOOTSTRAP && BOOTSTRAP[id];
-                if (!pts || !pts.length) return;
-                document.querySelectorAll('.uptime-strip[data-monitor-id="' + id + '"]').forEach(function (s) {
-                    render(s, pts);
-                });
-            });
-        }
-
-        if (!document.getElementById("dashboardViews")) return;
-
-        var storageKey = "beaconDashboardView";
-        var buttons = document.querySelectorAll(".dashboard-view-btn");
-        if (!buttons.length) return;
-
-        function setView(mode) {
-            if (mode === "grid") mode = "list";
-            if (mode !== "cards" && mode !== "list" && mode !== "table") mode = "cards";
-            try {
-                localStorage.setItem(storageKey, mode);
-            } catch (e) {}
-            var url = new URL(window.location.href);
-            url.searchParams.set("view", mode);
-            window.location.href = url.toString();
-        }
-
-        var initial = document.getElementById("dashboardViews").getAttribute("data-initial-view");
-        if (initial !== "list" && initial !== "table" && initial !== "cards") {
-            initial = "cards";
-            try {
-                var saved = localStorage.getItem(storageKey);
-                if (saved === "grid") saved = "list";
-                if (saved === "list" || saved === "table" || saved === "cards") initial = saved;
-            } catch (e) {}
-            if (initial !== "cards") {
-                setView(initial);
-                return;
-            }
-        }
-        document.documentElement.setAttribute("data-dashboard-view", initial);
-
-        buttons.forEach(function (btn) {
-            btn.addEventListener("click", function () {
-                setView(btn.getAttribute("data-dashboard-view"));
-            });
-        });
-    })();
-</script>
+<script type="application/json" id="dashboard-uptime-bootstrap">{{ uptimeBootstrap|safe }}</script>
+<script src="/static/notify.js"></script>
+<script src="/static/monitors.js"></script>
+<script src="/static/dashboard.js"></script>
 {% endblock %}

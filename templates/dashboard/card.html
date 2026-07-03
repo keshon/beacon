@@ -1,16 +1,24 @@
 {# Card grid tile for dashboard. Expects: row #}
-<article class="dash-card {% if row.Status == 'up' %}dash-card-up{% elif row.Status == 'down' %}dash-card-down{% else %}dash-card-unknown{% endif %}"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% endif %}>
+<article class="dash-card {% if not row.IsPeer and not row.Enabled %}dash-card-paused {% endif %}{% if row.Status == 'up' %}dash-card-up{% elif row.Status == 'down' %}dash-card-down{% else %}dash-card-unknown{% endif %}"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}"{% endif %}{% endif %}>
     <div class="dash-card-head">
         <div class="dash-card-title-row">
             <div class="dash-card-title monitor-title">{{ row.Monitor.Name }}</div>
-            <div class="dashboard-status">
-                {% if row.Status == 'up' %}
-                <span class="badge rounded-pill badge-up"><span class="dot"></span>Up</span>
-                {% elif row.Status == 'down' %}
-                <span class="badge rounded-pill badge-down"><span class="dot"></span>Down</span>
-                {% else %}
-                <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
+            <div class="dash-card-title-actions">
+                {% if not row.IsPeer and not row.Enabled %}
+                <div>
+                    <span class="badge rounded-pill badge-paused"><i class="bi bi-pause" aria-hidden="true"></i>Paused</span>
+                </div>
                 {% endif %}
+                <div class="dashboard-status">
+                    {% if row.Status == 'up' %}
+                    <span class="badge rounded-pill badge-up"><span class="dot"></span>Up</span>
+                    {% elif row.Status == 'down' %}
+                    <span class="badge rounded-pill badge-down"><span class="dot"></span>Down</span>
+                    {% else %}
+                    <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
+                    {% endif %}
+                </div>
+                {% include "monitor_actions.html" with row=row %}
             </div>
         </div>
         <div class="monitor-meta dash-card-target text-truncate">
@@ -32,7 +40,7 @@
         <span class="text-body-tertiary app-metric" title="Check history is recorded on the peer node">—</span>
         {% else %}
         <div
-            class="uptime-strip"
+            class="uptime-strip uptime-strip--fill"
             data-monitor-id="{{ row.Monitor.ID }}"
             role="img"
             aria-label="Recent check results for this monitor"
