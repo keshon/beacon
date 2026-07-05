@@ -37,7 +37,7 @@
                 </div>
                 <div class="dash-card-grid">
                     {% for n in networkNodes %}
-                    {% include "network_card.html" with n=n %}
+                    {% include "network/card.html" with n=n %}
                     {% endfor %}
                 </div>
             </section>
@@ -49,7 +49,7 @@
                 </div>
                 <div class="dash-card-grid">
                     {% for row in rows %}
-                    {% include "card.html" with row=row %}
+                    {% include "monitor/card.html" with row=row %}
                     {% endfor %}
                 </div>
             </section>
@@ -64,7 +64,7 @@
                 </div>
                 <div class="dash-list">
                     {% for n in networkNodes %}
-                    {% include "network_list_row.html" with n=n %}
+                    {% include "network/list_row.html" with n=n %}
                     {% endfor %}
                 </div>
             </section>
@@ -76,7 +76,7 @@
                 </div>
                 <div class="dash-list">
                     {% for row in rows %}
-                    {% include "list_row.html" with row=row %}
+                    {% include "monitor/list_row.html" with row=row %}
                     {% endfor %}
                 </div>
             </section>
@@ -85,7 +85,7 @@
 
         <div class="dashboard-view dashboard-view-table" data-dashboard-view-panel="table">
             {% if networkEnabled and hasNetwork %}
-            {% include "network_table.html" with networkNodes=networkNodes %}
+            {% include "network/table.html" with networkNodes=networkNodes %}
             {% endif %}
             {% if rows %}
             <section class="app-panel{% if networkEnabled and hasNetwork %} mb-0{% endif %}">
@@ -107,7 +107,7 @@
                         </thead>
                         <tbody>
                             {% for row in rows %}
-                            {% include "table_row.html" with row=row %}
+                            {% include "monitor/table_row.html" with row=row %}
                             {% endfor %}
                         </tbody>
                     </table>
@@ -138,7 +138,7 @@
         <div class="beacon-modal__scroll">
             <div class="beacon-modal__body">
                 <form id="monitorModalForm">
-                    {% include "../monitors/form_fields.html" with mode="modal" %}
+                    {% include "/monitor/settings.html" with mode="modal" %}
                 </form>
             </div>
         </div>
@@ -151,7 +151,7 @@
 {% endblock %}
 {% block scripts %}
 <script type="application/json" id="dashboard-uptime-bootstrap">{{ uptimeBootstrap|safe }}</script>
-<script src="/static/notify.js"></script>
-<script src="/static/monitors.js"></script>
-<script src="/static/dashboard.js"></script>
+<script src="/static/js/notify.js"></script>
+<script src="/static/js/monitors.js"></script>
+<script src="/static/js/dashboard.js"></script>
 {% endblock %}

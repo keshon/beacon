@@ -331,7 +331,7 @@
                 apply(v);
                 try {
                     localStorage.setItem('uiFontSize', v);
-                } catch (e) {}
+                } catch (e) { }
             });
 
             reset.addEventListener('click', function () {
@@ -340,7 +340,7 @@
                 apply(v);
                 try {
                     localStorage.setItem('uiFontSize', v);
-                } catch (e) {}
+                } catch (e) { }
             });
         })();
 
@@ -370,7 +370,7 @@
                 try {
                     localStorage.setItem('beaconColorizeUp', up.checked ? '1' : '0');
                     localStorage.setItem('beaconColorizeDown', down.checked ? '1' : '0');
-                } catch (e) {}
+                } catch (e) { }
                 apply();
             }
 

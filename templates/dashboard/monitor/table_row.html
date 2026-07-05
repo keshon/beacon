@@ -1,5 +1,5 @@
 {# One table row for dashboard monitor list. Expects: row #}
-<tr class="{% if row.Status == 'up' %}dash-row-up{% elif row.Status == 'down' %}dash-row-down{% else %}dash-row-unknown{% endif %}"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}"{% endif %}{% endif %}>
+<tr class="{% if row.Status == 'up' %}dash-row-up{% elif row.Status == 'down' %}dash-row-down{% else %}dash-row-unknown{% endif %}" {% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}" {% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}" {% endif %}{% endif %}>
     <td>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="monitor-title">{{ row.Monitor.Name }}</span>
@@ -8,7 +8,7 @@
             {% endif %}
         </div>
         <div class="monitor-meta">
-            {% include "../monitors/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
+            {% include "./shared/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
             · <code class="text-secondary">{{ row.Monitor.Type }}</code>
         </div>
     </td>
@@ -23,12 +23,7 @@
         {% if row.IsPeer %}
         <span class="text-body-tertiary app-metric" title="Check history is recorded on the peer node">—</span>
         {% else %}
-        <div
-            class="uptime-strip"
-            data-monitor-id="{{ row.Monitor.ID }}"
-            role="img"
-            aria-label="Recent check results for this monitor"
-        ></div>
+        <div class="uptime-strip" data-monitor-id="{{ row.Monitor.ID }}" role="img" aria-label="Recent check results for this monitor"></div>
         {% endif %}
     </td>
     <td class="dashboard-status">
@@ -43,6 +38,6 @@
     <td class="text-body-secondary app-metric dashboard-latency">{{ row.LatencyMs }}</td>
     <td class="text-body-tertiary app-metric dashboard-lastcheck">{{ row.LastCheck }}</td>
     <td class="text-end">
-        {% include "monitor_actions.html" with row=row %}
+        {% include "./shared/actions.html" with row=row %}
     </td>
 </tr>

@@ -1,5 +1,5 @@
 {# Card grid tile for dashboard. Expects: row #}
-<article class="dash-card {% if not row.IsPeer and not row.Enabled %}dash-card-paused {% endif %}{% if row.Status == 'up' %}dash-card-up{% elif row.Status == 'down' %}dash-card-down{% else %}dash-card-unknown{% endif %}"{% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}"{% endif %}{% endif %}>
+<article class="dash-card {% if not row.IsPeer and not row.Enabled %}dash-card-paused {% endif %}{% if row.Status == 'up' %}dash-card-up{% elif row.Status == 'down' %}dash-card-down{% else %}dash-card-unknown{% endif %}" {% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}" {% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}" {% endif %}{% endif %}>
     <div class="dash-card-head">
         <div class="dash-card-title-row">
             <div class="dash-card-title monitor-title">{{ row.Monitor.Name }}</div>
@@ -18,11 +18,11 @@
                     <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
                     {% endif %}
                 </div>
-                {% include "monitor_actions.html" with row=row %}
+                {% include "./shared/actions.html" with row=row %}
             </div>
         </div>
         <div class="monitor-meta dash-card-target text-truncate">
-            {% include "../monitors/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
+            {% include "./shared/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
             <span class="text-body-tertiary">·</span> <code class="text-secondary">{{ row.Monitor.Type }}</code>
         </div>
     </div>
@@ -39,12 +39,7 @@
         {% if row.IsPeer %}
         <span class="text-body-tertiary app-metric" title="Check history is recorded on the peer node">—</span>
         {% else %}
-        <div
-            class="uptime-strip uptime-strip--fill"
-            data-monitor-id="{{ row.Monitor.ID }}"
-            role="img"
-            aria-label="Recent check results for this monitor"
-        ></div>
+        <div class="uptime-strip uptime-strip--fill" data-monitor-id="{{ row.Monitor.ID }}" role="img" aria-label="Recent check results for this monitor"></div>
         {% endif %}
     </div>
 </article>
