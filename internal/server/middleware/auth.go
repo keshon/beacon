@@ -102,7 +102,7 @@ func SessionCookieSecure(r *http.Request) bool {
 	return false
 }
 
-func (a *Auth) Middleware(username string, checkPassword func(user, pass string) bool, syncToken func() string) func(http.Handler) http.Handler {
+func (a *Auth) Middleware(username func() string, checkPassword func(user, pass string) bool, syncToken func() string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/login" || r.URL.Path == "/logout" || r.URL.Path == "/api/health" {
@@ -125,7 +125,7 @@ func (a *Auth) Middleware(username string, checkPassword func(user, pass string)
 				dec, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(auth, "Basic "))
 				if err == nil {
 					parts := strings.SplitN(string(dec), ":", 2)
-					if len(parts) == 2 && subtle.ConstantTimeCompare([]byte(parts[0]), []byte(username)) == 1 &&
+					if len(parts) == 2 && subtle.ConstantTimeCompare([]byte(parts[0]), []byte(username())) == 1 &&
 						checkPassword(parts[0], parts[1]) {
 						next.ServeHTTP(w, r)
 						return

@@ -19,7 +19,7 @@ import (
 // Runtime owns peer sync and adoption. It implements scheduler.MonitorSource when enabled.
 type Runtime struct {
 	store  *storage.Store
-	cfg    *config.Config
+	cfg    *config.Live
 	client *http.Client
 
 	adoptedMu sync.RWMutex
@@ -29,9 +29,9 @@ type Runtime struct {
 }
 
 // New creates a cluster runtime. Always non-nil; peer sync runs when network.enabled.
-func New(st *storage.Store, cfg *config.Config) *Runtime {
+func New(st *storage.Store, cfg *config.Live) *Runtime {
 	if cfg == nil {
-		cfg = config.Default()
+		cfg = config.NewLive(nil)
 	}
 	return &Runtime{
 		store:   st,
@@ -42,9 +42,14 @@ func New(st *storage.Store, cfg *config.Config) *Runtime {
 	}
 }
 
+// config returns the current config snapshot.
+func (rt *Runtime) config() *config.Config {
+	return rt.cfg.Load()
+}
+
 // Enabled reports whether peer sync is active.
 func (rt *Runtime) Enabled() bool {
-	return rt != nil && rt.cfg != nil && rt.cfg.Network.Enabled
+	return rt != nil && rt.config().Network.Enabled
 }
 
 // NotifyConfigChange triggers an immediate peer sync (e.g. after peers list edit).
@@ -68,7 +73,7 @@ func (rt *Runtime) Run(ctx context.Context) {
 
 func (rt *Runtime) refreshAdopted(peerData map[string]*storage.PeerData, now time.Time) {
 	next := make(map[string]*monitor.Monitor)
-	for _, am := range adoptedMonitors(rt.cfg, peerData, now) {
+	for _, am := range adoptedMonitors(rt.config(), peerData, now) {
 		if am.Monitor != nil {
 			next[am.Monitor.ID] = am.Monitor
 			if st, ok := peerData[am.OwnerNodeID]; ok && st != nil {
@@ -167,7 +172,7 @@ func (rt *Runtime) RequireLocalMonitor(id string) bool {
 
 // ExportView builds the sync export monitors and state.
 func (rt *Runtime) ExportView() (ExportView, error) {
-	return buildExportView(rt.cfg, rt.store)
+	return buildExportView(rt.config(), rt.store)
 }
 
 // HandleExport serves GET /api/sync/export.
@@ -176,7 +181,8 @@ func (rt *Runtime) HandleExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "network not enabled", http.StatusServiceUnavailable)
 		return
 	}
-	if rt.cfg.Network.NodeID == "" {
+	nodeID := rt.config().Network.NodeID
+	if nodeID == "" {
 		http.Error(w, "network not configured", http.StatusServiceUnavailable)
 		return
 	}
@@ -186,7 +192,7 @@ func (rt *Runtime) HandleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payload := ExportPayload{
-		NodeID:   rt.cfg.Network.NodeID,
+		NodeID:   nodeID,
 		Monitors: view.Monitors,
 		State:    view.State,
 		Time:     time.Now(),
@@ -271,7 +277,8 @@ func (rt *Runtime) dashboardRowsWithPeerData(localState map[string]*monitor.Moni
 	if !rt.Enabled() {
 		return rows
 	}
-	deadTimeout := time.Duration(rt.cfg.Network.DeadTimeout) * time.Second
+	cfg := rt.config()
+	deadTimeout := time.Duration(cfg.Network.DeadTimeout) * time.Second
 	now := time.Now()
 	seen := make(map[string]struct{}, len(rows))
 	for _, row := range rows {
@@ -302,7 +309,7 @@ func (rt *Runtime) dashboardRowsWithPeerData(localState map[string]*monitor.Moni
 			seen[m.ID] = struct{}{}
 		}
 	}
-	for _, am := range adoptedMonitors(rt.cfg, peerData, now) {
+	for _, am := range adoptedMonitors(cfg, peerData, now) {
 		if am.Monitor == nil {
 			continue
 		}
@@ -358,13 +365,14 @@ func (rt *Runtime) networkNodesWithPeerData(peerData map[string]*storage.PeerDat
 	if rt == nil || !rt.Enabled() {
 		return []NetworkNode{}
 	}
+	cfg := rt.config()
 	var nodes []NetworkNode
-	deadTimeout := time.Duration(rt.cfg.Network.DeadTimeout) * time.Second
+	deadTimeout := time.Duration(cfg.Network.DeadTimeout) * time.Second
 
 	nodes = append(nodes, NetworkNode{
-		NodeID:        rt.cfg.Network.NodeID,
-		NodeIDShort:   truncateNodeID(rt.cfg.Network.NodeID, 8),
-		URL:           rt.cfg.Network.SelfURL,
+		NodeID:        cfg.Network.NodeID,
+		NodeIDShort:   truncateNodeID(cfg.Network.NodeID, 8),
+		URL:           cfg.Network.SelfURL,
 		Status:        "self",
 		MonitorsCount: len(ownMonitors),
 	})
@@ -378,12 +386,12 @@ func (rt *Runtime) networkNodesWithPeerData(peerData map[string]*storage.PeerDat
 		peerURLToData[key] = pd
 	}
 
-	for _, peerURL := range rt.cfg.Network.Peers {
+	for _, peerURL := range cfg.Network.Peers {
 		if peerURL == "" {
 			continue
 		}
 		trimmed := strings.TrimSuffix(peerURL, "/")
-		if trimmed == strings.TrimSuffix(rt.cfg.Network.SelfURL, "/") {
+		if trimmed == strings.TrimSuffix(cfg.Network.SelfURL, "/") {
 			continue
 		}
 		pd := peerURLToData[trimmed]

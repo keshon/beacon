@@ -1,7 +1,6 @@
 package storage_test
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,13 +12,11 @@ import (
 
 func TestDeleteMonitorNotFound(t *testing.T) {
 	dir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	st, err := storage.New(ctx, dir)
+	st, err := storage.New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		cancel()
 		st.Close()
 	}()
 
@@ -30,13 +27,11 @@ func TestDeleteMonitorNotFound(t *testing.T) {
 
 func TestRecordCheckResultRejectsDeletedMonitor(t *testing.T) {
 	dir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	st, err := storage.New(ctx, dir)
+	st, err := storage.New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		cancel()
 		st.Close()
 	}()
 
@@ -59,8 +54,7 @@ func TestRecordCheckResultRejectsDeletedMonitor(t *testing.T) {
 
 func TestFlushPersistsMonitor(t *testing.T) {
 	dir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	st, err := storage.New(ctx, dir)
+	st, err := storage.New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +66,6 @@ func TestFlushPersistsMonitor(t *testing.T) {
 	if err := st.SetMonitor(m); err != nil {
 		t.Fatal(err)
 	}
-	cancel()
 	st.Close()
 
 	raw, err := os.ReadFile(filepath.Join(dir, "monitors.json"))
@@ -86,13 +79,11 @@ func TestFlushPersistsMonitor(t *testing.T) {
 
 func TestUpdateMonitorAtomic(t *testing.T) {
 	dir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	st, err := storage.New(ctx, dir)
+	st, err := storage.New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		cancel()
 		st.Close()
 	}()
 

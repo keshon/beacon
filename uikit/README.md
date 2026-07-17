@@ -1,6 +1,6 @@
 # Beacon UI kit (SCSS + Bootstrap 5.3)
 
-This folder contains the source-of-truth styles for Beacon. Bootstrap 5.3.3 SCSS source is compiled together with Beacon overrides into a single `static/uikit.css`.
+This folder contains the source-of-truth styles for Beacon. A curated subset of Bootstrap 5.3.3 SCSS (grid/utilities, navbar, tables, forms, buttons, badge, alert, collapse — see the import list in `scss/uikit.scss`) is compiled together with Beacon overrides into a single minified `static/uikit.css`.
 
 ## Requirements
 
@@ -48,14 +48,16 @@ bash tooling/scripts/uikit-watch.sh
 ```
 uikit/
   scss/
-    uikit.scss          # Entrypoint: variables → bootstrap → tokens → layers below
+    uikit.scss          # Entrypoint: functions → variables → curated bootstrap → tokens → layers below
     _variables.scss     # Bootstrap $variable overrides (colors, $input-btn-*, card, …)
-    _tokens.scss        # CSS variables: --app-* scale, --ui-font-size, html[data-bs-theme] chroma (--c-*)
+    _tokens.scss        # CSS variables: --app-text-*/--app-space-* scales, --ui-font-size, html[data-bs-theme] chroma (--c-*)
     _base.scss          # html font-size, body smoothing, scrollbar, @keyframes
     _nav.scss           # .dash-nav + light-theme navbar overrides
     _components.scss    # Bootstrap bridges (.btn, .form-*, .table) + Beacon domain (badges, uptime, .monitor-row)
+    _primitives.scss    # Agnostic primitives: .app-shimmer, .app-code, .app-segmented, .app-action-menu
     _shell.scss         # .beacon-app chrome, .app-page, .app-panel, dashboard layouts
-    _pages.scss         # Login page (.login-page)
+    _modal.scss         # .beacon-modal dialog + confirm
+    _login.scss         # Login page (.login-page)
   vendor/
     bootstrap/scss/     # Bootstrap 5.3.3 SCSS source (not committed, download via script)
 ```
@@ -68,8 +70,8 @@ Standard Bootstrap class names are used wherever possible (`.card`, `.table`, `.
 
 **Current choice (path A):** stay on **Bootstrap 5.3 SCSS + Beacon partials** in `uikit/scss/`, compiled to `static/uikit.css`. Theming and density evolve via CSS variables (`_tokens.scss`, Bootstrap `$variables` overrides) and named domain classes (e.g. `.monitor-title`, `.dash-nav`).
 
-**App theme:** authenticated pages use `data-bs-theme` on `<html>` (`dark` or `light`). Preference is stored in `localStorage` under key `beaconTheme` and applied before paint via [`templates/beacon_head_theme.html`](templates/beacon_head_theme.html). Toggle control lives in the app navbar ([`templates/base.html`](templates/base.html)).
+**App theme:** authenticated pages use `data-bs-theme` on `<html>` (`dark` or `light`). Preference is stored in `localStorage` under key `beaconTheme` and applied before paint via [`templates/shared/head_theme.html`](../templates/shared/head_theme.html). Toggle control lives in the app navbar ([`templates/base.html`](templates/base.html)).
 
-**Dashboard layout:** `localStorage` key `beaconDashboardView` (`cards` | `list` | `table`; legacy `grid` maps to `list`) is mirrored to `data-dashboard-view` on `<html>` in the same early script, so the chosen view paints without a flash. Base font size from Settings (`uiFontSize` → `--ui-font-size` on `<html>` in [`templates/head_common.html`](templates/head_common.html)) scales the UI together with typography tokens `--app-text-*` in [`uikit/scss/_tokens.scss`](scss/_tokens.scss).
+**Dashboard layout:** `localStorage` key `beaconDashboardView` (`cards` | `list` | `table`; legacy `grid` maps to `list`) is mirrored to `data-dashboard-view` on `<html>` in the same early script, so the chosen view paints without a flash. Base font size from Settings (`uiFontSize` → `--ui-font-size` on `<html>` in [`templates/shared/head_common.html`](../templates/shared/head_common.html)) scales the UI together with typography tokens `--app-text-*` in [`uikit/scss/_tokens.scss`](scss/_tokens.scss).
 
 **Not planned in-repo right now (path B):** a migration to **Tailwind** would mean replacing all template utility usage, adding a PostCSS/Tailwind build, and replacing Bootstrap’s JS behaviors (navbar collapse, etc.) — a separate project when product goals justify it.

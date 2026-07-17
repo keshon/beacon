@@ -18,7 +18,7 @@ import (
 
 type Dashboard struct {
 	Store   *storage.Store
-	Cfg     *config.Config
+	Cfg     *config.Live
 	Cluster *cluster.Runtime
 	TplDir  string
 }
@@ -187,8 +187,9 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		bootstrapJSON = b
 	}
 
+	networkEnabled := h.Cfg.Load().Network.Enabled
 	hasNetwork := false
-	if h.Cfg.Network.Enabled && networkNodes != nil {
+	if networkEnabled && networkNodes != nil {
 		switch nodes := networkNodes.(type) {
 		case []cluster.NetworkNode:
 			hasNetwork = len(nodes) > 0
@@ -200,7 +201,7 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		"nav_active":      "dashboard",
 		"rows":            rows,
 		"networkNodes":    networkNodes,
-		"networkEnabled":  h.Cfg.Network.Enabled,
+		"networkEnabled":  networkEnabled,
 		"hasNetwork":      hasNetwork,
 		"uptimeBootstrap": string(bootstrapJSON),
 	})

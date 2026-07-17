@@ -36,7 +36,7 @@
   letter-spacing: 0.08em;
   color: var(--bs-body-color);
   opacity: 0.45;
-  margin-bottom: 1rem;
+  margin-bottom: var(--app-space-4);
 }
 
 // ── Primary button (was .btn-uptime) ──
@@ -155,7 +155,7 @@
   > :not(caption) {
     > * {
       > * {
-        padding: 1rem;
+        padding: var(--app-space-4);
         background-color: unset;
         border-bottom: unset;
       }
@@ -303,14 +303,14 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.5rem 0.625rem;
-  margin-bottom: 0.5rem;
+  gap: var(--app-space-2) 0.625rem;
+  margin-bottom: var(--app-space-2);
 }
 
 .notify-row__fields {
   display: flex;
   flex: 1 1 auto;
-  gap: 0.5rem;
+  gap: var(--app-space-2);
   min-width: 0;
 }
 
@@ -408,7 +408,7 @@
 
 // Policy template blocks (settings + receiver modal)
 .policy-template-row {
-  padding: 0.625rem 0.75rem;
+  padding: 0.625rem var(--app-space-3);
   background: var(--app-surface-inset);
   border-radius: var(--app-radius-panel);
   box-shadow: var(--app-shadow-outline);
@@ -449,7 +449,7 @@
 
 // ── Empty state ──
 .empty-state {
-  padding: 4rem 1.5rem;
+  padding: var(--app-space-8) var(--app-space-5);
   text-align: center;
   color: var(--bs-body-color);
   opacity: 0.45;
@@ -457,7 +457,7 @@
 
 .empty-state .empty-icon {
   font-size: 2.25rem;
-  margin-bottom: 1rem;
+  margin-bottom: var(--app-space-4);
   opacity: 0.4;
 }
 
@@ -480,7 +480,7 @@ code {
 
 // ── Monitor list row & edit form ──
 .monitor-row {
-  padding: 0.8125rem 1.5rem 0.8125rem 1rem;
+  padding: 0.8125rem var(--app-space-5) 0.8125rem var(--app-space-4);
   border-bottom: 0.0625rem solid var(--c-border);
 }
 
@@ -514,7 +514,7 @@ code {
   background: var(--c-danger-light);
   color: var(--bs-danger);
   font-size: var(--app-text-meta);
-  padding: 0.5rem 1rem;
+  padding: var(--app-space-2) var(--app-space-4);
 }
 
 // ── Utilities ──

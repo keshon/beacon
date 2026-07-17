@@ -69,6 +69,18 @@ func (a *AuthCredentials) EnsureHashed() error {
 	return a.SetPassword(a.Password)
 }
 
+// CarryPlainPassword restores the in-memory outbound-auth password from prev
+// when the password did not change. plainPassword is never persisted, so a
+// config rebuilt from disk would otherwise lose it until restart.
+func (a *AuthCredentials) CarryPlainPassword(prev AuthCredentials) {
+	if a == nil {
+		return
+	}
+	if a.plainPassword == "" && a.PasswordHash == prev.PasswordHash {
+		a.plainPassword = prev.plainPassword
+	}
+}
+
 // CheckPassword reports whether password matches the stored hash.
 func (a *AuthCredentials) CheckPassword(password string) bool {
 	if a == nil {

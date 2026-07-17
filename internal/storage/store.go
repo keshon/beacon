@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"time"
 
 	"github.com/keshon/beacon/internal/monitor"
-	"github.com/keshon/datastore"
 )
 
 var ErrMonitorNotFound = errors.New("monitor not found")
@@ -47,14 +45,19 @@ type PeerData struct {
 	SyncWarnings []string                       `json:"sync_warnings,omitempty"`
 }
 
+// Store keeps all data in memory under one lock and flushes each mutation to
+// its JSON file via flushJSON — the single persistence path. Reads hand out
+// copies, never pointers into the in-memory maps.
 type Store struct {
-	monitorsDS *datastore.DataStore
-	stateDS    *datastore.DataStore
-	eventsDS   *datastore.DataStore
-	configDS   *datastore.DataStore
-	peerDS     *datastore.DataStore
-	mu         sync.RWMutex
+	mu sync.RWMutex
 
+	monitors map[string]*monitor.Monitor
+	state    map[string]*monitor.MonitorState
+	events   []CheckRecord
+	config   json.RawMessage
+	peers    map[string]*PeerData
+
+	dataDir      string
 	monitorsPath string
 	statePath    string
 	eventsPath   string
@@ -66,71 +69,86 @@ type Store struct {
 
 const uptimeIndexLimit = 500
 
-func New(ctx context.Context, dataDir string) (*Store, error) {
-	monitorsPath := filepath.Join(dataDir, "monitors.json")
-	monitorsDS, err := datastore.New(ctx, monitorsPath)
-	if err != nil {
-		return nil, err
-	}
-	statePath := filepath.Join(dataDir, "state.json")
-	stateDS, err := datastore.New(ctx, statePath)
-	if err != nil {
-		monitorsDS.Close()
-		return nil, err
-	}
-	eventsPath := filepath.Join(dataDir, "events.json")
-	eventsDS, err := datastore.New(ctx, eventsPath)
-	if err != nil {
-		monitorsDS.Close()
-		stateDS.Close()
-		return nil, err
-	}
-	configPath := filepath.Join(dataDir, "config.json")
-	configDS, err := datastore.New(ctx, configPath)
-	if err != nil {
-		monitorsDS.Close()
-		stateDS.Close()
-		eventsDS.Close()
-		return nil, err
-	}
-	peerPath := filepath.Join(dataDir, "peer_data.json")
-	peerDS, err := datastore.New(ctx, peerPath)
-	if err != nil {
-		monitorsDS.Close()
-		stateDS.Close()
-		eventsDS.Close()
-		configDS.Close()
-		return nil, err
-	}
+func New(dataDir string) (*Store, error) {
 	s := &Store{
-		monitorsDS:   monitorsDS,
-		stateDS:      stateDS,
-		eventsDS:     eventsDS,
-		configDS:     configDS,
-		peerDS:       peerDS,
-		monitorsPath: monitorsPath,
-		statePath:    statePath,
-		eventsPath:   eventsPath,
-		configPath:   configPath,
-		peerPath:     peerPath,
+		monitors:     make(map[string]*monitor.Monitor),
+		state:        make(map[string]*monitor.MonitorState),
+		peers:        make(map[string]*PeerData),
+		dataDir:      dataDir,
+		monitorsPath: filepath.Join(dataDir, "monitors.json"),
+		statePath:    filepath.Join(dataDir, "state.json"),
+		eventsPath:   filepath.Join(dataDir, "events.json"),
+		configPath:   filepath.Join(dataDir, "config.json"),
+		peerPath:     filepath.Join(dataDir, "peer_data.json"),
 		uptimeIdx:    make(map[string][]CheckRecord),
 	}
-	s.rebuildUptimeIndex()
+	if err := loadWrapped(s.monitorsPath, keyMonitors, &s.monitors); err != nil {
+		return nil, err
+	}
+	if err := loadWrapped(s.statePath, keyState, &s.state); err != nil {
+		return nil, err
+	}
+	if err := loadWrapped(s.eventsPath, keyEvents, &s.events); err != nil {
+		return nil, err
+	}
+	if err := loadWrapped(s.configPath, keyConfig, &s.config); err != nil {
+		return nil, err
+	}
+	if err := loadWrapped(s.peerPath, keyPeerData, &s.peers); err != nil {
+		return nil, err
+	}
+	if s.monitors == nil {
+		s.monitors = make(map[string]*monitor.Monitor)
+	}
+	if s.state == nil {
+		s.state = make(map[string]*monitor.MonitorState)
+	}
+	if s.peers == nil {
+		s.peers = make(map[string]*PeerData)
+	}
+	for _, rec := range s.events {
+		s.indexUptimeRecordLocked(rec)
+	}
 	return s, nil
 }
 
-func (s *Store) rebuildUptimeIndex() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.uptimeIdx = make(map[string][]CheckRecord)
-	var events []CheckRecord
-	ok, err := s.eventsDS.Get(keyEvents, &events)
-	if err != nil || !ok || events == nil {
-		return
+// loadWrapped reads {"<key>": <value>} from path into dest. Missing file is fine.
+func loadWrapped(path, key string, dest any) error {
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
 	}
-	for _, rec := range events {
-		s.indexUptimeRecordLocked(rec)
+	if err != nil {
+		return fmt.Errorf("read %q: %w", path, err)
 	}
+	if len(raw) == 0 {
+		return nil
+	}
+	var wrap map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &wrap); err != nil {
+		return fmt.Errorf("parse %q: %w", path, err)
+	}
+	v, ok := wrap[key]
+	if !ok || len(v) == 0 || string(v) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(v, dest); err != nil {
+		return fmt.Errorf("parse %q key %q: %w", path, key, err)
+	}
+	return nil
+}
+
+// clone deep-copies v via a JSON round-trip (same semantics reads always had).
+func clone[T any](v T) T {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return v
+	}
+	var out T
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return v
+	}
+	return out
 }
 
 func (s *Store) indexUptimeRecordLocked(rec CheckRecord) {
@@ -142,43 +160,20 @@ func (s *Store) indexUptimeRecordLocked(rec CheckRecord) {
 	s.uptimeIdx[rec.MonitorID] = buf
 }
 
+// Close is a no-op: every mutation is flushed synchronously.
 func (s *Store) Close() error {
-	var errs []error
-	if err := s.monitorsDS.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := s.stateDS.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := s.eventsDS.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := s.configDS.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := s.peerDS.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if len(errs) > 0 {
-		return errs[0]
-	}
 	return nil
 }
 
 func (s *Store) GetMonitors() ([]*monitor.Monitor, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var m map[string]*monitor.Monitor
-	ok, err := s.monitorsDS.Get(keyMonitors, &m)
-	if err != nil {
-		return nil, fmt.Errorf("read monitors: %w", err)
-	}
-	if !ok || m == nil {
+	if len(s.monitors) == 0 {
 		return nil, nil
 	}
-	list := make([]*monitor.Monitor, 0, len(m))
-	for _, v := range m {
-		list = append(list, v)
+	list := make([]*monitor.Monitor, 0, len(s.monitors))
+	for _, v := range s.monitors {
+		list = append(list, clone(v))
 	}
 	sortMonitorsByName(list)
 	return list, nil
@@ -193,184 +188,106 @@ func sortMonitorsByName(list []*monitor.Monitor) {
 func (s *Store) GetMonitor(id string) (*monitor.Monitor, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var m map[string]*monitor.Monitor
-	ok, err := s.monitorsDS.Get(keyMonitors, &m)
-	if err != nil {
-		return nil, fmt.Errorf("read monitors: %w", err)
-	}
-	if !ok || m == nil {
+	m := s.monitors[id]
+	if m == nil {
 		return nil, nil
 	}
-	return m[id], nil
+	return clone(m), nil
 }
 
 func (s *Store) SetMonitor(mon *monitor.Monitor) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var m map[string]*monitor.Monitor
-	ok, err := s.monitorsDS.Get(keyMonitors, &m)
-	if err != nil {
-		return fmt.Errorf("read monitors: %w", err)
-	}
-	if !ok || m == nil {
-		m = make(map[string]*monitor.Monitor)
-	}
-	m[mon.ID] = mon
-	if err := s.monitorsDS.Set(keyMonitors, m); err != nil {
-		return fmt.Errorf("write monitors: %w", err)
-	}
-	return flushJSON(s.monitorsPath, map[string]any{keyMonitors: m})
+	s.monitors[mon.ID] = clone(mon)
+	return flushJSON(s.monitorsPath, map[string]any{keyMonitors: s.monitors})
 }
 
 func (s *Store) DeleteMonitor(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var m map[string]*monitor.Monitor
-	ok, err := s.monitorsDS.Get(keyMonitors, &m)
-	if err != nil {
-		return fmt.Errorf("read monitors: %w", err)
-	}
-	if !ok || m == nil || m[id] == nil {
+	if s.monitors[id] == nil {
 		return ErrMonitorNotFound
 	}
-	delete(m, id)
-	if err := s.monitorsDS.Set(keyMonitors, m); err != nil {
-		return err
-	}
-	var st map[string]*monitor.MonitorState
-	ok, err = s.stateDS.Get(keyState, &st)
-	if err != nil {
-		return fmt.Errorf("read state: %w", err)
-	}
-	if ok && st != nil {
-		delete(st, id)
-		if err := s.stateDS.Set(keyState, st); err != nil {
-			return err
+	delete(s.monitors, id)
+	delete(s.state, id)
+	filtered := s.events[:0]
+	for _, rec := range s.events {
+		if rec.MonitorID != id {
+			filtered = append(filtered, rec)
 		}
 	}
-	var events []CheckRecord
-	ok, err = s.eventsDS.Get(keyEvents, &events)
-	if err != nil {
-		return fmt.Errorf("read events: %w", err)
-	}
-	if ok && events != nil {
-		filtered := events[:0]
-		for _, rec := range events {
-			if rec.MonitorID != id {
-				filtered = append(filtered, rec)
-			}
-		}
-		if len(filtered) != len(events) {
-			if err := s.eventsDS.Set(keyEvents, filtered); err != nil {
-				return err
-			}
-			events = filtered
-		}
-	}
+	s.events = filtered
 	delete(s.uptimeIdx, id)
-	if err := flushJSON(s.monitorsPath, map[string]any{keyMonitors: m}); err != nil {
+	if err := flushJSON(s.monitorsPath, map[string]any{keyMonitors: s.monitors}); err != nil {
 		return err
 	}
-	if st != nil {
-		if err := flushJSON(s.statePath, map[string]any{keyState: st}); err != nil {
-			return err
-		}
+	if err := flushJSON(s.statePath, map[string]any{keyState: s.state}); err != nil {
+		return err
 	}
-	if events != nil {
-		if err := flushJSON(s.eventsPath, map[string]any{keyEvents: events}); err != nil {
-			return err
-		}
-	}
-	return nil
+	return flushJSON(s.eventsPath, map[string]any{keyEvents: s.events})
 }
 
 func (s *Store) GetState(monitorID string) (*monitor.MonitorState, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var st map[string]*monitor.MonitorState
-	ok, err := s.stateDS.Get(keyState, &st)
-	if err != nil {
-		return nil, fmt.Errorf("read state: %w", err)
-	}
-	if !ok || st == nil {
+	st := s.state[monitorID]
+	if st == nil {
 		return nil, nil
 	}
-	return st[monitorID], nil
+	cp := *st
+	return &cp, nil
 }
 
 func (s *Store) GetAllState() (map[string]*monitor.MonitorState, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var st map[string]*monitor.MonitorState
-	ok, err := s.stateDS.Get(keyState, &st)
-	if err != nil {
-		return nil, fmt.Errorf("read state: %w", err)
-	}
-	if !ok || st == nil {
+	if len(s.state) == 0 {
 		return nil, nil
 	}
-	return st, nil
+	out := make(map[string]*monitor.MonitorState, len(s.state))
+	for id, st := range s.state {
+		cp := *st
+		out[id] = &cp
+	}
+	return out, nil
 }
 
 func (s *Store) SetState(st *monitor.MonitorState) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var state map[string]*monitor.MonitorState
-	ok, err := s.stateDS.Get(keyState, &state)
-	if err != nil {
-		return fmt.Errorf("read state: %w", err)
-	}
-	if !ok || state == nil {
-		state = make(map[string]*monitor.MonitorState)
-	}
-	state[st.MonitorID] = st
-	if err := s.stateDS.Set(keyState, state); err != nil {
-		return err
-	}
-	return flushJSON(s.statePath, map[string]any{keyState: state})
+	cp := *st
+	s.state[st.MonitorID] = &cp
+	return flushJSON(s.statePath, map[string]any{keyState: s.state})
 }
 
 func (s *Store) AppendCheckRecord(rec CheckRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var events []CheckRecord
-	ok, err := s.eventsDS.Get(keyEvents, &events)
-	if err != nil {
-		return fmt.Errorf("read events: %w", err)
-	}
-	if !ok || events == nil {
-		events = make([]CheckRecord, 0)
-	}
-	events = append(events, rec)
-	if len(events) > 10000 {
-		events = events[len(events)-10000:]
-	}
-	if err := s.eventsDS.Set(keyEvents, events); err != nil {
-		return err
+	s.appendEventLocked(rec)
+	return flushJSON(s.eventsPath, map[string]any{keyEvents: s.events})
+}
+
+func (s *Store) appendEventLocked(rec CheckRecord) {
+	s.events = append(s.events, rec)
+	if len(s.events) > 10000 {
+		s.events = s.events[len(s.events)-10000:]
 	}
 	s.indexUptimeRecordLocked(rec)
-	return flushJSON(s.eventsPath, map[string]any{keyEvents: events})
 }
 
 func (s *Store) GetCheckRecords(limit int) ([]CheckRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var events []CheckRecord
-	ok, err := s.eventsDS.Get(keyEvents, &events)
-	if err != nil {
-		return nil, fmt.Errorf("read events: %w", err)
-	}
-	if !ok || events == nil {
+	if len(s.events) == 0 {
 		return nil, nil
 	}
-	if limit <= 0 || limit > len(events) {
-		limit = len(events)
+	if limit <= 0 || limit > len(s.events) {
+		limit = len(s.events)
 	}
-	start := len(events) - limit
-	if start < 0 {
-		start = 0
-	}
-	return events[start:], nil
+	start := len(s.events) - limit
+	out := make([]CheckRecord, limit)
+	copy(out, s.events[start:])
+	return out, nil
 }
 
 // GetUptimeSamples returns the last limit check outcomes for monitorID, oldest first.
@@ -402,7 +319,6 @@ func (s *Store) uptimeSamplesLocked(monitorID string, limit int) []CheckRecord {
 }
 
 // GetUptimeSamplesBatch returns the last limit check outcomes for each monitor ID, oldest first.
-// It scans the events log once and keeps up to limit records per ID.
 func (s *Store) GetUptimeSamplesBatch(monitorIDs []string, limit int) (map[string][]CheckRecord, error) {
 	if len(monitorIDs) == 0 {
 		return map[string][]CheckRecord{}, nil
@@ -439,75 +355,52 @@ func (s *Store) GetUptimeSamplesBatch(monitorIDs []string, limit int) (map[strin
 func (s *Store) GetConfig(dest any) (bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	ok, err := s.configDS.Get(keyConfig, dest)
-	if err != nil {
+	if len(s.config) == 0 {
+		return false, nil
+	}
+	if err := json.Unmarshal(s.config, dest); err != nil {
 		return false, fmt.Errorf("read config: %w", err)
 	}
-	return ok, err
+	return true, nil
 }
 
 func (s *Store) SetConfig(cfg any) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := s.configDS.Set(keyConfig, cfg); err != nil {
-		return err
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("write config: %w", err)
 	}
-	wrap := map[string]any{keyConfig: cfg}
-	return flushJSON(s.configPath, wrap)
+	s.config = raw
+	return flushJSON(s.configPath, map[string]any{keyConfig: json.RawMessage(raw)})
 }
 
 func (s *Store) GetPeerData(nodeID string) (*PeerData, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var m map[string]*PeerData
-	ok, err := s.peerDS.Get(keyPeerData, &m)
-	if err != nil {
-		return nil, fmt.Errorf("read peer data: %w", err)
-	}
-	if !ok || m == nil {
+	pd := s.peers[nodeID]
+	if pd == nil {
 		return nil, nil
 	}
-	return m[nodeID], nil
+	return clone(pd), nil
 }
 
 func (s *Store) SetPeerData(data *PeerData) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var m map[string]*PeerData
-	ok, err := s.peerDS.Get(keyPeerData, &m)
-	if err != nil {
-		return fmt.Errorf("read peer data: %w", err)
-	}
-	if !ok || m == nil {
-		m = make(map[string]*PeerData)
-	}
-	m[data.NodeID] = data
-	if err := s.peerDS.Set(keyPeerData, m); err != nil {
-		return err
-	}
-	return flushJSON(s.peerPath, map[string]any{keyPeerData: m})
+	s.peers[data.NodeID] = clone(data)
+	return flushJSON(s.peerPath, map[string]any{keyPeerData: s.peers})
 }
 
 // SetPeerDataError records a sync error for the peer URL without replacing cached data.
 func (s *Store) SetPeerDataError(peerURL, errMsg string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var m map[string]*PeerData
-	ok, err := s.peerDS.Get(keyPeerData, &m)
-	if err != nil {
-		return fmt.Errorf("read peer data: %w", err)
-	}
-	if !ok || m == nil {
-		return nil
-	}
 	normalized := strings.TrimSuffix(peerURL, "/")
-	for _, pd := range m {
+	for _, pd := range s.peers {
 		if strings.TrimSuffix(pd.PeerURL, "/") == normalized {
 			pd.LastError = errMsg
-			if err := s.peerDS.Set(keyPeerData, m); err != nil {
-				return err
-			}
-			return flushJSON(s.peerPath, map[string]any{keyPeerData: m})
+			return flushJSON(s.peerPath, map[string]any{keyPeerData: s.peers})
 		}
 	}
 	return nil
@@ -517,12 +410,7 @@ func (s *Store) SetPeerDataError(peerURL, errMsg string) error {
 func (s *Store) PrunePeerData(configuredPeers []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var m map[string]*PeerData
-	ok, err := s.peerDS.Get(keyPeerData, &m)
-	if err != nil {
-		return fmt.Errorf("read peer data: %w", err)
-	}
-	if !ok || m == nil {
+	if len(s.peers) == 0 {
 		return nil
 	}
 	allowed := make(map[string]struct{}, len(configuredPeers))
@@ -533,71 +421,63 @@ func (s *Store) PrunePeerData(configuredPeers []string) error {
 		}
 	}
 	changed := false
-	for nodeID, pd := range m {
+	for nodeID, pd := range s.peers {
 		key := strings.TrimSuffix(pd.PeerURL, "/")
 		if key == "" {
 			key = nodeID
 		}
 		if _, ok := allowed[key]; !ok {
-			delete(m, nodeID)
+			delete(s.peers, nodeID)
 			changed = true
 		}
 	}
 	if !changed {
 		return nil
 	}
-	if err := s.peerDS.Set(keyPeerData, m); err != nil {
-		return err
-	}
-	return flushJSON(s.peerPath, map[string]any{keyPeerData: m})
+	return flushJSON(s.peerPath, map[string]any{keyPeerData: s.peers})
 }
 
 func (s *Store) GetAllPeerData() (map[string]*PeerData, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var m map[string]*PeerData
-	ok, err := s.peerDS.Get(keyPeerData, &m)
-	if err != nil {
-		return nil, fmt.Errorf("read peer data: %w", err)
-	}
-	if !ok || m == nil {
+	if len(s.peers) == 0 {
 		return nil, nil
 	}
-	return m, nil
+	return clone(s.peers), nil
 }
 
-// Ping verifies all datastore backends are readable.
+// Ping verifies the data directory is still accessible.
 func (s *Store) Ping() error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	var dummy any
-	if _, err := s.monitorsDS.Get(keyMonitors, &dummy); err != nil {
-		return fmt.Errorf("monitors store: %w", err)
-	}
-	if _, err := s.stateDS.Get(keyState, &dummy); err != nil {
-		return fmt.Errorf("state store: %w", err)
-	}
-	if _, err := s.eventsDS.Get(keyEvents, &dummy); err != nil {
-		return fmt.Errorf("events store: %w", err)
-	}
-	if _, err := s.configDS.Get(keyConfig, &dummy); err != nil {
-		return fmt.Errorf("config store: %w", err)
-	}
-	if _, err := s.peerDS.Get(keyPeerData, &dummy); err != nil {
-		return fmt.Errorf("peer store: %w", err)
+	if _, err := os.Stat(s.dataDir); err != nil {
+		return fmt.Errorf("data dir: %w", err)
 	}
 	return nil
 }
 
-// flushJSON atomically writes v to path (write temp + rename).
+// flushJSON durably writes v to path (write temp + fsync + rename).
 func flushJSON(path string, v any) error {
 	raw, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal %q: %w", path, err)
 	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, raw, 0o644); err != nil {
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
 		return fmt.Errorf("write %q: %w", tmp, err)
+	}
+	if _, err := f.Write(raw); err != nil {
+		f.Close()
+		_ = os.Remove(tmp)
+		return fmt.Errorf("write %q: %w", tmp, err)
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		_ = os.Remove(tmp)
+		return fmt.Errorf("sync %q: %w", tmp, err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("close %q: %w", tmp, err)
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		_ = os.Remove(tmp)
@@ -618,33 +498,21 @@ func (s *Store) GetExportSnapshot() (ExportSnapshot, error) {
 	defer s.mu.RUnlock()
 
 	var snap ExportSnapshot
-	var m map[string]*monitor.Monitor
-	ok, err := s.monitorsDS.Get(keyMonitors, &m)
-	if err != nil {
-		return snap, fmt.Errorf("read monitors: %w", err)
-	}
-	if ok && m != nil {
-		snap.Monitors = make([]*monitor.Monitor, 0, len(m))
-		for _, v := range m {
-			snap.Monitors = append(snap.Monitors, v)
+	if len(s.monitors) > 0 {
+		snap.Monitors = make([]*monitor.Monitor, 0, len(s.monitors))
+		for _, v := range s.monitors {
+			snap.Monitors = append(snap.Monitors, clone(v))
 		}
 		sortMonitorsByName(snap.Monitors)
 	}
-	var st map[string]*monitor.MonitorState
-	ok, err = s.stateDS.Get(keyState, &st)
-	if err != nil {
-		return snap, fmt.Errorf("read state: %w", err)
-	}
-	if ok && st != nil {
-		snap.State = st
-	} else {
-		snap.State = make(map[string]*monitor.MonitorState)
-	}
-	// Drop state entries with no matching local monitor.
-	for id := range snap.State {
-		if m == nil || m[id] == nil {
-			delete(snap.State, id)
+	snap.State = make(map[string]*monitor.MonitorState)
+	for id, st := range s.state {
+		// Drop state entries with no matching local monitor.
+		if s.monitors[id] == nil {
+			continue
 		}
+		cp := *st
+		snap.State[id] = &cp
 	}
 	return snap, nil
 }
@@ -653,15 +521,7 @@ func (s *Store) GetExportSnapshot() (ExportSnapshot, error) {
 func (s *Store) MonitorExists(id string) (bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var m map[string]*monitor.Monitor
-	ok, err := s.monitorsDS.Get(keyMonitors, &m)
-	if err != nil {
-		return false, fmt.Errorf("read monitors: %w", err)
-	}
-	if !ok || m == nil {
-		return false, nil
-	}
-	_, exists := m[id]
+	_, exists := s.monitors[id]
 	return exists, nil
 }
 
@@ -671,51 +531,18 @@ func (s *Store) RecordCheckResult(rec CheckRecord, st *monitor.MonitorState, req
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if requireLocalMonitor {
-		var m map[string]*monitor.Monitor
-		ok, err := s.monitorsDS.Get(keyMonitors, &m)
-		if err != nil {
-			return fmt.Errorf("read monitors: %w", err)
-		}
-		if !ok || m == nil || m[rec.MonitorID] == nil {
-			return ErrMonitorNotFound
-		}
+	if requireLocalMonitor && s.monitors[rec.MonitorID] == nil {
+		return ErrMonitorNotFound
 	}
 
-	var events []CheckRecord
-	ok, err := s.eventsDS.Get(keyEvents, &events)
-	if err != nil {
-		return fmt.Errorf("read events: %w", err)
-	}
-	if !ok || events == nil {
-		events = make([]CheckRecord, 0)
-	}
-	events = append(events, rec)
-	if len(events) > 10000 {
-		events = events[len(events)-10000:]
-	}
-	if err := s.eventsDS.Set(keyEvents, events); err != nil {
-		return err
-	}
+	s.appendEventLocked(rec)
+	cp := *st
+	s.state[st.MonitorID] = &cp
 
-	var state map[string]*monitor.MonitorState
-	ok, err = s.stateDS.Get(keyState, &state)
-	if err != nil {
-		return fmt.Errorf("read state: %w", err)
-	}
-	if !ok || state == nil {
-		state = make(map[string]*monitor.MonitorState)
-	}
-	state[st.MonitorID] = st
-	if err := s.stateDS.Set(keyState, state); err != nil {
+	if err := flushJSON(s.eventsPath, map[string]any{keyEvents: s.events}); err != nil {
 		return err
 	}
-	s.indexUptimeRecordLocked(rec)
-
-	if err := flushJSON(s.eventsPath, map[string]any{keyEvents: events}); err != nil {
-		return err
-	}
-	return flushJSON(s.statePath, map[string]any{keyState: state})
+	return flushJSON(s.statePath, map[string]any{keyState: s.state})
 }
 
 // UpdateMonitor applies fn under the store write lock (read-modify-write).
@@ -723,26 +550,17 @@ func (s *Store) UpdateMonitor(id string, fn func(*monitor.Monitor) error) (*moni
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var m map[string]*monitor.Monitor
-	ok, err := s.monitorsDS.Get(keyMonitors, &m)
-	if err != nil {
-		return nil, fmt.Errorf("read monitors: %w", err)
-	}
-	if !ok || m == nil {
-		return nil, ErrMonitorNotFound
-	}
-	mon := m[id]
+	mon := s.monitors[id]
 	if mon == nil {
 		return nil, ErrMonitorNotFound
 	}
-	if err := fn(mon); err != nil {
+	work := clone(mon)
+	if err := fn(work); err != nil {
 		return nil, err
 	}
-	if err := s.monitorsDS.Set(keyMonitors, m); err != nil {
+	s.monitors[id] = work
+	if err := flushJSON(s.monitorsPath, map[string]any{keyMonitors: s.monitors}); err != nil {
 		return nil, err
 	}
-	if err := flushJSON(s.monitorsPath, map[string]any{keyMonitors: m}); err != nil {
-		return nil, err
-	}
-	return mon, nil
+	return clone(work), nil
 }

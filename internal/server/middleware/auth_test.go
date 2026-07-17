@@ -36,7 +36,7 @@ func TestSyncTokenMatches(t *testing.T) {
 func TestMiddleware_syncExportRequiresTokenWhenConfigured(t *testing.T) {
 	auth := NewAuth()
 	called := false
-	h := auth.Middleware("admin", func(user, pass string) bool {
+	h := auth.Middleware(func() string { return "admin" }, func(user, pass string) bool {
 		return user == "admin" && pass == "admin"
 	}, func() string { return "peer-secret" })(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
@@ -66,7 +66,7 @@ func TestMiddleware_syncExportRequiresTokenWhenConfigured(t *testing.T) {
 	})
 
 	t.Run("legacy basic when token unset", func(t *testing.T) {
-		hLegacy := auth.Middleware("admin", func(user, pass string) bool {
+		hLegacy := auth.Middleware(func() string { return "admin" }, func(user, pass string) bool {
 			return user == "admin" && pass == "admin"
 		}, func() string { return "" })(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)

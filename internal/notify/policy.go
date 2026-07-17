@@ -267,6 +267,7 @@ func IntervalWarnings(cfg *config.Config, m *monitor.Monitor) []string {
 
 // EmailSendGuard limits production email frequency per destination.
 type EmailSendGuard struct {
+	mu   sync.Mutex
 	last map[string]time.Time
 }
 
@@ -279,6 +280,8 @@ const emailSafeInterval = 60 * time.Second
 func (g *EmailSendGuard) Allow(monitorID, recipient string) bool {
 	key := monitorID + "\x00" + recipient
 	now := time.Now()
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if prev, ok := g.last[key]; ok && now.Sub(prev) < emailSafeInterval {
 		return false
 	}
@@ -287,6 +290,8 @@ func (g *EmailSendGuard) Allow(monitorID, recipient string) bool {
 
 func (g *EmailSendGuard) RecordSuccess(monitorID, recipient string) {
 	key := monitorID + "\x00" + recipient
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	g.last[key] = time.Now()
 }
 

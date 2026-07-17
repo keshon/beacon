@@ -73,7 +73,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	st, err := storage.New(ctx, dataDir)
+	st, err := storage.New(dataDir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func main() {
 	}
 	defer serverLock.Release()
 
-	cfg := loadConfig(st, cfgPath)
+	live := config.NewLive(loadConfig(st, cfgPath))
 	migrateLegacyNotifyOverrides(st)
 
 	alertQueue := make(chan func(), alertQueueSize)
@@ -112,6 +112,7 @@ func main() {
 			}
 		}
 
+		cfg := live.Load()
 		receivers := notify.BuildReceivers(cfg, m)
 		if len(receivers) == 0 {
 			return
@@ -156,7 +157,7 @@ func main() {
 
 	streamHub := server.NewCheckStreamHub()
 
-	clusterRT := cluster.New(st, cfg)
+	clusterRT := cluster.New(st, live)
 	var clusterWG sync.WaitGroup
 	clusterWG.Add(1)
 	go func() {
@@ -166,16 +167,17 @@ func main() {
 
 	src := scheduler.MonitorSource(clusterRT)
 
-	sch := scheduler.New(st, src, evaluator, cfg.Workers, cfg.DefaultIntervalDuration(), cfg, streamHub.BroadcastCheck)
+	startCfg := live.Load()
+	sch := scheduler.New(st, src, evaluator, startCfg.Workers, startCfg.DefaultIntervalDuration(), live, streamHub.BroadcastCheck)
 	sch.Run(ctx)
 	notifyStartupDown(sch, sendAlerts)
 
 	auth := server.NewAuth()
-	srv := server.NewServer(st, auth, cfg, sch, clusterRT, "templates", "static", streamHub)
-	httpServer := &http.Server{Addr: cfg.Listen, Handler: srv.Routes()}
+	srv := server.NewServer(st, auth, live, sch, clusterRT, "templates", "static", streamHub)
+	httpServer := &http.Server{Addr: startCfg.Listen, Handler: srv.Routes()}
 
 	go func() {
-		log.Printf("listening on http://localhost%s", cfg.Listen)
+		log.Printf("listening on http://localhost%s", startCfg.Listen)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}

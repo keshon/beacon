@@ -12,7 +12,7 @@ import (
 
 type Auth struct {
 	Auth   *middleware.Auth
-	Cfg    *config.Config
+	Cfg    *config.Live
 	TplDir string
 }
 
@@ -26,10 +26,14 @@ func (h *Auth) LoginForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
 	user := r.FormValue("username")
 	pass := r.FormValue("password")
-	if user != h.Cfg.Auth.Username || !h.Cfg.Auth.CheckPassword(pass) {
+	cfg := h.Cfg.Load()
+	if user != cfg.Auth.Username || !cfg.Auth.CheckPassword(pass) {
 		_ = httpx.Render(w, h.TplDir, "login.html", pongo2.Context{"error": "Invalid credentials"})
 		return
 	}

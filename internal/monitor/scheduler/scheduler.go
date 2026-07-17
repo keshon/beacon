@@ -31,7 +31,7 @@ type Scheduler struct {
 	evaluator       *monitor.StatusEvaluator
 	workers         int
 	defaultInterval time.Duration
-	cfg             *config.Config
+	cfg             *config.Live
 	onCheckRecorded func(storage.CheckRecord, *monitor.MonitorState)
 	jobs            chan CheckJob
 	wg              sync.WaitGroup
@@ -42,9 +42,12 @@ type Scheduler struct {
 	stopping        atomic.Bool
 }
 
-func New(s *storage.Store, source MonitorSource, evaluator *monitor.StatusEvaluator, workers int, defaultInterval time.Duration, cfg *config.Config, onCheckRecorded func(storage.CheckRecord, *monitor.MonitorState)) *Scheduler {
+func New(s *storage.Store, source MonitorSource, evaluator *monitor.StatusEvaluator, workers int, defaultInterval time.Duration, cfg *config.Live, onCheckRecorded func(storage.CheckRecord, *monitor.MonitorState)) *Scheduler {
 	if source == nil {
 		source = LocalSource{Store: s}
+	}
+	if cfg == nil {
+		cfg = config.NewLive(nil)
 	}
 	if workers <= 0 {
 		workers = 10
@@ -69,19 +72,6 @@ func (sc *Scheduler) DroppedChecks() uint64 {
 	return sc.droppedChecks.Load()
 }
 
-func (sc *Scheduler) ReloadConfig(cfg *config.Config) {
-	if cfg == nil {
-		return
-	}
-	sc.cfg = cfg
-	if cfg.Workers > 0 {
-		sc.workers = cfg.Workers
-	}
-	if d := cfg.DefaultIntervalDuration(); d > 0 {
-		sc.defaultInterval = d
-	}
-}
-
 func (sc *Scheduler) Run(ctx context.Context) {
 	for i := 0; i < sc.workers; i++ {
 		sc.wg.Add(1)
@@ -102,6 +92,11 @@ func (sc *Scheduler) loop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			now := time.Now()
+			cfg := sc.cfg.Load()
+			defaultInterval := sc.defaultInterval
+			if d := cfg.DefaultIntervalDuration(); d > 0 {
+				defaultInterval = d
+			}
 			monitors, err := sc.source.List(ctx)
 			if err != nil {
 				log.Printf("[scheduler] list monitors: %v", err)
@@ -120,9 +115,9 @@ func (sc *Scheduler) loop(ctx context.Context) {
 				if st != nil && !st.LastCheck.IsZero() {
 					interval := m.Interval
 					if interval <= 0 {
-						interval = sc.defaultInterval
+						interval = defaultInterval
 					}
-					minInterval := notify.RecommendedMinInterval(sc.cfg, m)
+					minInterval := notify.RecommendedMinInterval(cfg, m)
 					if minInterval > interval {
 						interval = minInterval
 					}

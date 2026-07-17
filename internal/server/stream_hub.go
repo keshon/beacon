@@ -15,12 +15,24 @@ const defaultClientBuf = 64
 // CheckStreamHub fans out check results to SSE subscribers.
 type CheckStreamHub struct {
 	mu      sync.Mutex
-	clients map[chan []byte]struct{}
+	clients map[chan []byte]*sync.Once
 }
 
 // NewCheckStreamHub creates a new SSE hub for check results.
 func NewCheckStreamHub() *CheckStreamHub {
-	return &CheckStreamHub{clients: make(map[chan []byte]struct{})}
+	return &CheckStreamHub{clients: make(map[chan []byte]*sync.Once)}
+}
+
+// closeClient removes and closes a client channel. Safe to call from both
+// broadcast (slow client) and unregister (handler exit) — close runs once.
+func (h *CheckStreamHub) closeClient(c chan []byte) {
+	h.mu.Lock()
+	once := h.clients[c]
+	delete(h.clients, c)
+	h.mu.Unlock()
+	if once != nil {
+		once.Do(func() { close(c) })
+	}
 }
 
 func (h *CheckStreamHub) Register(buf int) (ch <-chan []byte, unregister func()) {
@@ -29,14 +41,9 @@ func (h *CheckStreamHub) Register(buf int) (ch <-chan []byte, unregister func())
 	}
 	c := make(chan []byte, buf)
 	h.mu.Lock()
-	h.clients[c] = struct{}{}
+	h.clients[c] = new(sync.Once)
 	h.mu.Unlock()
-	return c, func() {
-		h.mu.Lock()
-		delete(h.clients, c)
-		h.mu.Unlock()
-		close(c)
-	}
+	return c, func() { h.closeClient(c) }
 }
 
 func (h *CheckStreamHub) BroadcastCheck(rec storage.CheckRecord, st *monitor.MonitorState) {
@@ -100,11 +107,11 @@ func (h *CheckStreamHub) broadcast(line []byte) {
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for c := range h.clients {
+	for c, once := range h.clients {
 		select {
 		case c <- line:
 		default:
-			close(c)
+			once.Do(func() { close(c) })
 			delete(h.clients, c)
 		}
 	}

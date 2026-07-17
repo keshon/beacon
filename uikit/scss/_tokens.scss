@@ -61,6 +61,17 @@
   --app-easing-standard-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --app-easing-spring: cubic-bezier(0.25, 1, 0.5, 1);
 
+  // ── Spacing scale (rem). Use for padding/gap/margin in authored partials;
+  //    off-scale values are allowed but should be deliberate, not accidental.
+  --app-space-1: 0.25rem;
+  --app-space-2: 0.5rem;
+  --app-space-3: 0.75rem;
+  --app-space-4: 1rem;
+  --app-space-5: 1.5rem;
+  --app-space-6: 2rem;
+  --app-space-7: 3rem;
+  --app-space-8: 4rem;
+
   // ── Tool shell radii (control rounding lives in _shell.scss under .beacon-app).
   --app-radius-2xs: 0.125rem;       // 2px — inline code chips, micro tags
   --app-radius-control-sm: 0.3125rem;

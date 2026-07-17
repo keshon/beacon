@@ -12,7 +12,7 @@ import (
 )
 
 type Notify struct {
-	Cfg       *config.Config
+	Cfg       *config.Live
 	TestLimit *notify.RateLimiter
 }
 
@@ -63,7 +63,8 @@ func (h *Notify) Test(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientID := clientIP(r)
-	ctx := notify.WithNodeFromConfig(notify.PreviewTemplateContext(status), h.Cfg)
+	cfg := h.Cfg.Load()
+	ctx := notify.WithNodeFromConfig(notify.PreviewTemplateContext(status), cfg)
 	body := notify.RenderTemplate(tpl, ctx)
 	alert := notify.Alert{
 		MonitorName: ctx.MonitorName,
@@ -90,7 +91,7 @@ func (h *Notify) Test(w http.ResponseWriter, r *http.Request) {
 			writeNotifyTest(w, http.StatusBadRequest, notifyTestResponse{Error: "chat_id is required"})
 			return
 		}
-		allowedToken, allowedChat, ok := h.Cfg.ResolveTelegramTestCredentials(token, chat)
+		allowedToken, allowedChat, ok := cfg.ResolveTelegramTestCredentials(token, chat)
 		if !ok {
 			if token == "" {
 				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "credentials are not configured"})
@@ -117,7 +118,7 @@ func (h *Notify) Test(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		webhook := strings.TrimSpace(req.Discord.Webhook)
-		allowedWebhook, ok := h.Cfg.ResolveDiscordTestWebhook(webhook)
+		allowedWebhook, ok := cfg.ResolveDiscordTestWebhook(webhook)
 		if !ok {
 			if err := notify.ValidateWebhookURL(webhook); err != nil {
 				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "webhook is not configured"})
@@ -148,13 +149,13 @@ func (h *Notify) Test(w http.ResponseWriter, r *http.Request) {
 			writeNotifyTest(w, http.StatusBadRequest, notifyTestResponse{Error: "to is required"})
 			return
 		}
-		target, ok := h.Cfg.ResolveEmailTestTarget(to)
+		target, ok := cfg.ResolveEmailTestTarget(to)
 		if !ok {
 			if to == "" || !strings.Contains(to, "@") {
 				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "email is not configured"})
 				return
 			}
-			if !h.Cfg.Email.Enabled || strings.TrimSpace(h.Cfg.Email.SMTP.Host) == "" {
+			if !cfg.Email.Enabled || strings.TrimSpace(cfg.Email.SMTP.Host) == "" {
 				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "email is not configured"})
 				return
 			}
@@ -167,7 +168,7 @@ func (h *Notify) Test(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		smtp := h.Cfg.EffectiveSMTP(target)
+		smtp := cfg.EffectiveSMTP(target)
 		if err := notify.NewEmail(smtp, target.To).Send(alert); err != nil {
 			writeNotifyTest(w, http.StatusBadGateway, notifyTestResponse{Error: err.Error()})
 			return
@@ -180,7 +181,7 @@ func (h *Notify) Test(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		rawURL := strings.TrimSpace(req.Webhook.URL)
-		allowedURL, ok := h.Cfg.ResolveWebhookTestURL(rawURL)
+		allowedURL, ok := cfg.ResolveWebhookTestURL(rawURL)
 		if !ok {
 			if err := notify.ValidateWebhookURL(rawURL); err != nil {
 				writeNotifyTest(w, http.StatusForbidden, notifyTestResponse{Error: "webhook is not configured"})
@@ -196,7 +197,7 @@ func (h *Notify) Test(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var headers map[string]string
-		for _, w := range h.Cfg.Webhook.Webhooks {
+		for _, w := range cfg.Webhook.Webhooks {
 			if strings.TrimSpace(w.URL) == allowedURL {
 				headers = w.Headers
 				break

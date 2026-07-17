@@ -1,7 +1,6 @@
 package cluster_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -13,15 +12,12 @@ import (
 
 func TestExportView_adoptedMonitorUsesLocalState(t *testing.T) {
 	dir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
-	st, err := storage.New(ctx, dir)
+	st, err := storage.New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		cancel()
 		st.Close()
 	}()
 
@@ -77,7 +73,7 @@ func TestExportView_adoptedMonitorUsesLocalState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rt := cluster.New(st, cfg)
+	rt := cluster.New(st, config.NewLive(cfg))
 	view, err := rt.ExportView()
 	if err != nil {
 		t.Fatal(err)

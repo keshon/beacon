@@ -14,10 +14,9 @@ import (
 )
 
 type Config struct {
-	Store     *storage.Store
-	Cfg       *config.Config
-	Scheduler *scheduler.Scheduler
-	Cluster   *cluster.Runtime
+	Store   *storage.Store
+	Cfg     *config.Live
+	Cluster *cluster.Runtime
 }
 
 func (h *Config) Get(w http.ResponseWriter, r *http.Request) {
@@ -36,8 +35,8 @@ func (h *Config) Set(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "read body", http.StatusBadRequest)
 		return
 	}
-	before := *h.Cfg
-	pub, err := applyConfigPatch(h.Store, h.Cfg, body)
+	before := h.Cfg.Load()
+	next, pub, err := applyConfigPatch(h.Store, body)
 	if err != nil {
 		if err == errInvalidJSON {
 			http.Error(w, "invalid JSON", http.StatusBadRequest)
@@ -46,13 +45,12 @@ func (h *Config) Set(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if h.Scheduler != nil {
-		h.Scheduler.ReloadConfig(h.Cfg)
-	}
+	next.Auth.CarryPlainPassword(before.Auth)
+	h.Cfg.Store(next)
 	if h.Cluster != nil {
 		h.Cluster.NotifyConfigChange()
 	}
-	pub.RequiresRestart = configNeedsRestart(&before, h.Cfg)
+	pub.RequiresRestart = configNeedsRestart(before, next)
 	httpx.JSON(w, pub)
 }
 
@@ -76,32 +74,33 @@ func getSettingsConfig(st *storage.Store) (config.PublicConfig, error) {
 	return cfg.ToSettings(), nil
 }
 
-func applyConfigPatch(st *storage.Store, runtime *config.Config, body []byte) (config.PublicConfig, error) {
+// applyConfigPatch merges the incoming patch over the persisted config and
+// returns the new runtime snapshot; the caller publishes it via Live.Store.
+func applyConfigPatch(st *storage.Store, body []byte) (*config.Config, config.PublicConfig, error) {
 	var incoming config.Config
 	if err := json.Unmarshal(body, &incoming); err != nil {
-		return config.PublicConfig{}, errInvalidJSON
+		return nil, config.PublicConfig{}, errInvalidJSON
 	}
-	existing := *runtime
+	var existing config.Config
 	ok, err := st.GetConfig(&existing)
 	if err != nil {
-		return config.PublicConfig{}, err
+		return nil, config.PublicConfig{}, err
 	}
 	if !ok {
 		existing = *config.Default()
 	}
 	config.ApplyNonSecret(&existing, &incoming)
 	if err := config.MergeSecrets(&existing, &incoming); err != nil {
-		return config.PublicConfig{}, err
+		return nil, config.PublicConfig{}, err
 	}
 	existing.Normalize()
 	if err := existing.Auth.EnsureHashed(); err != nil {
-		return config.PublicConfig{}, err
+		return nil, config.PublicConfig{}, err
 	}
 	if err := st.SetConfig(&existing); err != nil {
-		return config.PublicConfig{}, err
+		return nil, config.PublicConfig{}, err
 	}
-	*runtime = existing
-	return existing.ToSettings(), nil
+	return &existing, existing.ToSettings(), nil
 }
 
 type State struct {

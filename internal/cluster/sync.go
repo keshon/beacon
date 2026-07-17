@@ -14,8 +14,9 @@ import (
 )
 
 func (rt *Runtime) syncFromPeers(ctx context.Context) {
-	selfURL := strings.TrimSuffix(rt.cfg.Network.SelfURL, "/")
-	for _, peerURL := range rt.cfg.Network.Peers {
+	cfg := rt.config()
+	selfURL := strings.TrimSuffix(cfg.Network.SelfURL, "/")
+	for _, peerURL := range cfg.Network.Peers {
 		if peerURL == "" {
 			continue
 		}
@@ -30,7 +31,7 @@ func (rt *Runtime) syncFromPeers(ctx context.Context) {
 		if err != nil {
 			continue
 		}
-		setOutboundSyncAuth(req, rt.cfg)
+		setOutboundSyncAuth(req, cfg)
 		resp, err := rt.client.Do(req)
 		if err != nil {
 			log.Printf("[cluster] peer %s: %v", peerURL, err)
@@ -41,7 +42,7 @@ func (rt *Runtime) syncFromPeers(ctx context.Context) {
 			resp.Body.Close()
 			errMsg := fmt.Sprintf("HTTP %d", resp.StatusCode)
 			if resp.StatusCode == http.StatusUnauthorized {
-				if strings.TrimSpace(rt.cfg.Network.SyncToken) != "" {
+				if strings.TrimSpace(cfg.Network.SyncToken) != "" {
 					errMsg = "HTTP 401 — check sync_token matches on both nodes"
 				} else {
 					errMsg = "HTTP 401 — set matching sync_token on all nodes or use identical web credentials"
@@ -144,10 +145,11 @@ func (rt *Runtime) runSync(ctx context.Context) {
 
 	resetTicker := func() {
 		stopTicker()
-		if !rt.cfg.Network.Enabled || len(rt.cfg.Network.Peers) == 0 {
+		cfg := rt.config()
+		if !cfg.Network.Enabled || len(cfg.Network.Peers) == 0 {
 			return
 		}
-		interval := time.Duration(rt.cfg.Network.SyncInterval) * time.Second
+		interval := time.Duration(cfg.Network.SyncInterval) * time.Second
 		if interval < 10*time.Second {
 			interval = 10 * time.Second
 		}
@@ -159,15 +161,21 @@ func (rt *Runtime) runSync(ctx context.Context) {
 	}
 
 	doSync := func() {
-		if !rt.cfg.Network.Enabled || len(rt.cfg.Network.Peers) == 0 {
+		cfg := rt.config()
+		if !cfg.Network.Enabled || len(cfg.Network.Peers) == 0 {
 			return
 		}
 		rt.syncFromPeers(ctx)
-		_ = rt.store.PrunePeerData(rt.cfg.Network.Peers)
+		_ = rt.store.PrunePeerData(rt.config().Network.Peers)
+	}
+
+	networkOff := func() bool {
+		cfg := rt.config()
+		return !cfg.Network.Enabled || len(cfg.Network.Peers) == 0
 	}
 
 	for {
-		if !rt.cfg.Network.Enabled || len(rt.cfg.Network.Peers) == 0 {
+		if networkOff() {
 			stopTicker()
 			select {
 			case <-ctx.Done():
@@ -191,11 +199,11 @@ func (rt *Runtime) runSync(ctx context.Context) {
 				doSync()
 				resetTicker()
 			case <-ticker.C:
-				if !rt.cfg.Network.Enabled || len(rt.cfg.Network.Peers) == 0 {
+				if networkOff() {
 					stopTicker()
 					goto outer
 				}
-				interval := time.Duration(rt.cfg.Network.SyncInterval) * time.Second
+				interval := time.Duration(rt.config().Network.SyncInterval) * time.Second
 				if interval < 10*time.Second {
 					interval = 10 * time.Second
 				}

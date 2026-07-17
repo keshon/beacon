@@ -1,7 +1,6 @@
 package scheduler_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -13,13 +12,11 @@ import (
 
 func TestStartupDownMonitors(t *testing.T) {
 	dir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	st, err := storage.New(ctx, dir)
+	st, err := storage.New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		cancel()
 		st.Close()
 	}()
 
@@ -38,7 +35,7 @@ func TestStartupDownMonitors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg := config.Default()
+	cfg := config.NewLive(config.Default())
 	eval := monitor.NewStatusEvaluator(nil, nil)
 	sch := scheduler.New(st, scheduler.LocalSource{Store: st}, eval, 1, time.Second, cfg, nil)
 	down, states, err := sch.StartupDownMonitors()
@@ -50,24 +47,26 @@ func TestStartupDownMonitors(t *testing.T) {
 	}
 }
 
-func TestReloadConfig(t *testing.T) {
+func TestLiveConfigSwap(t *testing.T) {
 	dir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	st, err := storage.New(ctx, dir)
+	st, err := storage.New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		cancel()
 		st.Close()
 	}()
 
-	cfg := config.Default()
-	cfg.DefaultInterval = 30
+	base := config.Default()
+	base.DefaultInterval = 30
+	live := config.NewLive(base)
 	eval := monitor.NewStatusEvaluator(nil, nil)
-	sch := scheduler.New(st, scheduler.LocalSource{Store: st}, eval, 2, 30*time.Second, cfg, nil)
-	cfg.DefaultInterval = 60
-	cfg.Workers = 5
-	sch.ReloadConfig(cfg)
-	// smoke: no panic; behavior verified indirectly via integration
+	_ = scheduler.New(st, scheduler.LocalSource{Store: st}, eval, 2, 30*time.Second, live, nil)
+	next := *base
+	next.DefaultInterval = 60
+	next.Workers = 5
+	live.Store(&next)
+	if live.Load().DefaultInterval != 60 {
+		t.Fatalf("expected swapped config, got %d", live.Load().DefaultInterval)
+	}
 }
