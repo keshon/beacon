@@ -14,6 +14,9 @@
   color: var(--text-primary); text-decoration: none;
   font-size: var(--text-lg); font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-tight);
+  /* Clears the 24px tap minimum at every density: at comfortable the line
+     box alone came to 23.8px, and a logo is a link like any other. */
+  min-block-size: var(--control-h-md);
 }
 
 /* Разделы — пункты навигации кита, поставленные в строку. Не вкладки:
@@ -68,6 +71,18 @@
    объявлен один раз и меняется вместе с темой. */
 /* Фон стоит на СТРОКЕ, а не на ячейках: ховер и выделение кит красит по td,
    и они обязаны ложиться поверх подсветки, а не проигрывать ей. */
+/* An hour with no checks at all. Not "fine" and not "broken" — nobody looked,
+   and colour cannot say that. Drawn as an outline instead of a fill.
+
+   The kit has no state for this: inst-history-tick knows tones and the absence
+   of a tone, and the absence already means "an hour without remarks". A third
+   meaning needs a different shape, not a sixth colour. Third time this gap has
+   shown up on a real screen. */
+.beacon-tick--gap {
+  background: none;
+  box-shadow: inset 0 0 0 var(--hairline) var(--border);
+}
+
 [data-colorize-up="1"] .beacon-monitor[data-status="up"],
 [data-colorize-up="1"] .inst-task[data-status="up"],
 [data-colorize-up="1"] .inst-table tbody tr[data-status="up"] { background: var(--ok-bg); }

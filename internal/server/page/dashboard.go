@@ -38,6 +38,13 @@ type dashboardRow struct {
 	HTTPJSON     string
 	Enabled      bool
 	ConfigJSON   string
+
+	History      []HistTick
+	HistoryLabel string
+	// Repeats is how many incidents this monitor had in the last week. One
+	// outage is an event; the third in a week is a cause, and the row is the
+	// only place a person will notice the difference.
+	Repeats int
 }
 
 func enrichDashboardRowFromMonitor(row *dashboardRow, m *monitor.Monitor) {
@@ -154,7 +161,6 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	const uptimeBootstrapLimit = 200
 	ids := make([]string, 0, len(rows))
 	for _, row := range rows {
 		if row.IsPeer || row.Monitor == nil || row.Monitor.ID == "" {
@@ -162,29 +168,18 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		}
 		ids = append(ids, row.Monitor.ID)
 	}
-	type point struct {
-		Time    string `json:"time"`
-		Success bool   `json:"success"`
-	}
-	bootstrap := map[string][]point{}
-	if len(ids) > 0 {
-		samplesByID, err := h.Store.GetUptimeSamplesBatch(ids, uptimeBootstrapLimit)
-		if err == nil && samplesByID != nil {
-			for id, samples := range samplesByID {
-				pts := make([]point, 0, len(samples))
-				for _, rec := range samples {
-					pts = append(pts, point{
-						Time:    rec.Time.UTC().Format("2006-01-02T15:04:05.999999999Z07:00"),
-						Success: rec.Success,
-					})
-				}
-				bootstrap[id] = pts
-			}
+
+	now := time.Now()
+	rollups, _ := h.Store.GetRollupsBatch(ids, now.Add(-historyHours*time.Hour), now)
+	repeats, _ := h.Store.CountIncidentsBatch(ids, now.Add(-7*24*time.Hour))
+	for i := range rows {
+		if rows[i].IsPeer || rows[i].Monitor == nil || rows[i].Monitor.ID == "" {
+			continue
 		}
-	}
-	bootstrapJSON := []byte("{}")
-	if b, err := json.Marshal(bootstrap); err == nil {
-		bootstrapJSON = b
+		id := rows[i].Monitor.ID
+		rows[i].History = buildHistory(rollups[id], now)
+		rows[i].HistoryLabel = historyLabel(rows[i].History)
+		rows[i].Repeats = repeats[id]
 	}
 
 	networkEnabled := h.Cfg.Load().Network.Enabled
@@ -212,17 +207,16 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = httpx.Render(w, h.TplDir, "dashboard/dashboard.html", pongo2.Context{
-		"version":         buildVersion(),
-		"nav_active":      "dashboard",
-		"rows":            rows,
-		"countUp":         up,
-		"countDown":       down,
-		"countPaused":     paused,
-		"countTotal":      len(rows),
-		"networkNodes":    networkNodes,
-		"networkEnabled":  networkEnabled,
-		"hasNetwork":      hasNetwork,
-		"uptimeBootstrap": string(bootstrapJSON),
+		"version":        buildVersion(),
+		"nav_active":     "dashboard",
+		"rows":           rows,
+		"countUp":        up,
+		"countDown":      down,
+		"countPaused":    paused,
+		"countTotal":     len(rows),
+		"networkNodes":   networkNodes,
+		"networkEnabled": networkEnabled,
+		"hasNetwork":     hasNetwork,
 	})
 }
 

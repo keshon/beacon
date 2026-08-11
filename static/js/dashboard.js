@@ -1,112 +1,21 @@
-// Dashboard live updates: uptime strips, SSE, client-side layout toggle.
+// Dashboard live updates: SSE and the client-side layout toggle.
+//
+// The history strip is NOT drawn here any more. The server renders it from
+// hourly buckets, one tick per hour, the same hours on every row. Drawing it
+// from raw samples in the browser made the strip lie about time: for a monitor
+// checked every thirty seconds, twenty-four ticks were twenty-four minutes
+// while the label said a day, and two rows covered different spans.
+//
+// What is left for the client is one honest edit: a failed check darkens the
+// LAST tick, because that tick is the current hour and the hour now contains a
+// failure. Everything else waits for the next render.
 (function () {
     'use strict';
 
-    var TICK_WIDTH = 3;
-    var TICK_GAP = 2;
-    var COMPACT_MAX = 45;
-    var HISTORY_MAX = 500;
     var storageKey = 'beaconDashboardView';
 
-    var historyCache = Object.create(null);
     var currentView = null;
     var activeES = null;
-    var resizeObserver = null;
-
-    function readBootstrap() {
-        var el = document.getElementById('dashboard-uptime-bootstrap');
-        if (!el) return;
-        try {
-            var parsed = JSON.parse(el.textContent || '{}');
-            if (!parsed || typeof parsed !== 'object') return;
-            Object.keys(parsed).forEach(function (id) {
-                historyCache[id] = (parsed[id] || []).slice();
-            });
-        } catch (e) {}
-    }
-
-    // Штрих истории: класс кита, исход — тоном из закрытого словаря.
-    function barEl(ok) {
-        var d = document.createElement('span');
-        d.className = 'inst-history-tick';
-        d.setAttribute('data-tone', ok ? 'ok' : 'error');
-        return d;
-    }
-
-    function segmentCapacity(strip) {
-        var w = strip.clientWidth;
-        if (w <= 0) return COMPACT_MAX;
-        return Math.max(1, Math.floor((w + TICK_GAP) / (TICK_WIDTH + TICK_GAP)));
-    }
-
-    function isFillStrip(strip) {
-        return strip.classList.contains('uptime-strip--fill');
-    }
-
-    function maxForStrip(strip) {
-        return isFillStrip(strip) ? segmentCapacity(strip) : COMPACT_MAX;
-    }
-
-    function slicePoints(points, limit) {
-        if (!points || !points.length) return [];
-        if (points.length <= limit) return points;
-        return points.slice(points.length - limit);
-    }
-
-    function renderStrip(strip, points) {
-        var slice = slicePoints(points, maxForStrip(strip));
-        strip.textContent = '';
-        for (var i = 0; i < slice.length; i++) {
-            strip.appendChild(barEl(!!slice[i].success));
-        }
-    }
-
-    function appendToCache(monitorId, success) {
-        if (!historyCache[monitorId]) historyCache[monitorId] = [];
-        var buf = historyCache[monitorId];
-        buf.push({ success: !!success });
-        if (buf.length > HISTORY_MAX) {
-            historyCache[monitorId] = buf.slice(buf.length - HISTORY_MAX);
-        }
-    }
-
-    function refreshFillStrips() {
-        document.querySelectorAll('.uptime-strip--fill[data-monitor-id]').forEach(function (strip) {
-            var id = strip.getAttribute('data-monitor-id');
-            if (id) renderAllStripsForMonitor(id);
-        });
-    }
-
-    function renderAllStripsForMonitor(id) {
-        var pts = historyCache[id];
-        if (!pts || !pts.length) return;
-        document.querySelectorAll('.uptime-strip[data-monitor-id="' + id + '"]').forEach(function (strip) {
-            renderStrip(strip, pts);
-        });
-    }
-
-    function wireFillStrips() {
-        if (typeof ResizeObserver === 'undefined') return;
-        if (!resizeObserver) {
-            resizeObserver = new ResizeObserver(function (entries) {
-                entries.forEach(function (entry) {
-                    var strip = entry.target;
-                    var id = strip.getAttribute('data-monitor-id');
-                    if (id) renderAllStripsForMonitor(id);
-                });
-            });
-        }
-        document.querySelectorAll('.uptime-strip--fill[data-monitor-id]').forEach(function (strip) {
-            resizeObserver.observe(strip);
-        });
-    }
-
-    function bootstrapUptime() {
-        Object.keys(historyCache).forEach(function (id) {
-            renderAllStripsForMonitor(id);
-        });
-        wireFillStrips();
-    }
 
     // Тон из словаря кита; слово рядом с точкой обязательно — цвет не имеет
     // права быть единственным носителем.
@@ -120,9 +29,21 @@
         );
     }
 
+    // A failed check makes the current hour a failed hour. Marking the last
+    // tick is the whole of the live update: the rest of the strip is history
+    // and history does not change.
+    function markCurrentHour(monitorId) {
+        document.querySelectorAll('.inst-history[data-monitor-id="' + monitorId + '"]').forEach(function (strip) {
+            var last = strip.lastElementChild;
+            if (!last) return;
+            last.classList.remove('beacon-tick--gap');
+            last.setAttribute('data-tone', 'error');
+        });
+    }
+
     function updateRowFromSSE(data) {
         if (!data.monitor_id) return;
-        appendToCache(data.monitor_id, !!data.success);
+        if (!data.success) markCurrentHour(data.monitor_id);
         document.querySelectorAll('[data-dashboard-monitor="' + data.monitor_id + '"]').forEach(function (root) {
             var lat = root.querySelector('.dashboard-latency');
             var lc = root.querySelector('.dashboard-lastcheck');
@@ -131,7 +52,6 @@
             if (lc && data.last_check != null) lc.textContent = data.last_check;
             if (stCell && data.status) stCell.innerHTML = statusBadgeHtml(data.status);
         });
-        renderAllStripsForMonitor(data.monitor_id);
     }
 
     var retryMs = 1000;
@@ -190,9 +110,6 @@
             url.searchParams.set('view', mode);
             history.replaceState(null, '', url.toString());
         } catch (e) {}
-        if (mode === 'cards') {
-            requestAnimationFrame(refreshFillStrips);
-        }
     }
 
     function initViewToggle() {
@@ -222,14 +139,7 @@
     }
 
     function init() {
-        readBootstrap();
         initViewToggle();
-        requestAnimationFrame(function () {
-            bootstrapUptime();
-            if (currentView === 'cards') {
-                refreshFillStrips();
-            }
-        });
         connectSSE();
         window.addEventListener('pagehide', function () {
             if (activeES) {

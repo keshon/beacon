@@ -1,5 +1,5 @@
-{# Строка списка мониторов — строка очереди кита: жёлоб с точкой состояния, #}
-{# имя с адресом, справа метрики. Expects: row #}
+{# Monitor list row — the kit's task row: a gutter with the state dot, the name #}
+{# with its target, metrics on the right. Expects: row #}
 <div class="inst-task" data-status="{{ row.Status }}" role="option" aria-selected="false" tabindex="-1"
      {% if row.Status == 'up' %}data-state="done"{% elif row.Status == 'down' %}data-state="failed"{% else %}data-state="queued"{% endif %}
      {% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}"{% endif %}{% endif %}>
@@ -10,6 +10,9 @@
         <span class="inst-task-title inst-u-truncate monitor-title">
             {{ row.Monitor.Name }}
             {% if not row.IsPeer and not row.Enabled %}<span class="inst-badge">Paused</span>{% endif %}
+            {# Three outages in a week is a pattern, and the row is the only #}
+            {# place a person will see it before opening anything. #}
+            {% if row.Repeats > 2 %}<span class="inst-badge" data-tone="warn">{{ row.Repeats }} this week</span>{% endif %}
         </span>
         <span class="inst-task-sub inst-u-truncate">
             {% include "./shared/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
@@ -17,10 +20,7 @@
         </span>
     </span>
     <span class="inst-task-meta inst-cluster">
-        {% if not row.IsPeer %}
-        <span class="inst-history uptime-strip" data-monitor-id="{{ row.Monitor.ID }}"
-              role="img" aria-label="Recent check results"></span>
-        {% endif %}
+        {% if not row.IsPeer %}{% include "./shared/history.html" with row=row %}{% endif %}
         <span class="dashboard-status">{% include "./shared/status.html" with status=row.Status %}</span>
         <span class="inst-num dashboard-latency">{{ row.LatencyMs }}</span>
         <span class="dashboard-lastcheck">{{ row.LastCheck }}</span>

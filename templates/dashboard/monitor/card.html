@@ -28,7 +28,6 @@
     {% if row.IsPeer %}
     <p class="inst-u-dim">Check history is recorded on the peer node</p>
     {% else %}
-    <div class="inst-history uptime-strip uptime-strip--fill" data-monitor-id="{{ row.Monitor.ID }}"
-         role="img" aria-label="Recent check results"></div>
+    {% include "./shared/history.html" with row=row %}
     {% endif %}
 </article>

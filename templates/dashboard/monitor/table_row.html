@@ -14,8 +14,7 @@
         {% if row.IsPeer %}
         <span class="inst-u-dim">—</span>
         {% else %}
-        <span class="inst-history uptime-strip" data-monitor-id="{{ row.Monitor.ID }}"
-              role="img" aria-label="Recent check results"></span>
+        {% include "./shared/history.html" with row=row %}
         {% endif %}
     </td>
     <td class="dashboard-status">{% include "./shared/status.html" with status=row.Status %}</td>
