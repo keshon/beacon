@@ -1,5 +1,5 @@
 {# Строка таблицы мониторов. Expects: row #}
-<tr {% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}"{% endif %}{% endif %}>
+<tr data-status="{{ row.Status }}" {% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}"{% endif %}{% endif %}>
     <td>
         <div class="monitor-title">{{ row.Monitor.Name }}
             {% if not row.IsPeer and not row.Enabled %}<span class="inst-badge">Paused</span>{% endif %}

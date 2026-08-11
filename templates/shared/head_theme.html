@@ -2,6 +2,8 @@
 {# #}
 {# Атрибут кита — data-theme, шесть тем. Нет атрибута — тема по настройке ОС, #}
 {# и это отдельное значение «system», а не синоним светлой. #}
+{# Раскраска строк стоит здесь по той же причине: поставленная после загрузки, #}
+{# она перекрасила бы уже показанный список. #}
 <script>
     (function () {
         try {
@@ -11,6 +13,12 @@
         try {
             var d = localStorage.getItem('beaconDensity');
             if (d) document.documentElement.setAttribute('data-density', d);
+        } catch (e) { }
+        try {
+            document.documentElement.setAttribute(
+                'data-colorize-up', localStorage.getItem('beaconColorizeUp') === '1' ? '1' : '0');
+            document.documentElement.setAttribute(
+                'data-colorize-down', localStorage.getItem('beaconColorizeDown') === '1' ? '1' : '0');
         } catch (e) { }
         try {
             var dv = localStorage.getItem('beaconDashboardView');

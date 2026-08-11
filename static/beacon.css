@@ -66,11 +66,15 @@
 /* Подсветка состояния — по желанию, переключается в настройках.
    Тон берётся из словаря кита, а не из своего rgba: у «ok» и «error» цвет
    объявлен один раз и меняется вместе с темой. */
+/* Фон стоит на СТРОКЕ, а не на ячейках: ховер и выделение кит красит по td,
+   и они обязаны ложиться поверх подсветки, а не проигрывать ей. */
 [data-colorize-up="1"] .beacon-monitor[data-status="up"],
-[data-colorize-up="1"] .inst-task[data-status="up"] { background: var(--ok-bg); }
+[data-colorize-up="1"] .inst-task[data-status="up"],
+[data-colorize-up="1"] .inst-table tbody tr[data-status="up"] { background: var(--ok-bg); }
 
 [data-colorize-down="1"] .beacon-monitor[data-status="down"],
-[data-colorize-down="1"] .inst-task[data-status="down"] { background: var(--err-bg); }
+[data-colorize-down="1"] .inst-task[data-status="down"],
+[data-colorize-down="1"] .inst-table tbody tr[data-status="down"] { background: var(--err-bg); }
 
 /* Сетка карточек: минимум по ширине карточки монитора, дальше сколько
    поместится. Контейнерных запросов тут не нужно — сетка интринсик. */

@@ -196,7 +196,8 @@
     }
 
     function initViewToggle() {
-        if (!document.getElementById('dashboardViews')) return;
+        var group = document.querySelector('[data-dashboard-views]');
+        if (!group) return;
         currentView = resolveInitialView();
         document.documentElement.setAttribute('data-dashboard-view', currentView);
         document.querySelectorAll('[data-dashboard-view]').forEach(function (b) {
@@ -214,13 +215,10 @@
         } catch (e) {}
         // Отметку и клавиатуру ведёт кит по role="radiogroup"; приложение
         // слушает результат и записывает выбор.
-        var group = document.querySelector('[data-dashboard-views]');
-        if (group) {
-            group.addEventListener('inst:select', function (e) {
-                var v = e.target.getAttribute('data-dashboard-view');
-                if (v) setView(v);
-            });
-        }
+        group.addEventListener('inst:select', function (e) {
+            var v = e.target.getAttribute('data-dashboard-view');
+            if (v) setView(v);
+        });
     }
 
     function init() {
