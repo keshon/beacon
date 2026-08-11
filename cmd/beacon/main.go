@@ -7,18 +7,19 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/keshon/beacon/internal/monitor/checks"
 	"github.com/keshon/beacon/internal/cluster"
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
-	"github.com/keshon/beacon/internal/notify"
+	"github.com/keshon/beacon/internal/monitor/checks"
 	"github.com/keshon/beacon/internal/monitor/scheduler"
-	"github.com/keshon/beacon/internal/storage"
+	"github.com/keshon/beacon/internal/notify"
 	"github.com/keshon/beacon/internal/server"
+	"github.com/keshon/beacon/internal/storage"
 )
 
 const (
@@ -174,7 +175,16 @@ func main() {
 
 	auth := server.NewAuth()
 	srv := server.NewServer(st, auth, live, sch, clusterRT, "templates", "static", streamHub)
-	httpServer := &http.Server{Addr: startCfg.Listen, Handler: srv.Routes()}
+	// Разработка без входа обязана слушать только петлю: сервер без пароля
+	// на всех интерфейсах — это не удобство, а открытая дверь в сеть.
+	listen := startCfg.Listen
+	if os.Getenv("BEACON_DEV") == "1" {
+		if strings.HasPrefix(listen, ":") {
+			listen = "127.0.0.1" + listen
+		}
+		log.Printf("BEACON_DEV=1: вход не спрашивается, слушаем только %s", listen)
+	}
+	httpServer := &http.Server{Addr: listen, Handler: srv.Routes()}
 
 	go func() {
 		log.Printf("listening on http://localhost%s", startCfg.Listen)

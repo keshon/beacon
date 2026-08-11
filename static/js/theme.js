@@ -1,27 +1,41 @@
+/* Тема и плотность. Атрибут ставит приложение, рисует кит.
+
+   Шесть тем плюс «по системе»: последнее — отсутствие атрибута, а не
+   отдельная тема. Значение хранится, чтобы выбор пережил перезагрузку. */
 (function () {
-    function currentTheme() {
-        return document.documentElement.getAttribute('data-bs-theme') || 'dark';
-    }
-    function syncThemeToggle() {
-        var t = currentTheme();
-        var btn = document.getElementById('beaconThemeToggle');
-        if (!btn) return;
-        btn.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
-        btn.title = t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
-        var sun = btn.querySelector('.theme-icon-sun');
-        var moon = btn.querySelector('.theme-icon-moon');
-        if (sun && moon) {
-            sun.classList.toggle('d-none', t !== 'dark');
-            moon.classList.toggle('d-none', t === 'dark');
+    var root = document.documentElement;
+    var sel = document.getElementById('beaconTheme');
+    if (!sel) return;
+
+    var saved = null;
+    try { saved = localStorage.getItem('beaconTheme'); } catch (e) { }
+    sel.value = saved || 'system';
+
+    sel.addEventListener('change', function () {
+        var v = sel.value;
+        if (v === 'system') {
+            root.removeAttribute('data-theme');
+        } else {
+            root.setAttribute('data-theme', v);
         }
-    }
-    document.getElementById('beaconThemeToggle')?.addEventListener('click', function () {
-        var next = currentTheme() === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-bs-theme', next);
-        try {
-            localStorage.setItem('beaconTheme', next);
-        } catch (e) {}
-        syncThemeToggle();
+        try { localStorage.setItem('beaconTheme', v); } catch (e) { }
     });
-    document.addEventListener('DOMContentLoaded', syncThemeToggle);
+
+    // Плотность — атрибут документа. Отметку и стрелки ведёт кит по
+    // role="radiogroup"; приложению остаётся записать выбор.
+    var dens = document.getElementById('beaconDensity');
+    if (dens) {
+        var savedD = null;
+        try { savedD = localStorage.getItem('beaconDensity'); } catch (e) { }
+        dens.querySelectorAll('[role="radio"]').forEach(function (b) {
+            var on = (b.getAttribute('data-density') || '') === (savedD || '');
+            b.setAttribute('aria-checked', String(on));
+            b.tabIndex = on ? 0 : -1;
+        });
+        dens.addEventListener('inst:select', function (e) {
+            var v = e.target.getAttribute('data-density') || '';
+            if (v) { root.setAttribute('data-density', v); } else { root.removeAttribute('data-density'); }
+            try { localStorage.setItem('beaconDensity', v); } catch (e2) { }
+        });
+    }
 })();

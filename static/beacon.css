@@ -1,0 +1,168 @@
+/* Beacon поверх instrument.
+
+   Правило то же, что у справочника кита: здесь допустимо только то, что
+   принадлежит ЭТОМУ приложению — расположение его собственных блоков. Если
+   для показа компонента понадобилось его дооформить, значит, дыра в ките, и
+   чинить надо кит.
+
+   Всё лежит вне слоёв, поэтому выигрывает у кита без единого !important. */
+
+/* ── Шапка ────────────────────────────────────────────────────────────── */
+
+.beacon-brand {
+  display: flex; align-items: center; gap: var(--space-3);
+  color: var(--text-primary); text-decoration: none;
+  font-size: var(--text-lg); font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Разделы — пункты навигации кита, поставленные в строку. Не вкладки:
+   вкладка садится на собственную линейку полосы (margin-block-end: -1px), и
+   в шапке её подчёркивание пересекает границу шапки. */
+.beacon-nav { display: flex; gap: var(--space-2); }
+
+/* Всё, кроме логотипа, — одной группой справа. */
+.beacon-head-end {
+  display: flex; align-items: center; gap: var(--space-4);
+  margin-inline-start: auto;
+}
+
+/* Разделитель групп в шапке — тот же хайрлайн, что делит всё остальное. */
+.beacon-head-sep {
+  align-self: stretch;
+  inline-size: var(--hairline);
+  background: var(--border);
+  margin-block: var(--space-2);
+}
+
+/* Плашка «Вид»: строка на настройку, подпись над контролом. */
+.beacon-view-body { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-3); }
+.beacon-view-row { display: flex; flex-direction: column; gap: var(--space-3); }
+.beacon-view-row .inst-select-wrap { inline-size: 100%; }
+
+/* ── Страница ─────────────────────────────────────────────────────────── */
+
+/* Рабочая область упирается в потолок ширины и стоит по центру: на широком
+   мониторе сетка иначе растягивается на два метра, и глаз проходит от левого
+   края экрана до правого ради одной строки.
+
+   Между секциями воздух шире, чем внутри них: это и делит экран на части. */
+.beacon-page {
+  display: flex; flex-direction: column; gap: var(--space-8);
+  max-inline-size: var(--container-max);
+  margin-inline: auto;
+  padding: var(--space-7) var(--pad-panel) var(--space-9);
+}
+
+/* Внутри секции — свой, более тесный шаг: заголовок принадлежит тому, что
+   под ним. Между секциями воздух даёт стопка кита, а не своё правило. */
+.inst-section { gap: var(--space-4); }
+
+/* Подсветка состояния — по желанию, переключается в настройках.
+   Тон берётся из словаря кита, а не из своего rgba: у «ok» и «error» цвет
+   объявлен один раз и меняется вместе с темой. */
+[data-colorize-up="1"] .beacon-monitor[data-status="up"],
+[data-colorize-up="1"] .inst-task[data-status="up"] { background: var(--ok-bg); }
+
+[data-colorize-down="1"] .beacon-monitor[data-status="down"],
+[data-colorize-down="1"] .inst-task[data-status="down"] { background: var(--err-bg); }
+
+/* Сетка карточек: минимум по ширине карточки монитора, дальше сколько
+   поместится. Контейнерных запросов тут не нужно — сетка интринсик. */
+/* Настройки — колонка форм, а не сетка данных: строка ввода в тысячу
+   пикселей читается хуже короткой. Потолок берётся у узкого контейнера кита. */
+.beacon-page--narrow { max-inline-size: 44rem; }
+
+.beacon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: var(--gap-row);
+}
+
+/* Переключатель вида показывает ровно один блок. Атрибут стоит на <html>,
+   поэтому выбранный вид переживает переход между страницами. */
+[data-dashboard-view="cards"] .beacon-view:not([data-view="cards"]),
+[data-dashboard-view="list"]  .beacon-view:not([data-view="list"]),
+[data-dashboard-view="table"] .beacon-view:not([data-view="table"]) { display: none; }
+
+/* ── Карточка монитора ────────────────────────────────────────────────── */
+
+/* Собственного вида у карточки нет: поверхность, радиус и рамка приходят от
+   inst-card. Здесь только раскладка её содержимого. */
+.beacon-monitor { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* Статус и действия прижаты к дальнему краю карточки, имя занимает остальное
+   и обрезается. Иначе кебаб плавает сразу за именем, и в сетке из семнадцати
+   карточек он оказывается в семнадцати разных местах. */
+.beacon-monitor > .inst-card-head > .inst-cluster { margin-inline-start: auto; flex: none; }
+.beacon-monitor > .inst-card-head > .inst-card-title { min-inline-size: 0; }
+.beacon-monitor-meta {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--gap-inline);
+  font-size: var(--text-xs); color: var(--text-muted);
+}
+.beacon-monitor-target { min-inline-size: 0; }
+
+/* Строка ошибки узла: длинный текст обязан переноситься, а не распирать
+   карточку — адреса и сообщения сети не имеют пробелов. */
+.beacon-error { overflow-wrap: anywhere; }
+
+/* ── Вход ─────────────────────────────────────────────────────────────── */
+
+/* Единственный экран без оболочки: одна карточка по центру. Ни градиента,
+   ни свечения — конституция кита запрещает оба, и на плоском макете они
+   означали бы, что вход важнее того, ради чего в него входят. */
+.beacon-login {
+  display: grid;
+  place-items: center;
+  min-block-size: 100dvh;
+  padding: var(--pad-panel);
+}
+.beacon-login-card { inline-size: min(24rem, 100%); }
+.beacon-login-card .inst-btn { inline-size: 100%; }
+
+/* ── Настройки ────────────────────────────────────────────────────────── */
+
+/* Обёртки, оставшиеся от бутстраповской сетки. Из раскладки они уходят, а
+   из дерева нет: снимать теги регуляркой — способ получить пять лишних
+   </div> и поля, уехавшие из формы. */
+.beacon-bare { display: contents; }
+
+/* Панели настроек стоят стопкой: форма отдавала их встык, и шесть карточек
+   читались одной простынёй. */
+#configForm { display: flex; flex-direction: column; gap: var(--space-7); }
+
+/* Контрол без подписи слева не обязан тянуться на всю колонку: кнопка во всю
+   ширину формы — тот же признак самодельного кита, что и иконочная кнопка
+   прямоугольником. В колоночном флексе это align-self, а не justify-self:
+   второе работает только в гриде. */
+/* Иконочная кнопка исключена намеренно: max-content сжимает её по значку и
+   превращает квадрат в прямоугольник — тот самый признак самодельного кита,
+   про который написано на странице кнопки. */
+.inst-panel-body :is(.inst-btn, .inst-checkbox, .inst-btn-group) { align-self: start; }
+.inst-panel-body .inst-btn:not(.inst-btn--icon) { inline-size: max-content; }
+
+/* Ряд получателя: поля в строку, метка и кнопки за ними. Раскладка своя,
+   потому что это композиция приложения; вид полей и кнопок — от кита. */
+.notify-row {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.notify-row + .notify-row { margin-block-start: var(--space-3); }
+.notify-row__fields { display: flex; flex: 1 1 16rem; gap: var(--space-3); min-inline-size: 0; }
+.notify-row__fields .inst-input { flex: 1 1 8rem; min-inline-size: 0; }
+.notify-row__actions { display: flex; gap: var(--space-2); }
+.notify-row-meta { font-size: var(--text-xs); color: var(--text-muted); white-space: nowrap; }
+
+/* Канал: режим, подсказка, список, кнопка добавления — стопкой. */
+.notify-channel-panel { display: flex; flex-direction: column; gap: var(--space-4); }
+.notify-channel-panel [data-notify-add] { align-self: start; }
+
+/* Поле, у которого рядом с подписью стоит действие («Down template · Reset»).
+   Сеткой inst-field--side кнопка попадает в колонку контрола и прилипает к
+   её краю: у поля кита нет места под действие подписи, и выдумывать его в
+   разметке нельзя — это композиция приложения. */
+.beacon-field-action {
+  display: flex; align-items: center; gap: var(--space-4);
+  margin-block-end: var(--space-3);
+}
+.beacon-field-action .inst-label { margin: 0; }

@@ -1,41 +1,26 @@
-{# Apply saved theme + dashboard layout before CSS paint (login page does not include this). #}
+{# Тема ставится ДО первой отрисовки, иначе экран моргает светлым. #}
+{# #}
+{# Атрибут кита — data-theme, шесть тем. Нет атрибута — тема по настройке ОС, #}
+{# и это отдельное значение «system», а не синоним светлой. #}
 <script>
     (function () {
         try {
             var t = localStorage.getItem('beaconTheme');
-            if (t === 'light' || t === 'dark') {
-                document.documentElement.setAttribute('data-bs-theme', t);
-            } else {
-                document.documentElement.setAttribute('data-bs-theme', 'dark');
-            }
-        } catch (e) {
-            document.documentElement.setAttribute('data-bs-theme', 'dark');
-        }
-    })();
-    (function () {
+            if (t && t !== 'system') document.documentElement.setAttribute('data-theme', t);
+        } catch (e) { }
+        try {
+            var d = localStorage.getItem('beaconDensity');
+            if (d) document.documentElement.setAttribute('data-density', d);
+        } catch (e) { }
         try {
             var dv = localStorage.getItem('beaconDashboardView');
-            if (dv === 'grid') {
-                dv = 'list';
-            }
-            if (dv === 'list' || dv === 'table' || dv === 'cards') {
-                document.documentElement.setAttribute('data-dashboard-view', dv);
-            } else {
-                document.documentElement.setAttribute('data-dashboard-view', 'cards');
-            }
+            if (dv === 'grid') dv = 'list';
+            document.documentElement.setAttribute(
+                'data-dashboard-view',
+                (dv === 'list' || dv === 'table' || dv === 'cards') ? dv : 'cards'
+            );
         } catch (e) {
             document.documentElement.setAttribute('data-dashboard-view', 'cards');
-        }
-    })();
-    (function () {
-        try {
-            var up = localStorage.getItem('beaconColorizeUp') === '1';
-            var down = localStorage.getItem('beaconColorizeDown') === '1';
-            document.documentElement.setAttribute('data-colorize-up', up ? '1' : '0');
-            document.documentElement.setAttribute('data-colorize-down', down ? '1' : '0');
-        } catch (e) {
-            document.documentElement.setAttribute('data-colorize-up', '0');
-            document.documentElement.setAttribute('data-colorize-down', '0');
         }
     })();
 </script>

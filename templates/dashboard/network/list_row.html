@@ -1,50 +1,16 @@
-{# Network node list row. Expects: n #}
-<div class="dash-list-row dash-network-row">
-    <div class="dash-list-primary">
-        <div class="dash-list-primary-main">
-            <div class="dash-list-line1">
-                <span class="dash-list-name">
-                    {% if n.NodeID %}
-                    <code class="app-code">{{ n.NodeID }}</code>
-                    {% else %}
-                    <code class="app-code">{{ n.NodeIDShort }}</code>
-                    {% endif %}
-                </span>
-            </div>
-            <div class="monitor-meta dash-list-target text-truncate">
-                <a href="{{ n.URL }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ n.URL }}</a>
-            </div>
-            {% if n.LastError %}
-            <div class="small text-danger mt-1">
-                <i class="bi bi-exclamation-circle me-1"></i>{{ n.LastError }}
-            </div>
-            {% endif %}
-            {% if n.SyncWarnings %}
-            {% for w in n.SyncWarnings %}
-            <div class="small text-warning mt-1">
-                <i class="bi bi-exclamation-triangle me-1"></i>{{ w }}
-            </div>
-            {% endfor %}
-            {% endif %}
-        </div>
-        <div class="dashboard-status dash-list-status" aria-label="Node status">
-            {% if n.Status == 'self' %}
-            <span class="badge rounded-pill badge-self"><span class="dot"></span>Self</span>
-            {% elif n.Status == 'live' %}
-            <span class="badge rounded-pill badge-live"><span class="dot"></span>Live</span>
-            {% elif n.Status == 'dead' %}
-            <span class="badge rounded-pill badge-dead"><span class="dot"></span>Dead</span>
-            {% else %}
-            <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
-            {% endif %}
-        </div>
-    </div>
-    <div class="dash-list-uptime">
-        <span class="text-body-tertiary app-metric">—</span>
-    </div>
-    <div class="dash-list-secondary">
-        <span class="dash-list-metric text-body-tertiary app-metric">Last seen {{ n.LastSeen }}</span>
-        <span class="dash-list-metric text-body-secondary app-metric">{{ n.MonitorsCount }} monitor{% if n.MonitorsCount != 1 %}s{% endif %}</span>
-    </div>
-    <div class="dash-list-actions" aria-hidden="true"></div>
+{# Строка списка узлов. Expects: n #}
+<div class="inst-task">
+    <span class="inst-task-gutter">
+        <span class="inst-dot" data-tone="{% if n.Status == 'live' %}ok{% elif n.Status == 'dead' %}error{% elif n.Status == 'self' %}running{% else %}neutral{% endif %}"></span>
+    </span>
+    <span class="inst-task-main">
+        <span class="inst-task-title inst-u-truncate inst-u-mono">{% if n.NodeID %}{{ n.NodeID }}{% else %}{{ n.NodeIDShort }}{% endif %}</span>
+        <span class="inst-task-sub inst-u-truncate"><a href="{{ n.URL }}" target="_blank" rel="noopener">{{ n.URL }}</a></span>
+        {% if n.LastError %}<span class="inst-task-sub beacon-error">{{ n.LastError }}</span>{% endif %}
+    </span>
+    <span class="inst-task-meta inst-cluster">
+        {% include "./shared/status.html" with status=n.Status %}
+        <span>Last seen {{ n.LastSeen }}</span>
+        <span class="inst-num">{{ n.MonitorsCount }}</span>
+    </span>
 </div>

@@ -1,0 +1,9 @@
+{# Статус монитора. Тон из словаря кита, слово рядом с точкой: цвет не имеет #}
+{# права быть единственным носителем. Expects: status #}
+{% if status == 'up' %}
+<span class="inst-badge" data-tone="ok"><span class="inst-dot"></span>Up</span>
+{% elif status == 'down' %}
+<span class="inst-badge" data-tone="error"><span class="inst-dot"></span>Down</span>
+{% else %}
+<span class="inst-badge" data-tone="neutral"><span class="inst-dot"></span>Unknown</span>
+{% endif %}

@@ -2,8 +2,8 @@
 (function () {
     'use strict';
 
-    var SEG_WIDTH = 3;
-    var SEG_GAP = 2;
+    var TICK_WIDTH = 3;
+    var TICK_GAP = 2;
     var COMPACT_MAX = 45;
     var HISTORY_MAX = 500;
     var storageKey = 'beaconDashboardView';
@@ -25,17 +25,18 @@
         } catch (e) {}
     }
 
+    // Штрих истории: класс кита, исход — тоном из закрытого словаря.
     function barEl(ok) {
         var d = document.createElement('span');
-        d.className = 'uptime-seg ' + (ok ? 'uptime-seg-up' : 'uptime-seg-down');
-        d.setAttribute('aria-hidden', 'true');
+        d.className = 'inst-history-tick';
+        d.setAttribute('data-tone', ok ? 'ok' : 'error');
         return d;
     }
 
     function segmentCapacity(strip) {
         var w = strip.clientWidth;
         if (w <= 0) return COMPACT_MAX;
-        return Math.max(1, Math.floor((w + SEG_GAP) / (SEG_WIDTH + SEG_GAP)));
+        return Math.max(1, Math.floor((w + TICK_GAP) / (TICK_WIDTH + TICK_GAP)));
     }
 
     function isFillStrip(strip) {
@@ -107,16 +108,15 @@
         wireFillStrips();
     }
 
+    // Тон из словаря кита; слово рядом с точкой обязательно — цвет не имеет
+    // права быть единственным носителем.
     function statusBadgeHtml(status) {
         var labels = { up: 'Up', down: 'Down', unknown: 'Unknown' };
-        var classes = { up: 'badge-up', down: 'badge-down', unknown: 'badge-unknown' };
-        var s = status && classes[status] ? status : 'unknown';
+        var tones = { up: 'ok', down: 'error', unknown: 'neutral' };
+        var s = status && tones[status] ? status : 'unknown';
         return (
-            '<span class="badge rounded-pill ' +
-            classes[s] +
-            '"><span class="dot"></span>' +
-            (labels[s] || labels.unknown) +
-            '</span>'
+            '<span class="inst-badge" data-tone="' + tones[s] + '">' +
+            '<span class="inst-dot"></span>' + labels[s] + '</span>'
         );
     }
 
@@ -199,6 +199,12 @@
         if (!document.getElementById('dashboardViews')) return;
         currentView = resolveInitialView();
         document.documentElement.setAttribute('data-dashboard-view', currentView);
+        document.querySelectorAll('[data-dashboard-view]').forEach(function (b) {
+            if (b.getAttribute('role') !== 'radio') return;
+            var on = b.getAttribute('data-dashboard-view') === currentView;
+            b.setAttribute('aria-checked', String(on));
+            b.tabIndex = on ? 0 : -1;
+        });
         try {
             var url = new URL(window.location.href);
             if (url.searchParams.get('view') !== currentView) {
@@ -206,11 +212,15 @@
                 history.replaceState(null, '', url.toString());
             }
         } catch (e) {}
-        document.querySelectorAll('.dashboard-view-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                setView(btn.getAttribute('data-dashboard-view'));
+        // Отметку и клавиатуру ведёт кит по role="radiogroup"; приложение
+        // слушает результат и записывает выбор.
+        var group = document.querySelector('[data-dashboard-views]');
+        if (group) {
+            group.addEventListener('inst:select', function (e) {
+                var v = e.target.getAttribute('data-dashboard-view');
+                if (v) setView(v);
             });
-        });
+        }
     }
 
     function init() {

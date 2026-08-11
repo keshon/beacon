@@ -1,153 +1,151 @@
 {% extends "../base.html" %}
 {% block title %}Dashboard – Beacon{% endblock %}
 {% block content %}
-<div class="container-fluid app-page px-3 px-lg-4 py-3">
-    <div class="app-page-toolbar anim-fadeup">
-        <div class="app-page-toolbar-start">
-            <h1 class="app-page-title mb-0">Dashboard</h1>
-            <p class="app-page-subtitle mb-0 d-none d-md-block">Live status · manage monitors</p>
+<div class="beacon-page">
+    <div class="inst-page-header">
+        <div class="inst-page-header-main">
+            <h1 class="inst-page-title">Dashboard</h1>
+            <p class="inst-page-sub">Live status of every monitor</p>
         </div>
-        <div class="app-page-toolbar-actions">
+        <div class="inst-page-actions">
             {% if rows or hasNetwork %}
-            <div class="btn-group app-segmented dashboard-view-toggle" role="group" aria-label="Dashboard layout">
-                <button type="button" class="btn btn-sm btn-outline-secondary dashboard-view-btn" data-dashboard-view="cards" title="Cards">
-                    <i class="bi bi-grid-3x2-gap"></i><span class="d-none d-sm-inline ms-1">Cards</span>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary dashboard-view-btn" data-dashboard-view="list" title="List">
-                    <i class="bi bi-list-ul"></i><span class="d-none d-sm-inline ms-1">List</span>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary dashboard-view-btn" data-dashboard-view="table" title="Table">
-                    <i class="bi bi-table"></i><span class="d-none d-sm-inline ms-1">Table</span>
-                </button>
+            {# Вид запоминается на весь сеанс. Стрелки и перенос отметки — кит, #}
+{# по role="radiogroup"; приложению остаётся записать выбор. #}
+            <div class="inst-segmented" role="radiogroup" aria-label="Dashboard layout" data-dashboard-views>
+                <button type="button" role="radio" data-dashboard-view="cards" aria-checked="true" tabindex="0">Cards</button>
+                <button type="button" role="radio" data-dashboard-view="list" aria-checked="false" tabindex="-1">List</button>
+                <button type="button" role="radio" data-dashboard-view="table" aria-checked="false" tabindex="-1">Table</button>
             </div>
             {% endif %}
-            <button type="button" class="btn btn-sm btn-primary" data-monitor-add>
-                <i class="bi bi-plus-lg"></i><span class="d-none d-sm-inline ms-1">Add monitor</span>
-            </button>
+            <button type="button" class="inst-btn inst-btn--primary" data-monitor-add>Add monitor</button>
         </div>
     </div>
+
+    {% if rows %}
+    {# Сводка отвечает на «всё ли цело» до чтения карточек. Отказ — единственное #}
+    {# число, которому положен тон: остальные это норма. #}
+    <div class="inst-metric-row">
+        <div class="inst-metric">
+            <div class="inst-metric-label">Monitors</div>
+            <div class="inst-metric-value">{{ countTotal }}</div>
+        </div>
+        <div class="inst-metric">
+            <div class="inst-metric-label">Up</div>
+            <div class="inst-metric-value">{{ countUp }}</div>
+        </div>
+        <div class="inst-metric"{% if countDown > 0 %} data-tone="error"{% endif %}>
+            <div class="inst-metric-label">Down</div>
+            <div class="inst-metric-value">{{ countDown }}</div>
+        </div>
+        {% if countPaused > 0 %}
+        <div class="inst-metric">
+            <div class="inst-metric-label">Paused</div>
+            <div class="inst-metric-value">{{ countPaused }}</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 
     {% if rows or hasNetwork %}
-    <div id="dashboardViews" class="dashboard-views anim-fadeup anim-delay-1">
-        <div class="dashboard-view dashboard-view-cards" data-dashboard-view-panel="cards">
-            {% if networkEnabled and hasNetwork %}
-            <section class="mb-3">
-                <div class="app-panel-header px-0 pt-0 mb-2 border-0 bg-transparent">
-                    <span class="app-panel-title">Network</span>
-                </div>
-                <div class="dash-card-grid">
-                    {% for n in networkNodes %}
-                    {% include "network/card.html" with n=n %}
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-            {% if rows %}
-            <section>
-                <div class="app-panel-header px-0 pt-0 mb-2 border-0 bg-transparent">
-                    <span class="app-panel-title">Monitors</span>
-                </div>
-                <div class="dash-card-grid">
-                    {% for row in rows %}
-                    {% include "monitor/card.html" with row=row %}
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-        </div>
 
-        <div class="dashboard-view dashboard-view-list" data-dashboard-view-panel="list">
-            {% if networkEnabled and hasNetwork %}
-            <section class="mb-3">
-                <div class="app-panel-header px-0 pt-0 mb-2 border-0 bg-transparent">
-                    <span class="app-panel-title">Network</span>
-                </div>
-                <div class="dash-list">
-                    {% for n in networkNodes %}
-                    {% include "network/list_row.html" with n=n %}
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-            {% if rows %}
-            <section>
-                <div class="app-panel-header px-0 pt-0 mb-2 border-0 bg-transparent">
-                    <span class="app-panel-title">Monitors</span>
-                </div>
-                <div class="dash-list">
-                    {% for row in rows %}
-                    {% include "monitor/list_row.html" with row=row %}
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-        </div>
-
-        <div class="dashboard-view dashboard-view-table" data-dashboard-view-panel="table">
-            {% if networkEnabled and hasNetwork %}
-            {% include "network/table.html" with networkNodes=networkNodes %}
-            {% endif %}
-            {% if rows %}
-            <section class="app-panel{% if networkEnabled and hasNetwork %} mb-0{% endif %}">
-                <div class="app-panel-header">
-                    <span class="app-panel-title">Monitors</span>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover app-table mb-0">
-                        <thead>
-                            <tr>
-                                <th>Monitor</th>
-                                <th>Source</th>
-                                <th class="uptime-col">Recent</th>
-                                <th>Status</th>
-                                <th>Latency</th>
-                                <th>Last check</th>
-                                <th class="text-end" style="width: 3rem;"><span class="visually-hidden">Actions</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in rows %}
-                            {% include "monitor/table_row.html" with row=row %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-            {% endif %}
-        </div>
+    {# ── Карточки ────────────────────────────────────────────────────── #}
+    <div class="beacon-view inst-stack inst-stack--loose" data-view="cards">
+        {% if networkEnabled and hasNetwork %}
+        <section class="inst-section">
+            <div class="inst-section-head"><h2 class="inst-section-title">Network</h2></div>
+            <div class="beacon-grid">
+                {% for n in networkNodes %}{% include "network/card.html" with n=n %}{% endfor %}
+            </div>
+        </section>
+        {% endif %}
+        {% if rows %}
+        <section class="inst-section">
+            <div class="inst-section-head"><h2 class="inst-section-title">Monitors</h2></div>
+            <div class="beacon-grid">
+                {% for row in rows %}{% include "monitor/card.html" with row=row %}{% endfor %}
+            </div>
+        </section>
+        {% endif %}
     </div>
+
+    {# ── Список ──────────────────────────────────────────────────────── #}
+    <div class="beacon-view inst-stack inst-stack--loose" data-view="list">
+        {% if networkEnabled and hasNetwork %}
+        <section class="inst-section">
+            <div class="inst-section-head"><h2 class="inst-section-title">Network</h2></div>
+            <div class="inst-panel"><div class="inst-panel-body inst-panel-body--list">
+                {% for n in networkNodes %}{% include "network/list_row.html" with n=n %}{% endfor %}
+            </div></div>
+        </section>
+        {% endif %}
+        {% if rows %}
+        <section class="inst-section">
+            <div class="inst-section-head"><h2 class="inst-section-title">Monitors</h2></div>
+            <div class="inst-panel"><div class="inst-panel-body inst-panel-body--list" role="listbox" aria-label="Monitors">
+                {% for row in rows %}{% include "monitor/list_row.html" with row=row %}{% endfor %}
+            </div></div>
+        </section>
+        {% endif %}
+    </div>
+
+    {# ── Таблица ─────────────────────────────────────────────────────── #}
+    <div class="beacon-view inst-stack inst-stack--loose" data-view="table">
+        {% if networkEnabled and hasNetwork %}
+        {% include "network/table.html" with networkNodes=networkNodes %}
+        {% endif %}
+        {% if rows %}
+        <section class="inst-section">
+            <div class="inst-section-head"><h2 class="inst-section-title">Monitors</h2></div>
+            <div class="inst-panel"><div class="inst-panel-body inst-panel-body--flush">
+                <table class="inst-table">
+                    <thead>
+                        <tr>
+                            <th>Monitor</th>
+                            <th>Source</th>
+                            <th>Recent checks</th>
+                            <th>Status</th>
+                            <th class="inst-num">Latency</th>
+                            <th>Last check</th>
+                            <th><span class="inst-u-visually-hidden">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}{% include "monitor/table_row.html" with row=row %}{% endfor %}
+                    </tbody>
+                </table>
+            </div></div>
+        </section>
+        {% endif %}
+    </div>
+
     {% else %}
-    <div class="app-panel empty-panel anim-fadeup anim-delay-1">
-        <div class="empty-state py-5">
-            <div class="empty-icon"><i class="bi bi-activity"></i></div>
-            <p>No monitors yet. <button type="button" class="btn btn-link p-0 align-baseline" data-monitor-add>Add one</button> to get started.</p>
-        </div>
+    <div class="inst-empty">
+        <p class="inst-empty-title">No monitors yet</p>
+        <p class="inst-empty-desc">Add the first endpoint and Beacon starts checking it right away.</p>
+        <button type="button" class="inst-btn inst-btn--primary" data-monitor-add>Add monitor</button>
     </div>
     {% endif %}
 </div>
 
-<div class="beacon-modal beacon-modal--wide" id="monitorModal" hidden role="dialog" aria-modal="true" aria-labelledby="monitorModalTitle">
-    <button type="button" class="beacon-modal__backdrop" data-beacon-modal-close aria-label="Close dialog"></button>
-    <div class="beacon-modal__dialog" tabindex="-1">
-        <header class="beacon-modal__header">
-            <h2 class="beacon-modal__title" id="monitorModalTitle">Add monitor</h2>
-            <button type="button" class="beacon-modal__close" data-beacon-modal-close aria-label="Close">
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
-            </button>
+{# Модалка — нативный <dialog>: верхний слой, подложка, Escape и возврат #}
+{# фокуса приходят от платформы. Приложению остаётся showModal(). #}
+<dialog class="inst-dialog" id="monitorModal" aria-labelledby="monitorModalTitle">
+    <form method="dialog">
+        <header class="inst-dialog-head">
+            <h2 class="inst-dialog-title" id="monitorModalTitle">Add monitor</h2>
+            <button class="inst-dialog-close" type="submit" value="cancel" aria-label="Close"></button>
         </header>
-        <div class="beacon-modal__scroll">
-            <div class="beacon-modal__body">
-                <form id="monitorModalForm">
-                    {% include "monitor/settings.html" with mode="modal" %}
-                </form>
-            </div>
-        </div>
-        <footer class="beacon-modal__footer">
-            <button type="button" class="btn btn-outline-secondary" data-beacon-modal-close>Cancel</button>
-            <button type="submit" class="btn btn-primary" form="monitorModalForm" id="monitorModalSave">Save</button>
-        </footer>
+    </form>
+    <div class="inst-dialog-body">
+        <form id="monitorModalForm">
+            {% include "monitor/settings.html" with mode="modal" %}
+        </form>
     </div>
-</div>
+    <div class="inst-dialog-foot inst-dialog-foot--end">
+        <button type="button" class="inst-btn" data-beacon-modal-close>Cancel</button>
+        <button type="submit" class="inst-btn inst-btn--primary" form="monitorModalForm" id="monitorModalSave">Save</button>
+    </div>
+</dialog>
 {% endblock %}
 {% block scripts %}
 <script type="application/json" id="dashboard-uptime-bootstrap">{{ uptimeBootstrap|safe }}</script>

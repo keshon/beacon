@@ -1,23 +1,26 @@
 {% extends "../base.html" %}
 {% block title %}Settings – Beacon{% endblock %}
 {% block content %}
-<div class="container-fluid app-page px-3 px-lg-4 py-3">
-    <div class="d-flex align-items-center justify-content-between mb-4 anim-fadeup">
-        <h1 class="app-page-title mb-0">Settings</h1>
+<div class="beacon-page beacon-page--narrow">
+    <div class="inst-page-header">
+        <div class="inst-page-header-main">
+            <h1 class="inst-page-title">Settings</h1>
+            <p class="inst-page-sub">Server, access and notifications</p>
+        </div>
     </div>
 
     <form id="configForm">
-        <div class="row g-3">
-            <div class="col-12">
-                <section class="app-panel anim-fadeup anim-delay-1">
-                    <div class="app-panel-header">
-                        <span class="app-panel-title">Appearance</span>
+        <div class="beacon-bare">
+            <div class="beacon-bare">
+                <section class="inst-panel">
+                    <div class="inst-panel-header">
+                        <span class="inst-panel-title">Appearance</span>
                     </div>
-                    <div class="app-panel-body p-3">
-                        <div class="row g-2 align-items-end">
-                            <div class="col-md-4">
-                                <label class="form-label small" for="ui_font_size">Base font size</label>
-                                <select class="form-select" id="ui_font_size">
+                    <div class="inst-panel-body inst-form">
+                        <div class="beacon-bare">
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label" for="ui_font_size">Base font size</label>
+                                <select class="inst-select" id="ui_font_size">
                                     <option value="0.8125rem">13px</option>
                                     <option value="0.875rem">14px</option>
                                     <option value="0.9375rem">15px</option>
@@ -26,194 +29,177 @@
                                     <option value="1.125rem">18px</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <button type="button" class="btn btn-outline-secondary" id="ui_font_reset">Reset</button>
+                            <div class="beacon-bare">
+                                <button type="button" class="inst-btn" id="ui_font_reset">Reset</button>
                             </div>
                         </div>
-                        <div class="row g-2 mt-2">
-                            <div class="col-md-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="ui_colorize_up" />
-                                    <label class="form-check-label small" for="ui_colorize_up">Colorize UP</label>
-                                </div>
+                        <div class="beacon-bare">
+                            <div class="beacon-bare">
+                                <label class="inst-checkbox"><input type="checkbox" id="ui_colorize_up" /><span>Colorize UP</span></label>
                             </div>
-                            <div class="col-md-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="ui_colorize_down" />
-                                    <label class="form-check-label small" for="ui_colorize_down">Colorize DOWN</label>
-                                </div>
+                            <div class="beacon-bare">
+                                <label class="inst-checkbox"><input type="checkbox" id="ui_colorize_down" /><span>Colorize DOWN</span></label>
                             </div>
                         </div>
                     </div>
                 </section>
             </div>
-            <div class="col-12">
-                <section class="app-panel anim-fadeup anim-delay-1">
-                    <div class="app-panel-header">
-                        <span class="app-panel-title">Server</span>
+            <div class="beacon-bare">
+                <section class="inst-panel">
+                    <div class="inst-panel-header">
+                        <span class="inst-panel-title">Server</span>
                     </div>
-                    <div class="app-panel-body p-3">
-                        <p class="small text-muted mb-2" id="restartHint">
+                    <div class="inst-panel-body inst-form">
+                        <p class="inst-u-dim" id="restartHint">
                             Changes to listen address or worker count require a process restart to take effect.
                         </p>
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label small">Listen address</label>
-                                <input type="text" class="form-control" name="listen" placeholder=":8080" />
+                        <div class="beacon-bare">
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Listen address</label>
+                                <input type="text" class="inst-input" name="listen" placeholder=":8080" />
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label small">Workers</label>
-                                <input type="number" class="form-control" name="workers" min="1" placeholder="10" />
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Workers</label>
+                                <input type="number" class="inst-input" name="workers" min="1" placeholder="10" />
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label small">Default check interval (sec)</label>
-                                <input type="number" class="form-control" name="default_interval" min="0" placeholder="30" />
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-            <div class="col-12">
-                <section class="app-panel anim-fadeup anim-delay-1">
-                    <div class="app-panel-header">
-                        <span class="app-panel-title">Auth</span>
-                    </div>
-                    <div class="app-panel-body p-3">
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label small">Username</label>
-                                <input type="text" class="form-control" name="username" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">Password</label>
-                                <input type="password" class="form-control" name="password" placeholder="Leave blank to keep current" autocomplete="new-password" />
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Default check interval (sec)</label>
+                                <input type="number" class="inst-input" name="default_interval" min="0" placeholder="30" />
                             </div>
                         </div>
                     </div>
                 </section>
             </div>
-            <div class="col-12">
-                <section class="app-panel anim-fadeup anim-delay-1">
-                    <div class="app-panel-header">
-                        <span class="app-panel-title">Notifications</span>
+            <div class="beacon-bare">
+                <section class="inst-panel">
+                    <div class="inst-panel-header">
+                        <span class="inst-panel-title">Auth</span>
                     </div>
-                    <div class="app-panel-body p-3" id="notificationsPolicyPanel" data-notify-policy>
-                        <p class="form-label small mb-3">
+                    <div class="inst-panel-body inst-form">
+                        <div class="beacon-bare">
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Username</label>
+                                <input type="text" class="inst-input" name="username" />
+                            </div>
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Password</label>
+                                <input type="password" class="inst-input" name="password" placeholder="Leave blank to keep current" autocomplete="new-password" />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="beacon-bare">
+                <section class="inst-panel">
+                    <div class="inst-panel-header">
+                        <span class="inst-panel-title">Notifications</span>
+                    </div>
+                    <div class="inst-panel-body inst-form" id="notificationsPolicyPanel" data-notify-policy>
+                        <p class="inst-label">
                             Default alert mode and message templates for new receivers. Leave fields empty in a
                             receiver&rsquo;s policy modal to inherit these values.
                         </p>
-                        <div class="row g-3">
-                            <div class="col-md-4" data-policy-alert-mode-row>
-                                <label class="form-label small" for="notifications_alert_mode">Alert mode</label>
-                                <select class="form-select" id="notifications_alert_mode" data-policy-alert-mode>
+                        <div class="beacon-bare">
+                            <div class="beacon-bare" data-policy-alert-mode-row>
+                                <label class="inst-label" for="notifications_alert_mode">Alert mode</label>
+                                <select class="inst-select" id="notifications_alert_mode" data-policy-alert-mode>
                                     <option value="repeat">Repeat while down (every check)</option>
                                     <option value="once">Once on down, once on recovery</option>
                                 </select>
                             </div>
-                            <div class="col-md-8 d-flex align-items-end justify-content-md-end">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" data-policy-reset-all>
+                            <div class="-end">
+                                <button type="button" class="inst-btn inst-btn--sm" data-policy-reset-all>
                                     Reset all to defaults
                                 </button>
                             </div>
-                            <div class="p-2">
-                                <div class="col-12 policy-template-row">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <label class="form-label small mb-0">Down template</label>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-policy-reset>Reset</button>
+                            <div class="beacon-bare">
+                                <div class="policy-template-">
+                                    <div class="inst-field">
+                                        <div class="beacon-field-action"><label class="inst-label">Down template</label><button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button></div>
                                     </div>
-                                    <textarea class="form-control font-monospace small" rows="5" data-policy-template="down"></textarea>
-                                    <div class="mt-1" data-policy-chips></div>
+                                    <textarea class="inst-input font-monospace" rows="5" data-policy-template="down"></textarea>
+                                    <div class="beacon-bare" data-policy-chips></div>
                                 </div>
                             </div>
-                            <div class="p-2">
-                                <div class="col-12 policy-template-row">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <label class="form-label small mb-0">Recovered template</label>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-policy-reset>Reset</button>
+                            <div class="beacon-bare">
+                                <div class="policy-template-">
+                                    <div class="inst-field">
+                                        <div class="beacon-field-action"><label class="inst-label">Recovered template</label><button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button></div>
                                     </div>
-                                    <textarea class="form-control font-monospace small" rows="5" data-policy-template="recovered"></textarea>
-                                    <div class="mt-1" data-policy-chips></div>
+                                    <textarea class="inst-input font-monospace" rows="5" data-policy-template="recovered"></textarea>
+                                    <div class="beacon-bare" data-policy-chips></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </section>
             </div>
-            <div class="col-12">
-                <section class="app-panel anim-fadeup anim-delay-1">
-                    <div class="app-panel-header">
-                        <span class="app-panel-title">Telegram</span>
+            <div class="beacon-bare">
+                <section class="inst-panel">
+                    <div class="inst-panel-header">
+                        <span class="inst-panel-title">Telegram</span>
                     </div>
-                    <div class="app-panel-body p-3" id="telegramPanel">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="telegram_enabled" id="telegram_enabled" />
-                            <label class="form-check-label small" for="telegram_enabled">Enabled</label>
-                        </div>
+                    <div class="inst-panel-body inst-form" id="telegramPanel">
+                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="telegram_enabled" id="telegram_enabled" /><span>Enabled</span></label>
                         <div data-notify-list></div>
-                        <div class="d-flex align-items-baseline gap-2 mt-1">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
-                                <i class="bi bi-plus-lg"></i>Add receiver
+                        <div class="beacon-bare">
+                            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                                Add receiver
                             </button>
-                            <span class="form-label small mb-0" data-notify-helper></span>
+                            <span class="inst-label" data-notify-helper></span>
                         </div>
                     </div>
                 </section>
             </div>
-            <div class="col-12">
-                <section class="app-panel anim-fadeup anim-delay-1">
-                    <div class="app-panel-header">
-                        <span class="app-panel-title">Discord</span>
+            <div class="beacon-bare">
+                <section class="inst-panel">
+                    <div class="inst-panel-header">
+                        <span class="inst-panel-title">Discord</span>
                     </div>
-                    <div class="app-panel-body p-3" id="discordPanel">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="discord_enabled" id="discord_enabled" />
-                            <label class="form-check-label small" for="discord_enabled">Enabled</label>
-                        </div>
+                    <div class="inst-panel-body inst-form" id="discordPanel">
+                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="discord_enabled" id="discord_enabled" /><span>Enabled</span></label>
                         <div data-notify-list></div>
-                        <div class="d-flex align-items-baseline gap-2 mt-1">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
-                                <i class="bi bi-plus-lg"></i>Add receiver
+                        <div class="beacon-bare">
+                            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                                Add receiver
                             </button>
-                            <span class="form-label small mb-0" data-notify-helper></span>
+                            <span class="inst-label" data-notify-helper></span>
                         </div>
                     </div>
                 </section>
             </div>
-            <div class="col-12">
-                <section class="app-panel anim-fadeup anim-delay-1">
-                    <div class="app-panel-header">
-                        <span class="app-panel-title">Email</span>
+            <div class="beacon-bare">
+                <section class="inst-panel">
+                    <div class="inst-panel-header">
+                        <span class="inst-panel-title">Email</span>
                     </div>
-                    <div class="app-panel-body p-3" id="emailPanel">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="email_enabled" id="email_enabled" />
-                            <label class="form-check-label small" for="email_enabled">Enabled</label>
-                        </div>
-                        <p class="small text-muted mb-2">Global SMTP settings. Receivers can override SMTP per row in the policy modal.</p>
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label small">SMTP host</label>
-                                <input type="text" class="form-control" name="email_smtp_host" placeholder="smtp.example.com" />
+                    <div class="inst-panel-body inst-form" id="emailPanel">
+                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="email_enabled" id="email_enabled" /><span>Enabled</span></label>
+                        <p class="inst-u-dim">Global SMTP settings. Receivers can override SMTP per row in the policy modal.</p>
+                        <div class="beacon-bare">
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">SMTP host</label>
+                                <input type="text" class="inst-input" name="email_smtp_host" placeholder="smtp.example.com" />
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small">Port</label>
-                                <input type="number" class="form-control" name="email_smtp_port" min="1" placeholder="587" />
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Port</label>
+                                <input type="number" class="inst-input" name="email_smtp_port" min="1" placeholder="587" />
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label small">Username</label>
-                                <input type="text" class="form-control" name="email_smtp_username" autocomplete="off" />
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Username</label>
+                                <input type="text" class="inst-input" name="email_smtp_username" autocomplete="off" />
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label small">Password</label>
-                                <input type="password" class="form-control" name="email_smtp_password" autocomplete="new-password" placeholder="Leave blank to keep" />
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Password</label>
+                                <input type="password" class="inst-input" name="email_smtp_password" autocomplete="new-password" placeholder="Leave blank to keep" />
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">From address</label>
-                                <input type="email" class="form-control" name="email_smtp_from" placeholder="beacon@example.com" />
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">From address</label>
+                                <input type="email" class="inst-input" name="email_smtp_from" placeholder="beacon@example.com" />
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label small">TLS mode</label>
-                                <select class="form-select" name="email_smtp_tls">
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">TLS mode</label>
+                                <select class="inst-select" name="email_smtp_tls">
                                     <option value="starttls">STARTTLS</option>
                                     <option value="ssl">SSL/TLS</option>
                                     <option value="plain">Plain</option>
@@ -221,79 +207,73 @@
                             </div>
                         </div>
                         <div data-notify-list></div>
-                        <div class="d-flex align-items-baseline gap-2 mt-1">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
-                                <i class="bi bi-plus-lg"></i>Add receiver
+                        <div class="beacon-bare">
+                            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                                Add receiver
                             </button>
-                            <span class="form-label small mb-0" data-notify-helper></span>
+                            <span class="inst-label" data-notify-helper></span>
                         </div>
                     </div>
                 </section>
             </div>
-            <div class="col-12">
-                <section class="app-panel anim-fadeup anim-delay-1">
-                    <div class="app-panel-header">
-                        <span class="app-panel-title">Webhook</span>
+            <div class="beacon-bare">
+                <section class="inst-panel">
+                    <div class="inst-panel-header">
+                        <span class="inst-panel-title">Webhook</span>
                     </div>
-                    <div class="app-panel-body p-3" id="webhookPanel">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="webhook_enabled" id="webhook_enabled" />
-                            <label class="form-check-label small" for="webhook_enabled">Enabled</label>
-                        </div>
-                        <p class="small text-muted mb-2">Generic HTTP POST webhooks.</p>
+                    <div class="inst-panel-body inst-form" id="webhookPanel">
+                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="webhook_enabled" id="webhook_enabled" /><span>Enabled</span></label>
+                        <p class="inst-u-dim">Generic HTTP POST webhooks.</p>
                         <div data-notify-list></div>
-                        <div class="d-flex align-items-baseline gap-2 mt-1">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-notify-add>
-                                <i class="bi bi-plus-lg"></i>Add receiver
+                        <div class="beacon-bare">
+                            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                                Add receiver
                             </button>
-                            <span class="form-label small mb-0" data-notify-helper></span>
+                            <span class="inst-label" data-notify-helper></span>
                         </div>
                     </div>
                 </section>
             </div>
-            <div class="col-12">
-                <section class="app-panel anim-fadeup anim-delay-1">
-                    <div class="app-panel-header">
-                        <span class="app-panel-title">Network (peer sync)</span>
+            <div class="beacon-bare">
+                <section class="inst-panel">
+                    <div class="inst-panel-header">
+                        <span class="inst-panel-title">Network (peer sync)</span>
                     </div>
-                    <div class="app-panel-body p-3">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="network_enabled" id="network_enabled" />
-                            <label class="form-check-label small" for="network_enabled">Enable peer sync</label>
-                        </div>
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <label class="form-label small">Self URL</label>
-                                <input type="text" class="form-control" name="network_self_url" placeholder="https://beacon1.example.com" />
+                    <div class="inst-panel-body inst-form">
+                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="network_enabled" id="network_enabled" /><span>Enable peer sync</span></label>
+                        <div class="beacon-bare">
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Self URL</label>
+                                <input type="text" class="inst-input" name="network_self_url" placeholder="https://beacon1.example.com" />
                             </div>
-                            <div class="col-12">
-                                <label class="form-label small">Peers (one URL per line)</label>
-                                <textarea class="form-control" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Peers (one URL per line)</label>
+                                <textarea class="inst-input" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label small">Sync interval (sec)</label>
-                                <input type="number" class="form-control" name="network_sync_interval" min="10" placeholder="60" />
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Sync interval (sec)</label>
+                                <input type="number" class="inst-input" name="network_sync_interval" min="10" placeholder="60" />
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label small">Dead timeout (sec)</label>
-                                <input type="number" class="form-control" name="network_dead_timeout" min="60" placeholder="300" />
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Dead timeout (sec)</label>
+                                <input type="number" class="inst-input" name="network_dead_timeout" min="60" placeholder="300" />
                             </div>
-                            <div class="col-12">
-                                <label class="form-label small">Sync token</label>
-                                <input type="password" class="form-control" name="network_sync_token" autocomplete="new-password" placeholder="Shared secret for all nodes" />
-                                <div class="form-text small">Same token on every node. Web login can differ per node.</div>
+                            <div class="inst-field inst-field--side">
+                                <label class="inst-label">Sync token</label>
+                                <input type="password" class="inst-input" name="network_sync_token" autocomplete="new-password" placeholder="Shared secret for all nodes" />
+                                <div class="inst-field-hint">Same token on every node. Web login can differ per node.</div>
                             </div>
-                            <div class="col-12">
-                                <label class="form-label small text-muted">Node ID</label>
-                                <input type="text" class="form-control app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
+                            <div class="beacon-bare">
+                                <label class="inst-label inst-u-dim">Node ID</label>
+                                <input type="text" class="inst-input app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
                             </div>
                         </div>
                     </div>
                 </section>
             </div>
-            <div class="col-12 d-flex align-items-center gap-2">
-                <button type="submit" class="btn btn-primary">Save settings</button>
-                <span id="msg" class="small"></span>
+            <div class="beacon-bare">
+                <button type="submit" class="inst-btn inst-btn--primary">Save settings</button>
+                <span id="msg" class="beacon-bare"></span>
             </div>
         </div>
     </form>
@@ -468,7 +448,7 @@
             .catch(function () {
                 const msg = document.getElementById('msg');
                 msg.textContent = 'Failed to load settings.';
-                msg.className = 'small text-danger';
+                msg.className = 'small inst-field-error';
             });
     })();
     document.getElementById('configForm').onsubmit = async (e) => {
@@ -479,7 +459,7 @@
         }
         const msg = document.getElementById('msg');
         msg.textContent = 'Saving…';
-        msg.className = 'small text-muted';
+        msg.className = 'small inst-u-dim';
         const peersRaw = (namedField('network_peers').value || '')
             .trim()
             .split('\n')
@@ -550,7 +530,7 @@
             msg.className = 'small text-success';
         } else {
             msg.textContent = 'Error.';
-            msg.className = 'small text-danger';
+            msg.className = 'small inst-field-error';
         }
     };
     function bindToggle(sectionCheckboxName) {
@@ -560,7 +540,7 @@
             return;
         }
 
-        const panel = checkbox.closest('.app-panel');
+        const panel = checkbox.closest('.inst-panel');
         if (!panel) {
             return;
         }

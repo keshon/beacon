@@ -293,7 +293,7 @@ Docker Compose example is available in `docker/docker-compose.yml`.
 ## Development
 
 * Templates: `templates/`
-* Styles: `uikit/scss/`
+* Styles: [instrument](https://github.com/keshon/instrument-ui-kit) — один CSS-файл, без сборки
 * Static assets: `static/`
 
 Run tests:
@@ -328,8 +328,6 @@ templates/
   partials/              Shared head fragments
   base.html, login.html  Root layouts
 static/                  beacon.js (Beacon.apiFetch, CSRF) + notify UI
-uikit/                   SCSS design system
-tooling/scripts/         UIKit bootstrap/build/watch helpers
 ```
 
 ## License

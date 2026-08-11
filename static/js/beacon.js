@@ -50,90 +50,21 @@
         }
     }
 
-    var scrollLockCount = 0;
-
-    function lockBodyScroll() {
-        scrollLockCount += 1;
-        if (scrollLockCount !== 1) return;
-        document.documentElement.classList.add('beacon-modal-open');
-        document.body.classList.add('beacon-modal-open');
-    }
-
-    function unlockBodyScroll() {
-        if (scrollLockCount <= 0) return;
-        scrollLockCount -= 1;
-        if (scrollLockCount !== 0) return;
-        document.documentElement.classList.remove('beacon-modal-open');
-        document.body.classList.remove('beacon-modal-open');
-    }
-
-    function isScrollLocked() {
-        return scrollLockCount > 0;
-    }
-
-    function preventBackgroundScroll(e) {
-        if (!isScrollLocked()) return;
-        if (e.type === 'touchmove') {
-            if (e.target.closest('.beacon-modal:not([hidden])')) return;
-            e.preventDefault();
-            return;
-        }
-        var body = e.target.closest('.beacon-modal__body');
-        if (body && body.scrollHeight > body.clientHeight) {
-            var dy = e.deltaY || 0;
-            var atTop = body.scrollTop <= 0;
-            var atBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 1;
-            if ((dy < 0 && !atTop) || (dy > 0 && !atBottom)) return;
-        }
-        e.preventDefault();
-    }
-
-    document.addEventListener('wheel', preventBackgroundScroll, { passive: false });
-    document.addEventListener('touchmove', preventBackgroundScroll, { passive: false });
-
+    // Модалка — нативный <dialog>. Верхний слой, подложка, Escape,
+    // инертный фон и возврат фокуса приходят от платформы; приложению
+    // остаётся showModal() и закрытие по своим кнопкам.
     function wireModal(modalEl) {
-        if (!modalEl || modalEl._beaconModalWired) {
-            return modalEl && modalEl._beaconModal ? modalEl._beaconModal : null;
-        }
-        modalEl._beaconModalWired = true;
-        var lastActiveElement = null;
-
-        function close() {
-            modalEl.hidden = true;
-            modalEl.setAttribute('aria-hidden', 'true');
-            unlockBodyScroll();
-            if (lastActiveElement && typeof lastActiveElement.focus === 'function') {
-                lastActiveElement.focus();
-            }
-            lastActiveElement = null;
-        }
-
-        function open() {
-            lastActiveElement = document.activeElement;
-            modalEl.hidden = false;
-            modalEl.setAttribute('aria-hidden', 'false');
-            lockBodyScroll();
-            var dialog = modalEl.querySelector('.beacon-modal__dialog');
-            if (dialog && typeof dialog.focus === 'function') {
-                dialog.focus();
-            }
-        }
+        if (!modalEl) return null;
+        if (modalEl._beaconModal) return modalEl._beaconModal;
 
         modalEl.addEventListener('click', function (e) {
-            if (e.target.closest('[data-beacon-modal-close]')) {
-                close();
-            }
+            if (e.target.closest('[data-beacon-modal-close]')) modalEl.close();
         });
 
-        document.addEventListener('keydown', function (e) {
-            if (!modalEl || modalEl.hidden) return;
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                close();
-            }
-        });
-
-        modalEl._beaconModal = { open: open, close: close };
+        modalEl._beaconModal = {
+            open: function () { if (!modalEl.open) modalEl.showModal(); },
+            close: function () { modalEl.close(); },
+        };
         return modalEl._beaconModal;
     }
 
@@ -143,58 +74,29 @@
 
     function ensureConfirmModal() {
         if (confirmModalEl) return;
-        confirmModalEl = document.createElement('div');
-        confirmModalEl.className = 'beacon-modal beacon-modal--confirm';
+        confirmModalEl = document.createElement('dialog');
+        confirmModalEl.className = 'inst-dialog inst-dialog--sm';
         confirmModalEl.id = 'beaconConfirmModal';
-        confirmModalEl.hidden = true;
-        confirmModalEl.setAttribute('role', 'alertdialog');
-        confirmModalEl.setAttribute('aria-modal', 'true');
         confirmModalEl.setAttribute('aria-labelledby', 'beaconConfirmTitle');
         confirmModalEl.setAttribute('aria-describedby', 'beaconConfirmMessage');
         confirmModalEl.innerHTML =
-            '<button type="button" class="beacon-modal__backdrop" data-beacon-confirm-cancel aria-label="Close dialog"></button>' +
-            '<div class="beacon-modal__dialog" tabindex="-1">' +
-                '<header class="beacon-modal__header">' +
-                    '<h2 class="beacon-modal__title" id="beaconConfirmTitle">Confirm</h2>' +
-                    '<button type="button" class="beacon-modal__close" data-beacon-confirm-cancel aria-label="Close">' +
-                        '<i class="bi bi-x-lg" aria-hidden="true"></i>' +
-                    '</button>' +
-                '</header>' +
-                '<div class="beacon-modal__scroll">' +
-                '<div class="beacon-modal__body">' +
-                    '<p class="beacon-modal__message" id="beaconConfirmMessage"></p>' +
-                '</div>' +
-                '</div>' +
-                '<footer class="beacon-modal__footer">' +
-                    '<button type="button" class="btn btn-outline-secondary" data-beacon-confirm-cancel>Cancel</button>' +
-                    '<button type="button" class="btn btn-primary" data-beacon-confirm-ok>Confirm</button>' +
-                '</footer>' +
+            '<div class="inst-dialog-head">' +
+                '<h2 class="inst-dialog-title" id="beaconConfirmTitle">Confirm</h2>' +
+                '<button type="button" class="inst-dialog-close inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost"' +
+                ' data-beacon-confirm-cancel aria-label="Close">' +
+                '<svg class="inst-icon" aria-hidden="true"><use href="#i-close"/></svg></button>' +
+            '</div>' +
+            '<div class="inst-dialog-body"><p id="beaconConfirmMessage"></p></div>' +
+            '<div class="inst-dialog-foot inst-dialog-foot--end">' +
+                '<button type="button" class="inst-btn" data-beacon-confirm-cancel>Cancel</button>' +
+                '<button type="button" class="inst-btn inst-btn--primary" data-beacon-confirm-ok>Confirm</button>' +
             '</div>';
         document.body.appendChild(confirmModalEl);
 
-        var confirmLastFocus = null;
-
-        function confirmClose() {
-            confirmModalEl.hidden = true;
-            confirmModalEl.setAttribute('aria-hidden', 'true');
-            unlockBodyScroll();
-            if (confirmLastFocus && typeof confirmLastFocus.focus === 'function') {
-                confirmLastFocus.focus();
-            }
-            confirmLastFocus = null;
-        }
+        function confirmClose() { confirmModalEl.close(); }
 
         confirmApi = {
-            open: function () {
-                confirmLastFocus = document.activeElement;
-                confirmModalEl.hidden = false;
-                confirmModalEl.setAttribute('aria-hidden', 'false');
-                lockBodyScroll();
-                var dialog = confirmModalEl.querySelector('.beacon-modal__dialog');
-                if (dialog && typeof dialog.focus === 'function') {
-                    dialog.focus();
-                }
-            },
+            open: function () { if (!confirmModalEl.open) confirmModalEl.showModal(); },
             close: confirmClose,
         };
 
@@ -295,12 +197,7 @@
             apiFetch: apiFetch,
             initCollapse: initCollapse,
             applyAppearancePrefs: applyAppearancePrefs,
-            modal: {
-                wire: wireModal,
-                confirm: confirm,
-                lockScroll: lockBodyScroll,
-                unlockScroll: unlockBodyScroll,
-            },
+            modal: { wire: wireModal, confirm: confirm },
             wireActionMenus: wireActionMenus,
             closeAllActionMenus: closeAllActionMenus,
         };
@@ -309,18 +206,9 @@
         window.Beacon.apiFetch = apiFetch;
         window.Beacon.initCollapse = initCollapse;
         window.Beacon.applyAppearancePrefs = applyAppearancePrefs;
-        window.Beacon.modal = window.Beacon.modal || {
-            wire: wireModal,
-            confirm: confirm,
-            lockScroll: lockBodyScroll,
-            unlockScroll: unlockBodyScroll,
-        };
+        window.Beacon.modal = window.Beacon.modal || { wire: wireModal, confirm: confirm };
         if (window.Beacon.modal && !window.Beacon.modal.confirm) {
             window.Beacon.modal.confirm = confirm;
-        }
-        if (window.Beacon.modal && !window.Beacon.modal.lockScroll) {
-            window.Beacon.modal.lockScroll = lockBodyScroll;
-            window.Beacon.modal.unlockScroll = unlockBodyScroll;
         }
         window.Beacon.wireActionMenus = wireActionMenus;
         window.Beacon.closeAllActionMenus = closeAllActionMenus;

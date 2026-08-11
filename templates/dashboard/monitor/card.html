@@ -1,45 +1,34 @@
-{# Card grid tile for dashboard. Expects: row #}
-<article class="dash-card {% if not row.IsPeer and not row.Enabled %}dash-card-paused {% endif %}{% if row.Status == 'up' %}dash-card-up{% elif row.Status == 'down' %}dash-card-down{% else %}dash-card-unknown{% endif %}" {% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}" {% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}" {% endif %}{% endif %}>
-    <div class="dash-card-head">
-        <div class="dash-card-title-row">
-            <div class="dash-card-title monitor-title">{{ row.Monitor.Name }}</div>
-            <div class="dash-card-title-actions">
-                {% if not row.IsPeer and not row.Enabled %}
-                <div>
-                    <span class="badge rounded-pill badge-paused"><i class="bi bi-pause" aria-hidden="true"></i>Paused</span>
-                </div>
-                {% endif %}
-                <div class="dashboard-status">
-                    {% if row.Status == 'up' %}
-                    <span class="badge rounded-pill badge-up"><span class="dot"></span>Up</span>
-                    {% elif row.Status == 'down' %}
-                    <span class="badge rounded-pill badge-down"><span class="dot"></span>Down</span>
-                    {% else %}
-                    <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
-                    {% endif %}
-                </div>
-                {% include "./shared/actions.html" with row=row %}
-            </div>
-        </div>
-        <div class="monitor-meta dash-card-target text-truncate">
-            {% include "./shared/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
-            <span class="text-body-tertiary">·</span> <code class="text-secondary">{{ row.Monitor.Type }}</code>
-        </div>
+{# Карточка монитора. Expects: row #}
+<article class="inst-card beacon-monitor" data-status="{{ row.Status }}"
+    {% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}"{% endif %}{% endif %}>
+    <div class="inst-card-head">
+        <span class="inst-card-title inst-u-truncate monitor-title">{{ row.Monitor.Name }}</span>
+        <span class="inst-cluster inst-cluster--tight">
+            {% if not row.IsPeer and not row.Enabled %}
+            <span class="inst-badge">Paused</span>
+            {% endif %}
+            <span class="dashboard-status">
+                {% include "./shared/status.html" with status=row.Status %}
+            </span>
+            {% include "./shared/actions.html" with row=row %}
+        </span>
     </div>
-    <div class="dash-card-meta-row">
-        {% if row.IsPeer %}
-        <span class="badge rounded-pill badge-source-peer"><i class="bi bi-diagram-3"></i>{{ row.SourceLabel }}</span>
-        {% else %}
-        <span class="badge rounded-pill badge-source-self"><i class="bi bi-person"></i>{{ row.SourceLabel }}</span>
-        {% endif %}
-        <span class="dash-card-metric text-body-secondary dashboard-latency">{{ row.LatencyMs }}</span>
-        <span class="dash-card-metric text-body-tertiary dashboard-lastcheck">{{ row.LastCheck }}</span>
+
+    <div class="inst-card-sub inst-u-truncate beacon-monitor-target">
+        {% include "./shared/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
+        · <span class="inst-u-mono">{{ row.Monitor.Type }}</span>
     </div>
-    <div class="dash-card-uptime">
-        {% if row.IsPeer %}
-        <span class="text-body-tertiary app-metric" title="Check history is recorded on the peer node">—</span>
-        {% else %}
-        <div class="uptime-strip uptime-strip--fill" data-monitor-id="{{ row.Monitor.ID }}" role="img" aria-label="Recent check results for this monitor"></div>
-        {% endif %}
+
+    <div class="beacon-monitor-meta">
+        <span>{{ row.SourceLabel }}</span>
+        <span class="inst-num dashboard-latency">{{ row.LatencyMs }}</span>
+        <span class="dashboard-lastcheck">{{ row.LastCheck }}</span>
     </div>
+
+    {% if row.IsPeer %}
+    <p class="inst-u-dim">Check history is recorded on the peer node</p>
+    {% else %}
+    <div class="inst-history uptime-strip uptime-strip--fill" data-monitor-id="{{ row.Monitor.ID }}"
+         role="img" aria-label="Recent check results"></div>
+    {% endif %}
 </article>

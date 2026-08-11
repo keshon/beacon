@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"os"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -102,9 +103,20 @@ func SessionCookieSecure(r *http.Request) bool {
 	return false
 }
 
+// devNoAuth — пропуск авторизации при BEACON_DEV=1. Отдельная переменная, а
+// не поле конфигурации: настройка, которую можно случайно сохранить в файл,
+// однажды уедет в бой.
+var devNoAuth = os.Getenv("BEACON_DEV") == "1"
+
 func (a *Auth) Middleware(username func() string, checkPassword func(user, pass string) bool, syncToken func() string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Разработка: вход не спрашивается. Включается только вместе с
+			// привязкой к 127.0.0.1 — см. cmd/beacon.
+			if devNoAuth {
+				next.ServeHTTP(w, r)
+				return
+			}
 			if r.URL.Path == "/login" || r.URL.Path == "/logout" || r.URL.Path == "/api/health" {
 				next.ServeHTTP(w, r)
 				return

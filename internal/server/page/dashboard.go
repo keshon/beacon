@@ -196,10 +196,29 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Сводка. Экран монитора обязан отвечать на «всё ли цело» до того, как
+	// человек начнёт читать карточки: сейчас для этого приходилось глазами
+	// пройти каждую.
+	var up, down, paused int
+	for _, r := range rows {
+		switch {
+		case !r.IsPeer && !r.Enabled:
+			paused++
+		case r.Status == "up":
+			up++
+		case r.Status == "down":
+			down++
+		}
+	}
+
 	_ = httpx.Render(w, h.TplDir, "dashboard/dashboard.html", pongo2.Context{
 		"version":         buildVersion(),
 		"nav_active":      "dashboard",
 		"rows":            rows,
+		"countUp":         up,
+		"countDown":       down,
+		"countPaused":     paused,
+		"countTotal":      len(rows),
 		"networkNodes":    networkNodes,
 		"networkEnabled":  networkEnabled,
 		"hasNetwork":      hasNetwork,

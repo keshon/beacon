@@ -126,7 +126,7 @@
         list.forEach(function (p) {
             var btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'btn btn-sm btn-outline-secondary me-1 mb-1';
+            btn.className = 'inst-btn inst-btn--sm';
             btn.textContent = '{{' + p.key + '}}';
             btn.title = p.description || p.key;
             btn.addEventListener('click', function () {
@@ -328,26 +328,22 @@
 
     function ensureModal() {
         if (modalEl) return;
-        modalEl = document.createElement('div');
-        modalEl.className = 'beacon-modal';
+        // Нативный <dialog>: подложка, Escape, инертный фон и возврат фокуса
+        // приходят от платформы.
+        modalEl = document.createElement('dialog');
+        modalEl.className = 'inst-dialog';
         modalEl.id = 'receiverPolicyModal';
-        modalEl.hidden = true;
-        modalEl.setAttribute('role', 'dialog');
-        modalEl.setAttribute('aria-modal', 'true');
         modalEl.setAttribute('aria-labelledby', 'receiverPolicyModalTitle');
         modalEl.innerHTML =
-            '<button type="button" class="beacon-modal__backdrop" data-beacon-modal-close aria-label="Close dialog"></button>' +
-            '<div class="beacon-modal__dialog" tabindex="-1">' +
-                '<header class="beacon-modal__header">' +
-                    '<h2 class="beacon-modal__title" id="receiverPolicyModalTitle">Receiver alert policy</h2>' +
-                    '<button type="button" class="beacon-modal__close" data-beacon-modal-close aria-label="Close">' +
-                        '<i class="bi bi-x-lg" aria-hidden="true"></i>' +
-                    '</button>' +
-                '</header>' +
+            '<div class="inst-dialog-head">' +
+                '<h2 class="inst-dialog-title" id="receiverPolicyModalTitle">Receiver alert policy</h2>' +
+                '<button type="button" class="inst-dialog-close inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost"' +
+                ' data-beacon-modal-close aria-label="Close">' +
+                '<svg class="inst-icon" aria-hidden="true"><use href="#i-close"/></svg></button>' +
+            '</div>' +
 
-                '<div class="beacon-modal__scroll">' +
-                '<div class="beacon-modal__body" data-receiver-policy-form>' +
-                    '<p class="beacon-modal__intro">' +
+                '<div class="inst-dialog-body" data-receiver-policy-form>' +
+                    '<p class="inst-u-dim">' +
                         'Empty fields inherit global defaults from Settings → Notifications. ' +
                         'Use Test to preview the template on this receiver.' +
                     '</p>' +
@@ -356,7 +352,7 @@
                         '<div class="col-md-6" data-policy-alert-mode-row>' +
                             '<label class="form-label small">Alert mode</label>' +
 
-                            '<select class="form-select" data-policy-alert-mode>' +
+                            '<select class="inst-select" data-policy-alert-mode>' +
                                 '<option value="">Use global default</option>' +
                                 '<option value="repeat">Repeat while down</option>' +
                                 '<option value="once">Once on down + recovery</option>' +
@@ -364,7 +360,7 @@
                         '</div>' +
 
                         '<div class="col-md-6 d-flex align-items-end justify-content-md-end">' +
-                            '<button type="button" class="btn btn-sm btn-outline-secondary" data-policy-reset-all>' +
+                            '<button type="button" class="inst-btn inst-btn--sm" data-policy-reset-all>' +
                                 'Reset to built-in defaults' +
                             '</button>' +
                         '</div>' +
@@ -374,18 +370,18 @@
                                 '<label class="form-label small mb-0">Down template</label>' +
 
                                 '<div class="d-flex align-items-center gap-1">' +
-                                    '<button type="button" class="btn btn-sm btn-outline-secondary" data-policy-test>' +
+                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-test>' +
                                         'Test' +
                                     '</button>' +
 
-                                    '<button type="button" class="btn btn-sm btn-outline-secondary" data-policy-reset>' +
+                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-reset>' +
                                         'Reset' +
                                     '</button>' +
                                 '</div>' +
                             '</div>' +
 
                             '<textarea ' +
-                                'class="form-control font-monospace small" ' +
+                                'class="inst-textarea inst-u-mono" ' +
                                 'rows="5" ' +
                                 'data-policy-template="down" ' +
                                 'placeholder="Leave empty for global">' +
@@ -403,18 +399,18 @@
                                 '<label class="form-label small mb-0">Recovered template</label>' +
 
                                 '<div class="d-flex align-items-center gap-1">' +
-                                    '<button type="button" class="btn btn-sm btn-outline-secondary" data-policy-test>' +
+                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-test>' +
                                         'Test' +
                                     '</button>' +
 
-                                    '<button type="button" class="btn btn-sm btn-outline-secondary" data-policy-reset>' +
+                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-reset>' +
                                         'Reset' +
                                     '</button>' +
                                 '</div>' +
                             '</div>' +
 
                             '<textarea ' +
-                                'class="form-control font-monospace small" ' +
+                                'class="inst-textarea inst-u-mono" ' +
                                 'rows="5" ' +
                                 'data-policy-template="recovered" ' +
                                 'placeholder="Leave empty for global">' +
@@ -430,21 +426,19 @@
                 '</div>' +
                 '</div>' +
 
-                '<footer class="beacon-modal__footer">' +
-                    '<button type="button" class="btn btn-outline-secondary" data-beacon-modal-close>' +
+                '<div class="inst-dialog-foot inst-dialog-foot--end">' +
+                    '<button type="button" class="inst-btn" data-beacon-modal-close>' +
                         'Cancel' +
                     '</button>' +
 
-                    '<button type="button" class="btn btn-primary" data-receiver-policy-save>' +
+                    '<button type="button" class="inst-btn inst-btn--primary" data-receiver-policy-save>' +
                         'Save' +
                     '</button>' +
-                '</footer>' +
-            '</div>';
+                '</div>';
 
         document.body.appendChild(modalEl);
 
         formRoot = modalEl.querySelector('[data-receiver-policy-form]');
-        var dialog = modalEl.querySelector('.beacon-modal__dialog');
 
         modalEl.querySelector('[data-receiver-policy-save]').addEventListener('click', function () {
             if (!onSaveCb || !formRoot._policyForm) return;
@@ -467,36 +461,13 @@
         });
     }
 
+    // Возврат фокуса, инертный фон и Escape — от платформы.
     function closeModal() {
-        if (!modalEl) return;
-        modalEl.hidden = true;
-        modalEl.setAttribute('aria-hidden', 'true');
-        if (window.Beacon && window.Beacon.modal && window.Beacon.modal.unlockScroll) {
-            window.Beacon.modal.unlockScroll();
-        } else {
-            document.documentElement.classList.remove('beacon-modal-open');
-            document.body.classList.remove('beacon-modal-open');
-        }
-        if (lastActiveElement && typeof lastActiveElement.focus === 'function') {
-            lastActiveElement.focus();
-        }
-        lastActiveElement = null;
+        if (modalEl && modalEl.open) modalEl.close();
     }
 
     function openModal() {
-        lastActiveElement = document.activeElement;
-        modalEl.hidden = false;
-        modalEl.setAttribute('aria-hidden', 'false');
-        if (window.Beacon && window.Beacon.modal && window.Beacon.modal.lockScroll) {
-            window.Beacon.modal.lockScroll();
-        } else {
-            document.documentElement.classList.add('beacon-modal-open');
-            document.body.classList.add('beacon-modal-open');
-        }
-        var dialog = modalEl.querySelector('.beacon-modal__dialog');
-        if (dialog) {
-            dialog.focus();
-        }
+        if (modalEl && !modalEl.open) modalEl.showModal();
     }
 
     function open(initial, delivery, onSave, opts) {
@@ -509,7 +480,7 @@
             initial = Object.assign({}, initial);
             delete initial.alert_mode;
         }
-        var intro = formRoot && formRoot.querySelector('.beacon-modal__intro');
+        var intro = formRoot && formRoot.querySelector('.inst-u-dim');
         if (intro) {
             if (channel === 'email') {
                 intro.textContent =
@@ -665,10 +636,13 @@
         return (
             '<span class="notify-row-meta" data-notify-meta></span>' +
             '<div class="notify-row__actions">' +
-            '<button type="button" class="btn notify-row__btn" data-notify-action="policy" title="Alert policy">' +
-            '<i class="bi bi-gear"></i></button>' +
-            '<button type="button" class="btn notify-row__btn notify-row__btn--danger" data-notify-action="remove" title="Remove receiver">' +
-            '<i class="bi bi-x-lg"></i></button>' +
+            // Иконочные кнопки кита: доступное имя обязательно, форма квадратная.
+            '<button type="button" class="inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost"' +
+            ' data-notify-action="policy" aria-label="Alert policy" title="Alert policy">' +
+            '<svg class="inst-icon" aria-hidden="true"><use href="#i-settings"/></svg></button>' +
+            '<button type="button" class="inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost"' +
+            ' data-notify-action="remove" aria-label="Remove receiver" title="Remove receiver">' +
+            '<svg class="inst-icon" aria-hidden="true"><use href="#i-close"/></svg></button>' +
             '</div>'
         );
     }
@@ -724,8 +698,8 @@
                 var row = el(
                     '<div class="notify-row notify-row--telegram">' +
                         '<div class="notify-row__fields">' +
-                        '<input type="password" class="form-control notify-secret-field" data-notify-field="token" placeholder="Bot token" autocomplete="off" />' +
-                        '<input type="text" class="form-control" data-notify-field="chat_id" placeholder="Chat ID" />' +
+                        '<input type="password" class="inst-input notify-secret-field" data-notify-field="token" placeholder="Bot token" autocomplete="off" />' +
+                        '<input type="text" class="inst-input" data-notify-field="chat_id" placeholder="Chat ID" />' +
                         '</div>' +
                         rowActionsHtml() +
                         '</div>'
@@ -764,7 +738,7 @@
                 var row = el(
                     '<div class="notify-row notify-row--discord">' +
                         '<div class="notify-row__fields">' +
-                        '<input type="password" class="form-control notify-secret-field" data-notify-field="webhook" placeholder="Webhook URL" autocomplete="off" />' +
+                        '<input type="password" class="inst-input notify-secret-field" data-notify-field="webhook" placeholder="Webhook URL" autocomplete="off" />' +
                         '</div>' +
                         rowActionsHtml() +
                         '</div>'
@@ -801,7 +775,7 @@
                 var row = el(
                     '<div class="notify-row notify-row--email">' +
                         '<div class="notify-row__fields">' +
-                        '<input type="email" class="form-control" data-notify-field="to" placeholder="recipient@example.com" />' +
+                        '<input type="email" class="inst-input" data-notify-field="to" placeholder="recipient@example.com" />' +
                         '</div>' +
                         rowActionsHtml() +
                         '</div>'
@@ -832,7 +806,7 @@
                 var row = el(
                     '<div class="notify-row notify-row--webhook">' +
                         '<div class="notify-row__fields">' +
-                        '<input type="url" class="form-control" data-notify-field="url" placeholder="https://hooks.example.com/..." />' +
+                        '<input type="url" class="inst-input" data-notify-field="url" placeholder="https://hooks.example.com/..." />' +
                         '</div>' +
                         rowActionsHtml() +
                         '</div>'

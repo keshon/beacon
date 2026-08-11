@@ -1,66 +1,34 @@
-{# Network nodes table panel. Expects: networkNodes #}
-<section class="app-panel mb-3">
-    <div class="app-panel-header">
-        <span class="app-panel-title">Network</span>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover app-table mb-0">
+{# Таблица узлов сети. Expects: networkNodes #}
+<section class="inst-section">
+    <div class="inst-section-head"><h2 class="inst-section-title">Network</h2></div>
+    <div class="inst-panel"><div class="inst-panel-body inst-panel-body--flush">
+        <table class="inst-table">
             <thead>
                 <tr>
                     <th>Node</th>
                     <th>URL</th>
                     <th>Status</th>
                     <th>Last seen</th>
-                    <th>Monitors</th>
+                    <th class="inst-num">Monitors</th>
                 </tr>
             </thead>
             <tbody>
                 {% for n in networkNodes %}
                 <tr>
-                    <td>
-                        {% if n.NodeID %}
-                        <code class="app-code">{{ n.NodeID }}</code>
-                        {% else %}
-                        <code class="app-code">{{ n.NodeIDShort }}</code>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="monitor-meta">
-                            <a href="{{ n.URL }}" target="_blank" rel="noopener" class="link-secondary text-body-secondary app-monitor-target-link">{{ n.URL }}</a>
-                        </div>
-                    </td>
-                    <td>
-                        {% if n.Status == 'self' %}
-                        <span class="badge rounded-pill badge-self"><span class="dot"></span>Self</span>
-                        {% elif n.Status == 'live' %}
-                        <span class="badge rounded-pill badge-live"><span class="dot"></span>Live</span>
-                        {% elif n.Status == 'dead' %}
-                        <span class="badge rounded-pill badge-dead"><span class="dot"></span>Dead</span>
-                        {% else %}
-                        <span class="badge rounded-pill badge-unknown"><span class="dot"></span>Unknown</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-body-tertiary app-metric">{{ n.LastSeen }}</td>
-                    <td class="text-body-secondary app-metric">{{ n.MonitorsCount }}</td>
+                    <td class="inst-u-mono">{% if n.NodeID %}{{ n.NodeID }}{% else %}{{ n.NodeIDShort }}{% endif %}</td>
+                    <td><a href="{{ n.URL }}" target="_blank" rel="noopener">{{ n.URL }}</a></td>
+                    <td>{% include "./shared/status.html" with status=n.Status %}</td>
+                    <td>{{ n.LastSeen }}</td>
+                    <td class="inst-num">{{ n.MonitorsCount }}</td>
                 </tr>
                 {% if n.LastError %}
-                <tr>
-                    <td colspan="5" class="table-alert-cell">
-                        <i class="bi bi-exclamation-circle me-1"></i>{{ n.LastError }}
-                    </td>
-                </tr>
+                <tr><td colspan="5"><span class="inst-note beacon-error" data-tone="error">{{ n.LastError }}</span></td></tr>
                 {% endif %}
-                {% if n.SyncWarnings %}
-                {% for w in n.SyncWarnings %}
-                <tr>
-                    <td colspan="5" class="table-alert-cell text-warning">
-                        <i class="bi bi-exclamation-triangle me-1"></i>{{ w }}
-                    </td>
-                </tr>
-                {% endfor %}
-                {% endif %}
+                {% if n.SyncWarnings %}{% for w in n.SyncWarnings %}
+                <tr><td colspan="5"><span class="inst-note beacon-error" data-tone="warn">{{ w }}</span></td></tr>
+                {% endfor %}{% endif %}
                 {% endfor %}
             </tbody>
         </table>
-    </div>
+    </div></div>
 </section>
