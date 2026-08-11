@@ -9,253 +9,215 @@
         </div>
     </div>
 
-    <form id="configForm">
-        <div class="beacon-bare">
-            <div class="beacon-bare">
-                <section class="inst-panel">
-                    <div class="inst-panel-header">
-                        <span class="inst-panel-title">Appearance</span>
-                    </div>
-                    <div class="inst-panel-body inst-form">
-                        <label class="inst-checkbox">
-                            <input type="checkbox" id="ui_colorize_up" /><span>Colorize UP</span>
-                        </label>
-                        <label class="inst-checkbox">
-                            <input type="checkbox" id="ui_colorize_down" /><span>Colorize DOWN</span>
-                        </label>
-                    </div>
-                </section>
+    {# The panels stand in a stack — the kit's primitive, not a rule keyed to #}
+    {# this form's id. #}
+    <form id="configForm" class="inst-stack inst-stack--loose">
+        <section class="inst-panel">
+            <div class="inst-panel-header">
+                <span class="inst-panel-title">Appearance</span>
             </div>
-            <div class="beacon-bare">
-                <section class="inst-panel">
-                    <div class="inst-panel-header">
-                        <span class="inst-panel-title">Server</span>
-                    </div>
-                    <div class="inst-panel-body inst-form">
-                        <p class="inst-u-dim" id="restartHint">
-                            Changes to listen address or worker count require a process restart to take effect.
-                        </p>
-                        <div class="beacon-bare">
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Listen address</label>
-                                <input type="text" class="inst-input" name="listen" placeholder=":8080" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Workers</label>
-                                <input type="number" class="inst-input" name="workers" min="1" placeholder="10" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Default check interval (sec)</label>
-                                <input type="number" class="inst-input" name="default_interval" min="0" placeholder="30" />
-                            </div>
-                        </div>
-                    </div>
-                </section>
+            <div class="inst-panel-body inst-form">
+                <label class="inst-checkbox">
+                    <input type="checkbox" id="ui_colorize_up" /><span>Colorize UP</span>
+                </label>
+                <label class="inst-checkbox">
+                    <input type="checkbox" id="ui_colorize_down" /><span>Colorize DOWN</span>
+                </label>
             </div>
-            <div class="beacon-bare">
-                <section class="inst-panel">
-                    <div class="inst-panel-header">
-                        <span class="inst-panel-title">Auth</span>
-                    </div>
-                    <div class="inst-panel-body inst-form">
-                        <div class="beacon-bare">
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Username</label>
-                                <input type="text" class="inst-input" name="username" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Password</label>
-                                <input type="password" class="inst-input" name="password" placeholder="Leave blank to keep current" autocomplete="new-password" />
-                            </div>
-                        </div>
-                    </div>
-                </section>
+        </section>
+        <section class="inst-panel">
+            <div class="inst-panel-header">
+                <span class="inst-panel-title">Server</span>
             </div>
-            <div class="beacon-bare">
-                <section class="inst-panel">
-                    <div class="inst-panel-header">
-                        <span class="inst-panel-title">Notifications</span>
-                    </div>
-                    <div class="inst-panel-body inst-form" id="notificationsPolicyPanel" data-notify-policy>
-                        <p class="inst-field-hint">
-                            Default alert mode and message templates for new receivers. Leave fields empty in a
-                            receiver&rsquo;s policy modal to inherit these values.
-                        </p>
-                        <div class="inst-field" data-policy-alert-mode-row>
-                            <label class="inst-label" for="notifications_alert_mode">Alert mode</label>
-                            <span class="inst-select-wrap">
-                                <select class="inst-select" id="notifications_alert_mode" data-policy-alert-mode>
-                                    <option value="repeat">Repeat while down (every check)</option>
-                                    <option value="once">Once on down, once on recovery</option>
-                                </select>
-                            </span>
-                        </div>
-                        <div class="inst-field policy-template-row">
-                            <div class="beacon-field-action">
-                                <label class="inst-label" for="policy_template_down">Down template</label>
-                                <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
-                            </div>
-                            <textarea class="inst-textarea inst-u-mono" id="policy_template_down" rows="5" data-policy-template="down"></textarea>
-                            <div class="inst-inserts" data-policy-chips></div>
-                        </div>
-                        <div class="inst-field policy-template-row">
-                            <div class="beacon-field-action">
-                                <label class="inst-label" for="policy_template_recovered">Recovered template</label>
-                                <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
-                            </div>
-                            <textarea class="inst-textarea inst-u-mono" id="policy_template_recovered" rows="5" data-policy-template="recovered"></textarea>
-                            <div class="inst-inserts" data-policy-chips></div>
-                        </div>
-                        <div class="inst-form-actions inst-form-actions--end">
-                            <button type="button" class="inst-btn inst-btn--sm" data-policy-reset-all>
-                                Reset all to defaults
-                            </button>
-                        </div>
-                    </div>
-                </section>
+            <div class="inst-panel-body inst-form">
+                <p class="inst-u-dim" id="restartHint">
+                    Changes to listen address or worker count require a process restart to take effect.
+                </p>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Listen address</label>
+                    <input type="text" class="inst-input" name="listen" placeholder=":8080" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Workers</label>
+                    <input type="number" class="inst-input" name="workers" min="1" placeholder="10" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Default check interval (sec)</label>
+                    <input type="number" class="inst-input" name="default_interval" min="0" placeholder="30" />
+                </div>
             </div>
-            <div class="beacon-bare">
-                <section class="inst-panel">
-                    <div class="inst-panel-header">
-                        <span class="inst-panel-title">Telegram</span>
-                    </div>
-                    <div class="inst-panel-body inst-form" id="telegramPanel">
-                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="telegram_enabled" id="telegram_enabled" /><span>Enabled</span></label>
-                        <div data-notify-list></div>
-                        <div class="beacon-bare">
-                            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
-                                Add receiver
-                            </button>
-                            <span class="inst-label" data-notify-helper></span>
-                        </div>
-                    </div>
-                </section>
+        </section>
+        <section class="inst-panel">
+            <div class="inst-panel-header">
+                <span class="inst-panel-title">Auth</span>
             </div>
-            <div class="beacon-bare">
-                <section class="inst-panel">
-                    <div class="inst-panel-header">
-                        <span class="inst-panel-title">Discord</span>
-                    </div>
-                    <div class="inst-panel-body inst-form" id="discordPanel">
-                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="discord_enabled" id="discord_enabled" /><span>Enabled</span></label>
-                        <div data-notify-list></div>
-                        <div class="beacon-bare">
-                            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
-                                Add receiver
-                            </button>
-                            <span class="inst-label" data-notify-helper></span>
-                        </div>
-                    </div>
-                </section>
+            <div class="inst-panel-body inst-form">
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Username</label>
+                    <input type="text" class="inst-input" name="username" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Password</label>
+                    <input type="password" class="inst-input" name="password" placeholder="Leave blank to keep current" autocomplete="new-password" />
+                </div>
             </div>
-            <div class="beacon-bare">
-                <section class="inst-panel">
-                    <div class="inst-panel-header">
-                        <span class="inst-panel-title">Email</span>
-                    </div>
-                    <div class="inst-panel-body inst-form" id="emailPanel">
-                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="email_enabled" id="email_enabled" /><span>Enabled</span></label>
-                        <p class="inst-u-dim">Global SMTP settings. Receivers can override SMTP per row in the policy modal.</p>
-                        <div class="beacon-bare">
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">SMTP host</label>
-                                <input type="text" class="inst-input" name="email_smtp_host" placeholder="smtp.example.com" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Port</label>
-                                <input type="number" class="inst-input" name="email_smtp_port" min="1" placeholder="587" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Username</label>
-                                <input type="text" class="inst-input" name="email_smtp_username" autocomplete="off" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Password</label>
-                                <input type="password" class="inst-input" name="email_smtp_password" autocomplete="new-password" placeholder="Leave blank to keep" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">From address</label>
-                                <input type="email" class="inst-input" name="email_smtp_from" placeholder="beacon@example.com" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">TLS mode</label>
-                                <select class="inst-select" name="email_smtp_tls">
-                                    <option value="starttls">STARTTLS</option>
-                                    <option value="ssl">SSL/TLS</option>
-                                    <option value="plain">Plain</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div data-notify-list></div>
-                        <div class="beacon-bare">
-                            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
-                                Add receiver
-                            </button>
-                            <span class="inst-label" data-notify-helper></span>
-                        </div>
-                    </div>
-                </section>
+        </section>
+        <section class="inst-panel">
+            <div class="inst-panel-header">
+                <span class="inst-panel-title">Notifications</span>
             </div>
-            <div class="beacon-bare">
-                <section class="inst-panel">
-                    <div class="inst-panel-header">
-                        <span class="inst-panel-title">Webhook</span>
+            <div class="inst-panel-body inst-form" id="notificationsPolicyPanel" data-notify-policy>
+                <p class="inst-field-hint">
+                    Default alert mode and message templates for new receivers. Leave fields empty in a
+                    receiver&rsquo;s policy modal to inherit these values.
+                </p>
+                <div class="inst-field" data-policy-alert-mode-row>
+                    <label class="inst-label" for="notifications_alert_mode">Alert mode</label>
+                    <span class="inst-select-wrap">
+                        <select class="inst-select" id="notifications_alert_mode" data-policy-alert-mode>
+                            <option value="repeat">Repeat while down (every check)</option>
+                            <option value="once">Once on down, once on recovery</option>
+                        </select>
+                    </span>
+                </div>
+                <div class="inst-field policy-template-row">
+                    <div class="beacon-field-action">
+                        <label class="inst-label" for="policy_template_down">Down template</label>
+                        <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
                     </div>
-                    <div class="inst-panel-body inst-form" id="webhookPanel">
-                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="webhook_enabled" id="webhook_enabled" /><span>Enabled</span></label>
-                        <p class="inst-u-dim">Generic HTTP POST webhooks.</p>
-                        <div data-notify-list></div>
-                        <div class="beacon-bare">
-                            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
-                                Add receiver
-                            </button>
-                            <span class="inst-label" data-notify-helper></span>
-                        </div>
+                    <textarea class="inst-textarea inst-u-mono" id="policy_template_down" rows="5" data-policy-template="down"></textarea>
+                    <div class="inst-inserts" data-policy-chips></div>
+                </div>
+                <div class="inst-field policy-template-row">
+                    <div class="beacon-field-action">
+                        <label class="inst-label" for="policy_template_recovered">Recovered template</label>
+                        <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
                     </div>
-                </section>
+                    <textarea class="inst-textarea inst-u-mono" id="policy_template_recovered" rows="5" data-policy-template="recovered"></textarea>
+                    <div class="inst-inserts" data-policy-chips></div>
+                </div>
+                <div class="inst-form-actions inst-form-actions--end">
+                    <button type="button" class="inst-btn inst-btn--sm" data-policy-reset-all>
+                        Reset all to defaults
+                    </button>
+                </div>
             </div>
-            <div class="beacon-bare">
-                <section class="inst-panel">
-                    <div class="inst-panel-header">
-                        <span class="inst-panel-title">Network (peer sync)</span>
-                    </div>
-                    <div class="inst-panel-body inst-form">
-                        <label class="inst-checkbox"><input class="beacon-bare" type="checkbox" name="network_enabled" id="network_enabled" /><span>Enable peer sync</span></label>
-                        <div class="beacon-bare">
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Self URL</label>
-                                <input type="text" class="inst-input" name="network_self_url" placeholder="https://beacon1.example.com" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Peers (one URL per line)</label>
-                                <textarea class="inst-input" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Sync interval (sec)</label>
-                                <input type="number" class="inst-input" name="network_sync_interval" min="10" placeholder="60" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Dead timeout (sec)</label>
-                                <input type="number" class="inst-input" name="network_dead_timeout" min="60" placeholder="300" />
-                            </div>
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label">Sync token</label>
-                                <input type="password" class="inst-input" name="network_sync_token" autocomplete="new-password" placeholder="Shared secret for all nodes" />
-                                <div class="inst-field-hint">Same token on every node. Web login can differ per node.</div>
-                            </div>
-                            <div class="beacon-bare">
-                                <label class="inst-label inst-u-dim">Node ID</label>
-                                <input type="text" class="inst-input app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
-                            </div>
-                        </div>
-                    </div>
-                </section>
+        </section>
+        <section class="inst-panel">
+            <div class="inst-panel-header">
+                <span class="inst-panel-title">Telegram</span>
             </div>
-            <div class="beacon-bare">
-                <button type="submit" class="inst-btn inst-btn--primary">Save settings</button>
-                <span id="msg" class="beacon-bare"></span>
+            <div class="inst-panel-body inst-form" id="telegramPanel">
+                <label class="inst-checkbox"><input type="checkbox" name="telegram_enabled" id="telegram_enabled" /><span>Enabled</span></label>
+                <div data-notify-list></div>
+                <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                    Add receiver
+                </button>
+                <span class="inst-label" data-notify-helper></span>
             </div>
-        </div>
+        </section>
+        <section class="inst-panel">
+            <div class="inst-panel-header">
+                <span class="inst-panel-title">Discord</span>
+            </div>
+            <div class="inst-panel-body inst-form" id="discordPanel">
+                <label class="inst-checkbox"><input type="checkbox" name="discord_enabled" id="discord_enabled" /><span>Enabled</span></label>
+                <div data-notify-list></div>
+                <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                    Add receiver
+                </button>
+                <span class="inst-label" data-notify-helper></span>
+            </div>
+        </section>
+        <section class="inst-panel">
+            <div class="inst-panel-header">
+                <span class="inst-panel-title">Email</span>
+            </div>
+            <div class="inst-panel-body inst-form" id="emailPanel">
+                <label class="inst-checkbox"><input type="checkbox" name="email_enabled" id="email_enabled" /><span>Enabled</span></label>
+                <p class="inst-u-dim">Global SMTP settings. Receivers can override SMTP per row in the policy modal.</p>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">SMTP host</label>
+                    <input type="text" class="inst-input" name="email_smtp_host" placeholder="smtp.example.com" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Port</label>
+                    <input type="number" class="inst-input" name="email_smtp_port" min="1" placeholder="587" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Username</label>
+                    <input type="text" class="inst-input" name="email_smtp_username" autocomplete="off" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Password</label>
+                    <input type="password" class="inst-input" name="email_smtp_password" autocomplete="new-password" placeholder="Leave blank to keep" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">From address</label>
+                    <input type="email" class="inst-input" name="email_smtp_from" placeholder="beacon@example.com" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">TLS mode</label>
+                    <select class="inst-select" name="email_smtp_tls">
+                        <option value="starttls">STARTTLS</option>
+                        <option value="ssl">SSL/TLS</option>
+                        <option value="plain">Plain</option>
+                    </select>
+                </div>
+                <div data-notify-list></div>
+                <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                    Add receiver
+                </button>
+                <span class="inst-label" data-notify-helper></span>
+            </div>
+        </section>
+        <section class="inst-panel">
+            <div class="inst-panel-header">
+                <span class="inst-panel-title">Webhook</span>
+            </div>
+            <div class="inst-panel-body inst-form" id="webhookPanel">
+                <label class="inst-checkbox"><input type="checkbox" name="webhook_enabled" id="webhook_enabled" /><span>Enabled</span></label>
+                <p class="inst-u-dim">Generic HTTP POST webhooks.</p>
+                <div data-notify-list></div>
+                <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                    Add receiver
+                </button>
+                <span class="inst-label" data-notify-helper></span>
+            </div>
+        </section>
+        <section class="inst-panel">
+            <div class="inst-panel-header">
+                <span class="inst-panel-title">Network (peer sync)</span>
+            </div>
+            <div class="inst-panel-body inst-form">
+                <label class="inst-checkbox"><input type="checkbox" name="network_enabled" id="network_enabled" /><span>Enable peer sync</span></label>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Self URL</label>
+                    <input type="text" class="inst-input" name="network_self_url" placeholder="https://beacon1.example.com" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Peers (one URL per line)</label>
+                    <textarea class="inst-input" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Sync interval (sec)</label>
+                    <input type="number" class="inst-input" name="network_sync_interval" min="10" placeholder="60" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Dead timeout (sec)</label>
+                    <input type="number" class="inst-input" name="network_dead_timeout" min="60" placeholder="300" />
+                </div>
+                <div class="inst-field inst-field--side">
+                    <label class="inst-label">Sync token</label>
+                    <input type="password" class="inst-input" name="network_sync_token" autocomplete="new-password" placeholder="Shared secret for all nodes" />
+                    <div class="inst-field-hint">Same token on every node. Web login can differ per node.</div>
+                </div>
+                <label class="inst-label inst-u-dim">Node ID</label>
+                <input type="text" class="inst-input app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
+            </div>
+        </section>
+        <button type="submit" class="inst-btn inst-btn--primary">Save settings</button>
+        <span id="msg" class="inst-field-hint" role="status"></span>
     </form>
 </div>
 {% endblock %}

@@ -32,7 +32,7 @@
         <button type="button" class="inst-btn inst-btn--sm beacon-disclosure" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "modal" %}modalHttp{% elif mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
             HTTP options
         </button>
-        <div class="collapse inst-form" id="{% if mode == "modal" %}modalHttp{% elif mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
+        <div class="beacon-collapse inst-form" id="{% if mode == "modal" %}modalHttp{% elif mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
             <div class="inst-field">
                 <label class="inst-label">Basic auth user</label>
                 <input type="text" class="inst-input" name="http_username" data-http-username autocomplete="off" />
@@ -57,7 +57,7 @@
         <button type="button" class="inst-btn inst-btn--sm beacon-disclosure" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "modal" %}modalAdvanced{% elif mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}">
             Notification overrides
         </button>
-        <div class="collapse notify-overrides inst-stack" id="{% if mode == "modal" %}modalAdvanced{% elif mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}" {% if mode == "edit" %}data-notify-overrides="{{ m.NotifyJSON }}" {% else %}data-notify-overrides="{}" {% endif %}>
+        <div class="beacon-collapse notify-overrides inst-stack" id="{% if mode == "modal" %}modalAdvanced{% elif mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}" {% if mode == "edit" %}data-notify-overrides="{{ m.NotifyJSON }}" {% else %}data-notify-overrides="{}" {% endif %}>
             <p class="inst-field-hint">
                 Per channel: <strong>Global</strong> follows Settings, <strong>Off</strong> disables alerts, <strong>Custom</strong> uses a monitor-specific receiver list.
             </p>
