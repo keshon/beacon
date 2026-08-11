@@ -1,13 +1,16 @@
 {# Действия монитора. Меню — содержимое поповера: верхний слой, закрытие по #}
 {# Escape и по клику мимо, возврат фокуса приходят от Popover API. Стрелки и #}
-{# бегущий tabindex выполняет kit.js по role="menu". Expects: row #}
+{# бегущий tabindex выполняет kit.js по role="menu". Expects: row, view #}
+{# view входит в id поповера, потому что дашборд держит в DOM все три вида #}
+{# сразу. Без него id повторялся трижды, popovertarget находил ПЕРВЫЙ — тот, #}
+{# что в скрытых карточках, — и кебаб в списке и таблице открывал ничто. #}
 {% if not row.IsPeer %}
 <span data-monitor-actions>
     <button class="inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost" type="button"
-            popovertarget="mact-{{ row.Monitor.ID }}" aria-label="Monitor actions">
+            popovertarget="mact-{{ view }}-{{ row.Monitor.ID }}" aria-label="Monitor actions">
         <svg class="inst-icon" aria-hidden="true"><use href="#i-more"/></svg>
     </button>
-    <div class="inst-popover inst-popover--anchored" id="mact-{{ row.Monitor.ID }}" popover>
+    <div class="inst-popover inst-popover--anchored" id="mact-{{ view }}-{{ row.Monitor.ID }}" popover>
         <div class="inst-menu" role="menu" aria-label="Monitor actions">
             <button class="inst-menu-item" type="button" role="menuitem" tabindex="0"
                     data-monitor-action="edit">Edit</button>
