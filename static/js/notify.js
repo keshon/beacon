@@ -126,7 +126,7 @@
         list.forEach(function (p) {
             var btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'inst-btn inst-btn--sm';
+            btn.className = 'inst-btn inst-btn--sm inst-btn--ghost inst-u-mono';
             btn.textContent = '{{' + p.key + '}}';
             btn.title = p.description || p.key;
             btn.addEventListener('click', function () {
@@ -255,8 +255,7 @@
         var modeRow =
             modeSelect &&
             (modeSelect.closest('[data-policy-alert-mode-row]') ||
-                modeSelect.closest('.col-md-6') ||
-                modeSelect.closest('.col-md-4'));
+                modeSelect.closest('[data-policy-alert-mode-row]'));
         if (modeRow) {
             modeRow.classList.toggle('invisible', hideAlertMode);
             modeRow.setAttribute('aria-hidden', hideAlertMode ? 'true' : 'false');
@@ -342,86 +341,56 @@
                 '<svg class="inst-icon" aria-hidden="true"><use href="#i-close"/></svg></button>' +
             '</div>' +
 
-                '<div class="inst-dialog-body" data-receiver-policy-form>' +
+                '<div class="inst-dialog-body inst-form" data-receiver-policy-form>' +
                     '<p class="inst-u-dim">' +
                         'Empty fields inherit global defaults from Settings → Notifications. ' +
                         'Use Test to preview the template on this receiver.' +
                     '</p>' +
 
                     '<div class="row g-3">' +
-                        '<div class="col-md-6" data-policy-alert-mode-row>' +
-                            '<label class="form-label small">Alert mode</label>' +
-
+                        '<div class="inst-field" data-policy-alert-mode-row>' +
+                            '<label class="inst-label">Alert mode</label>' +
+                            '<span class="inst-select-wrap">' +
                             '<select class="inst-select" data-policy-alert-mode>' +
                                 '<option value="">Use global default</option>' +
                                 '<option value="repeat">Repeat while down</option>' +
                                 '<option value="once">Once on down + recovery</option>' +
-                            '</select>' +
+                            '</select></span>' +
                         '</div>' +
 
-                        '<div class="col-md-6 d-flex align-items-end justify-content-md-end">' +
+                        '<div class="inst-form-actions inst-form-actions--end">' +
                             '<button type="button" class="inst-btn inst-btn--sm" data-policy-reset-all>' +
                                 'Reset to built-in defaults' +
                             '</button>' +
                         '</div>' +
 
-                        '<div class="p-2"><div class="col-12 policy-template-row">' +
-                            '<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">' +
-                                '<label class="form-label small mb-0">Down template</label>' +
-
-                                '<div class="d-flex align-items-center gap-1">' +
-                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-test>' +
-                                        'Test' +
-                                    '</button>' +
-
-                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-reset>' +
-                                        'Reset' +
-                                    '</button>' +
-                                '</div>' +
+                        '<div class="inst-field policy-template-row">' +
+                            '<div class="beacon-field-action">' +
+                                '<label class="inst-label">Down template</label>' +
+                                '<span class="inst-cluster inst-cluster--tight">' +
+                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-test>Test</button>' +
+                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>' +
+                                '</span>' +
                             '</div>' +
+                            '<textarea class="inst-textarea inst-u-mono" rows="5"' +
+                                ' data-policy-template="down" placeholder="Leave empty for global"></textarea>' +
+                            '<span data-policy-test-status class="inst-field-hint"></span>' +
+                            '<div class="inst-cluster inst-cluster--tight" data-policy-chips></div>' +
+                        '</div>' +
 
-                            '<textarea ' +
-                                'class="inst-textarea inst-u-mono" ' +
-                                'rows="5" ' +
-                                'data-policy-template="down" ' +
-                                'placeholder="Leave empty for global">' +
-                            '</textarea>' +
-
-                            '<div class="mt-1">' +
-                                '<span data-policy-test-status class="small text-muted"></span>' +
+                        '<div class="inst-field policy-template-row">' +
+                            '<div class="beacon-field-action">' +
+                                '<label class="inst-label">Recovered template</label>' +
+                                '<span class="inst-cluster inst-cluster--tight">' +
+                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-test>Test</button>' +
+                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>' +
+                                '</span>' +
                             '</div>' +
-
-                            '<div class="mt-1" data-policy-chips></div>' +
-                        '</div></div>' +
-
-                        '<div class="p-2"><div class="col-12 policy-template-row">' +
-                            '<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">' +
-                                '<label class="form-label small mb-0">Recovered template</label>' +
-
-                                '<div class="d-flex align-items-center gap-1">' +
-                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-test>' +
-                                        'Test' +
-                                    '</button>' +
-
-                                    '<button type="button" class="inst-btn inst-btn--sm" data-policy-reset>' +
-                                        'Reset' +
-                                    '</button>' +
-                                '</div>' +
-                            '</div>' +
-
-                            '<textarea ' +
-                                'class="inst-textarea inst-u-mono" ' +
-                                'rows="5" ' +
-                                'data-policy-template="recovered" ' +
-                                'placeholder="Leave empty for global">' +
-                            '</textarea>' +
-
-                            '<div class="mt-1">' +
-                                '<span data-policy-test-status class="small text-muted"></span>' +
-                            '</div>' +
-
-                            '<div class="mt-1" data-policy-chips></div>' +
-                        '</div></div>' +
+                            '<textarea class="inst-textarea inst-u-mono" rows="5"' +
+                                ' data-policy-template="recovered" placeholder="Leave empty for global"></textarea>' +
+                            '<span data-policy-test-status class="inst-field-hint"></span>' +
+                            '<div class="inst-cluster inst-cluster--tight" data-policy-chips></div>' +
+                        '</div>' +
                     '</div>' +
                 '</div>' +
                 '</div>' +

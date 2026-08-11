@@ -166,3 +166,18 @@
   margin-block-end: var(--space-3);
 }
 .beacon-field-action .inst-label { margin: 0; }
+
+/* ── Модалки ──────────────────────────────────────────────────────────── */
+
+/* Кнопка раскрытия («HTTP options», «Notification overrides») стоит в строке
+   и не тянется: она открывает группу, а не подтверждает форму. */
+.beacon-disclosure { align-self: start; inline-size: max-content; }
+
+/* Свёрнутая группа не занимает места. Раскрытие — на классе, потому что его
+   ставит скрипт приложения; кит здесь ни при чём. */
+.collapse:not(.is-open) { display: none; }
+.collapse.is-open { display: flex; flex-direction: column; gap: var(--pad-panel); }
+
+/* Плейсхолдеры шаблона — ряд кнопок вставки. Их одиннадцать, и они тише
+   действий: это подстановка в поле, а не команда. */
+[data-policy-chips] { row-gap: var(--space-2); }

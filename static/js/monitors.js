@@ -148,8 +148,8 @@
     }
 
     function resetCollapsePanels(form) {
-        form.querySelectorAll('.collapse.show').forEach(function (panel) {
-            panel.classList.remove('show');
+        form.querySelectorAll('.collapse.is-open').forEach(function (panel) {
+            panel.classList.remove('is-open');
         });
         form.querySelectorAll('[data-beacon-collapse][aria-expanded="true"]').forEach(function (btn) {
             btn.setAttribute('aria-expanded', 'false');

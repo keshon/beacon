@@ -1,75 +1,80 @@
-{# Shared monitor fields for add and inline edit. Expects: mode = "add"|"edit"|"modal"; in edit, loop variable m must be in scope. #}
-<div >
-    <div >
+{# Поля монитора: добавление, правка и модалка. #}
+{# Expects: mode = "add"|"edit"|"modal"; в edit переменная m в области видимости. #}
+{# Раскладка — примитивы кита: форма задаёт ритм полей, fieldset группирует, #}
+{# кластер держит кнопку раскрытия в строке. #}
+<div class="inst-form">
+    <div class="inst-field">
         <label class="inst-label">Name</label>
         <input type="text" class="inst-input" name="name" {% if mode == "add" or mode == "modal" %}placeholder="e.g. Google" required{% else %}placeholder="Name" {% endif %} />
     </div>
-    <div >
+    <div class="inst-field">
         <label class="inst-label">Type</label>
-        <select class="inst-select" name="type" data-monitor-type>
-            <option value="http">HTTP</option>
-            <option value="tcp">TCP</option>
-        </select>
+        <span class="inst-select-wrap">
+            <select class="inst-select" name="type" data-monitor-type>
+                <option value="http">HTTP</option>
+                <option value="tcp">TCP</option>
+            </select>
+        </span>
     </div>
-    <div >
+    <div class="inst-field">
         <label class="inst-label">Target</label>
         <input type="text" class="inst-input" name="target" data-monitor-target {% if mode == "add" or mode == "modal" %}placeholder="https://example.com" required{% else %}placeholder="Target" {% endif %} />
-        <div class="inst-field-error" data-monitor-target-error role="alert"></div>
+        <span class="inst-field-error" data-monitor-target-error role="alert"></span>
     </div>
-    <div >
+    <div class="inst-field">
         <label class="inst-label">Interval (sec)</label>
         <input type="number" class="inst-input" name="interval" min="0" placeholder="default" />
+        <span class="inst-field-hint">Empty — use the global default</span>
     </div>
-    {% if mode == "add" %}
-    <div >
-        <button type="submit" class="inst-btn inst-btn--primary d-grid">Add</button>
-    </div>
-    {% elif mode == "edit" %}
-    <div >
-        <button type="submit" class="inst-btn inst-btn--primary d-grid">Save</button>
-    </div>
-    {% endif %}
-</div>
-<div  data-http-options {% if mode == "edit" %}data-http-json="{{ m.HTTPJSON }}" {% endif %}>
-    <button type="button" class="inst-btn inst-btn--sm" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "modal" %}modalHttp{% elif mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
-        HTTP options
-    </button>
-    <div class="collapse" id="{% if mode == "modal" %}modalHttp{% elif mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
-        <div >
-            <div >
+
+    {# ── Параметры HTTP ────────────────────────────────────────────────── #}
+    <div class="inst-fieldset inst-fieldset--framed" data-http-options {% if mode == "edit" %}data-http-json="{{ m.HTTPJSON }}" {% endif %}>
+        <button type="button" class="inst-btn inst-btn--sm beacon-disclosure" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "modal" %}modalHttp{% elif mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
+            HTTP options
+        </button>
+        <div class="collapse inst-form" id="{% if mode == "modal" %}modalHttp{% elif mode == "add" %}addHttp{% else %}editHttp-{{ m.ID }}{% endif %}">
+            <div class="inst-field">
                 <label class="inst-label">Basic auth user</label>
                 <input type="text" class="inst-input" name="http_username" data-http-username autocomplete="off" />
             </div>
-            <div >
+            <div class="inst-field">
                 <label class="inst-label">Basic auth password</label>
                 <input type="password" class="inst-input" name="http_password" data-http-password autocomplete="new-password" placeholder="Leave blank to keep" />
             </div>
-            <div >
-                <label class="inst-label">Keyword (optional)</label>
+            <div class="inst-field">
+                <label class="inst-label">Keyword <span class="inst-optional">optional</span></label>
                 <input type="text" class="inst-input" name="http_keyword" data-http-keyword placeholder="Text expected in response body" />
             </div>
-            <div >
-                <div class="inst-checkbox">
-                    <input  type="checkbox" name="http_keyword_invert" id="http_keyword_invert_{% if mode == "modal" %}modal{% elif mode == "add" %}add{% else %}{{ m.ID }}{% endif %}" data-http-keyword-invert />
-                    <label  for="http_keyword_invert_{% if mode == "modal" %}modal{% elif mode == "add" %}add{% else %}{{ m.ID }}{% endif %}">Must not contain</label>
-                </div>
-            </div>
+            <label class="inst-checkbox">
+                <input type="checkbox" name="http_keyword_invert" id="http_keyword_invert_{% if mode == "modal" %}modal{% elif mode == "add" %}add{% else %}{{ m.ID }}{% endif %}" data-http-keyword-invert />
+                <span>Must not contain</span>
+            </label>
         </div>
     </div>
-</div>
-<div >
-    <button type="button" class="inst-btn inst-btn--sm" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "modal" %}modalAdvanced{% elif mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}">
-        Notification overrides
-    </button>
-    <div class="collapse notify-overrides" id="{% if mode == "modal" %}modalAdvanced{% elif mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}" {% if mode == "edit" %}data-notify-overrides="{{ m.NotifyJSON }}" {% else %}data-notify-overrides="{}" {% endif %}>
-        <p class="inst-label">
-            Per channel: <strong>Global</strong> follows Settings, <strong>Off</strong> disables alerts, <strong>Custom</strong> uses a monitor-specific receiver list.
-        </p>
-        <div >
+
+    {# ── Уведомления по каналам ────────────────────────────────────────── #}
+    <div class="inst-fieldset inst-fieldset--framed">
+        <button type="button" class="inst-btn inst-btn--sm beacon-disclosure" data-beacon-collapse data-beacon-collapse-target="#{% if mode == "modal" %}modalAdvanced{% elif mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}">
+            Notification overrides
+        </button>
+        <div class="collapse notify-overrides inst-stack" id="{% if mode == "modal" %}modalAdvanced{% elif mode == "add" %}addAdvanced{% else %}editAdvanced-{{ m.ID }}{% endif %}" {% if mode == "edit" %}data-notify-overrides="{{ m.NotifyJSON }}" {% else %}data-notify-overrides="{}" {% endif %}>
+            <p class="inst-field-hint">
+                Per channel: <strong>Global</strong> follows Settings, <strong>Off</strong> disables alerts, <strong>Custom</strong> uses a monitor-specific receiver list.
+            </p>
             {% include "./shared/notify_channel_panel.html" with channel="telegram" title="Telegram" %}
             {% include "./shared/notify_channel_panel.html" with channel="discord" title="Discord" %}
             {% include "./shared/notify_channel_panel.html" with channel="email" title="Email" %}
             {% include "./shared/notify_channel_panel.html" with channel="webhook" title="Webhook" %}
         </div>
     </div>
+
+    {% if mode == "add" %}
+    <div class="inst-form-actions inst-form-actions--end">
+        <button type="submit" class="inst-btn inst-btn--primary">Add</button>
+    </div>
+    {% elif mode == "edit" %}
+    <div class="inst-form-actions inst-form-actions--end">
+        <button type="submit" class="inst-btn inst-btn--primary">Save</button>
+    </div>
+    {% endif %}
 </div>

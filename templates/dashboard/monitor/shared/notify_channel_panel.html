@@ -1,21 +1,23 @@
-<div >
-    <div class="inst-panel-raised">
-        <div class="inst-panel-body">
-            <div class="inst-panel-title">{{ title }}</div>
-            <div class="notify-channel-panel" data-notify-channel-panel="{{ channel }}">
-                <div class="inst-segmented" data-notify-mode role="group">
-                    <button type="button" class="inst-btn inst-btn--sm is-active" data-mode="inherit">Global</button>
-                    <button type="button" class="inst-btn inst-btn--sm" data-mode="custom">Custom</button>
-                    <button type="button" class="inst-btn inst-btn--sm" data-mode="off">Off</button>
-                </div>
-                <p class="inst-u-dim" data-notify-mode-hint>Uses global settings for this channel.</p>
-                <div data-notify-channel-body >
-                    <div data-notify-channel="{{ channel }}">
-                        <div data-notify-list></div>
-                        <div >
-                            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>Add</button>
-                            <span class="inst-label" data-notify-helper></span>
-                        </div>
+{# Канал уведомлений: режим, подсказка, список получателей. #}
+{# Expects: channel, title #}
+{# Сегментированный контрол несёт role="radiogroup": стрелки и перенос отметки #}
+{# выполняет kit.js, приложению остаётся прочитать выбор. #}
+<div class="inst-panel">
+    <div class="inst-panel-body inst-stack inst-stack--tight">
+        <div class="inst-panel-title">{{ title }}</div>
+        <div class="notify-channel-panel" data-notify-channel-panel="{{ channel }}">
+            <div class="inst-segmented" data-notify-mode role="radiogroup" aria-label="{{ title }} alerts">
+                <button type="button" role="radio" aria-checked="true" tabindex="0" data-mode="inherit">Global</button>
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-mode="custom">Custom</button>
+                <button type="button" role="radio" aria-checked="false" tabindex="-1" data-mode="off">Off</button>
+            </div>
+            <p class="inst-field-hint" data-notify-mode-hint>Uses global settings for this channel.</p>
+            <div data-notify-channel-body>
+                <div data-notify-channel="{{ channel }}" class="inst-stack inst-stack--tight">
+                    <div data-notify-list class="inst-stack inst-stack--tight"></div>
+                    <div class="inst-cluster">
+                        <button type="button" class="inst-btn inst-btn--sm" data-notify-add>Add</button>
+                        <span class="inst-field-hint" data-notify-helper></span>
                     </div>
                 </div>
             </div>

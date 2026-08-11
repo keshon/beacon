@@ -30,8 +30,9 @@
             if (!sel) return;
             var panel = scope.querySelector(sel);
             if (!panel) return;
+            trigger.setAttribute('aria-expanded', panel.classList.contains('is-open') ? 'true' : 'false');
             trigger.addEventListener('click', function () {
-                var open = panel.classList.toggle('show');
+                var open = panel.classList.toggle('is-open');
                 trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
             });
         });
