@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="inst-container beacon-page inst-stack">
+<div class="inst-container inst-container--full beacon-page">
     <div class="inst-page-header">
         <div class="inst-page-header-main">
             <h1 class="inst-page-title">Monitors</h1>
@@ -21,6 +21,24 @@
             <button type="button" class="inst-btn inst-btn--primary" data-monitor-add>Add monitor</button>
         </div>
     </div>
+
+    {% if outage %}
+    {# Three questions in order: what is not working, what was already tried, #}
+    {# what to do now. A red badge answers only the first. #}
+    <div class="inst-failure" role="alert">
+        <div class="inst-failure-head">{{ outage.Head }}</div>
+        {% if outage.Reason %}<div class="inst-failure-reason">{{ outage.Reason }}</div>{% endif %}
+        {% if outage.Tried %}
+        <ul class="inst-failure-tried">
+            {% for line in outage.Tried %}<li>{{ line }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        <div class="inst-failure-actions">
+            <a class="inst-btn inst-btn--sm inst-btn--primary" href="/monitors/{{ outage.First }}">Open monitor</a>
+            <a class="inst-btn inst-btn--sm" href="/incidents">All incidents</a>
+        </div>
+    </div>
+    {% endif %}
 
     {% if rows or hasNetwork %}
 

@@ -189,6 +189,8 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	// the screen is actually open for.
 	sortRowsByAttention(rows)
 
+	outage := buildOutage(h.Store, rows, now)
+
 	networkEnabled := h.Cfg.Load().Network.Enabled
 	hasNetwork := false
 	if networkEnabled && networkNodes != nil {
@@ -229,6 +231,7 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		"windows":        histWindows,
 		"fleetTone":      fleetTone(down, up),
 		"fleetLabel":     fleetLabel(down, up, paused),
+		"outage":         outage,
 	})
 }
 
@@ -289,4 +292,75 @@ func fleetLabel(down, up, paused int) string {
 	default:
 		return "all " + strconv.Itoa(up) + " responding"
 	}
+}
+
+// outageBlock is what stands above the list when something is down.
+//
+// It answers three questions in order, and the order is the point: WHAT is not
+// working, WHAT WAS ALREADY TRIED, and WHAT TO DO NOW. A red badge answers only
+// the first and leaves the reader guessing whether anyone has looked yet.
+type outageBlock struct {
+	Head   string
+	Reason string
+	Tried  []string
+	First  string
+}
+
+func buildOutage(store *storage.Store, rows []dashboardRow, now time.Time) *outageBlock {
+	var downRows []dashboardRow
+	for _, r := range rows {
+		if r.Status == "down" && !r.IsPeer && r.Monitor != nil {
+			downRows = append(downRows, r)
+		}
+	}
+	if len(downRows) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(downRows))
+	for _, r := range downRows {
+		names = append(names, r.Monitor.Name)
+	}
+
+	out := &outageBlock{First: downRows[0].Monitor.ID}
+	switch len(names) {
+	case 1:
+		out.Head = names[0] + " is not responding"
+	case 2:
+		out.Head = names[0] + " and " + names[1] + " are not responding"
+	default:
+		out.Head = strconv.Itoa(len(names)) + " monitors are not responding, including " + names[0]
+	}
+
+	// Facts only, and only the ones actually recorded. An empty line is better
+	// than a plausible one: this block is read when trust matters most.
+	first := downRows[0]
+	if inc, err := store.GetMonitorIncidents(first.Monitor.ID, now.Add(-90*24*time.Hour), now); err == nil {
+		for _, i := range inc {
+			if !i.Ongoing() {
+				continue
+			}
+			out.Reason = i.Reason
+			if i.Checks > 1 {
+				out.Tried = append(out.Tried, strconv.Itoa(i.Checks)+
+					" checks in a row failed since "+i.StartedAt.Local().Format("15:04"))
+			}
+			break
+		}
+		week := 0
+		for _, i := range inc {
+			if !i.StartedAt.Before(now.Add(-7 * 24 * time.Hour)) {
+				week++
+			}
+		}
+		if week > 2 {
+			out.Tried = append(out.Tried, strconv.Itoa(week)+
+				" outages of "+first.Monitor.Name+" this week — it repeats")
+		}
+	}
+	if first.Monitor.Retries > 0 {
+		out.Tried = append(out.Tried, "declared down only after "+
+			strconv.Itoa(first.Monitor.Retries)+" retries, so a single blip is not it")
+	}
+	return out
 }

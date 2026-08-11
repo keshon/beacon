@@ -48,11 +48,18 @@
    края экрана до правого ради одной строки.
 
    Между секциями воздух шире, чем внутри них: это и делит экран на части. */
+/* The page is a STACK and nothing more.
+
+   It used to also cap the width, centre itself and set its own padding — all
+   three of which .inst-container already does, and the element carries both
+   classes. Two centrings nested inside one another pushed content off to the
+   right of the column instead of starting beside it, and the doubled padding
+   made that gap look deliberate. Width and inset belong to the container;
+   rhythm belongs here. */
 .beacon-page {
-  display: flex; flex-direction: column; gap: var(--space-8);
-  max-inline-size: var(--container-max);
-  margin-inline: auto;
-  padding: var(--space-7) var(--pad-panel) var(--space-9);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
 }
 
 /* Внутри секции — свой, более тесный шаг: заголовок принадлежит тому, что
@@ -112,7 +119,6 @@
    поместится. Контейнерных запросов тут не нужно — сетка интринсик. */
 /* Настройки — колонка форм, а не сетка данных: строка ввода в тысячу
    пикселей читается хуже короткой. Потолок берётся у узкого контейнера кита. */
-.beacon-page--narrow { max-inline-size: 44rem; }
 
 /* ── Карточка монитора ────────────────────────────────────────────────── */
 

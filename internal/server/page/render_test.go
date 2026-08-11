@@ -120,3 +120,43 @@ func TestMonitorScreenRendersBothBranches(t *testing.T) {
 		t.Fatal("a fresh monitor lost one of its empty states")
 	}
 }
+
+// The outage block is only ever on screen when something is broken, which is
+// exactly when a broken template would be least welcome.
+func TestDashboardOutageBlock(t *testing.T) {
+	ctx := pongo2.Context{
+		"version": "test", "nav_active": "dashboard",
+		"window": "day", "windowLabel": "24 hours",
+		"windows":    histWindows,
+		"fleetTone":  "error",
+		"fleetLabel": "2 not responding",
+		"countTotal": 2, "countUp": 0, "countDown": 2, "countPaused": 0,
+		"rows": []dashboardRow{}, "hasNetwork": false, "networkEnabled": false,
+		"outage": &outageBlock{
+			Head:   "shop.example.com and api.example.com are not responding",
+			Reason: "connection timeout",
+			Tried: []string{
+				"4 checks in a row failed since 14:31",
+				"3 outages of shop.example.com this week — it repeats",
+			},
+			First: "m1",
+		},
+	}
+	body := render(t, "dashboard/dashboard.html", ctx)
+	for _, want := range []string{
+		"inst-failure", "are not responding", "connection timeout",
+		"4 checks in a row failed", "it repeats", "/monitors/m1", "All incidents",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("outage block is missing %q", want)
+		}
+	}
+
+	ctx["outage"] = nil
+	ctx["fleetTone"] = "ok"
+	ctx["fleetLabel"] = "all 2 responding"
+	quiet := render(t, "dashboard/dashboard.html", ctx)
+	if strings.Contains(quiet, "inst-failure") {
+		t.Fatal("the outage block shows up when nothing is down")
+	}
+}
