@@ -119,8 +119,8 @@
         });
     }
 
-    // Подстановки — компонент кита: вставку на место каретки, возврат фокуса и
-    // событие делает kit.js. Здесь остаётся только список ключей.
+    // Inserts are a kit component: placing the value at the caret, returning
+    // focus and emitting the event are kit.js's job. Only the key list is ours.
     function placeholderChips(container, textarea) {
         if (!container || !textarea) return;
         container.innerHTML = '';
@@ -320,8 +320,8 @@
 
     function ensureModal() {
         if (modalEl) return;
-        // Нативный <dialog>: подложка, Escape, инертный фон и возврат фокуса
-        // приходят от платформы.
+        // Native <dialog>: backdrop, Escape, an inert background and focus
+        // return come from the platform.
         modalEl = document.createElement('dialog');
         modalEl.className = 'inst-dialog';
         modalEl.id = 'receiverPolicyModal';
@@ -423,7 +423,7 @@
         });
     }
 
-    // Возврат фокуса, инертный фон и Escape — от платформы.
+    // Focus return, the inert background and Escape come from the platform.
     function closeModal() {
         if (modalEl && modalEl.open) modalEl.close();
     }
@@ -598,7 +598,7 @@
         return (
             '<span class="notify-row-meta" data-notify-meta></span>' +
             '<div class="notify-row__actions">' +
-            // Иконочные кнопки кита: доступное имя обязательно, форма квадратная.
+            // Kit icon buttons: an accessible name is required, the shape is square.
             '<button type="button" class="inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost"' +
             ' data-notify-action="policy" aria-label="Alert policy" title="Alert policy">' +
             '<svg class="inst-icon" aria-hidden="true"><use href="#i-settings"/></svg></button>' +

@@ -11,67 +11,69 @@
     {% include "shared/sprite.html" %}
     <a class="inst-skip-link" href="#main">Skip to content</a>
 
+    {# The kit's shell: sections live in a COLUMN, page-level controls in the #}
+    {# header. The two belong to different scopes — the column says where you #}
+    {# are in the application, the header what you can do on this screen — and #}
+    {# stacking both into one bar made every new section fight for width. #}
     <div class="inst-shell">
-        <header class="inst-shell-header">
+        <aside class="inst-shell-aside">
             <a class="beacon-brand" href="/dashboard">
                 <span class="inst-dot" data-tone="ok" aria-hidden="true"></span>Beacon
             </a>
+            <nav class="inst-nav" aria-label="Sections">
+                <a class="inst-nav-item" href="/dashboard"{% if nav_active == "dashboard" %} aria-current="page"{% endif %}>
+                    <svg class="inst-icon inst-icon--sm" aria-hidden="true"><use href="#i-list"/></svg>Monitors
+                </a>
+                <a class="inst-nav-item" href="/incidents"{% if nav_active == "incidents" %} aria-current="page"{% endif %}>
+                    <svg class="inst-icon inst-icon--sm" aria-hidden="true"><use href="#i-chart"/></svg>Incidents
+                </a>
+                <a class="inst-nav-item" href="/settings"{% if nav_active == "settings" %} aria-current="page"{% endif %}>
+                    <svg class="inst-icon inst-icon--sm" aria-hidden="true"><use href="#i-settings"/></svg>Settings
+                </a>
+            </nav>
+        </aside>
 
-            {# Разделы и контролы — одной группой справа, как было. #}
-            <div class="beacon-head-end">
-                <nav class="beacon-nav" aria-label="Sections">
-                    <a class="inst-nav-item" href="/dashboard"{% if nav_active == "dashboard" %} aria-current="page"{% endif %}>
-                        <svg class="inst-icon inst-icon--sm" aria-hidden="true"><use href="#i-grid"/></svg>Dashboard
-                    </a>
-                    <a class="inst-nav-item" href="/incidents"{% if nav_active == "incidents" %} aria-current="page"{% endif %}>
-                        <svg class="inst-icon inst-icon--sm" aria-hidden="true"><use href="#i-list"/></svg>Incidents
-                    </a>
-                    <a class="inst-nav-item" href="/settings"{% if nav_active == "settings" %} aria-current="page"{% endif %}>
-                        <svg class="inst-icon inst-icon--sm" aria-hidden="true"><use href="#i-settings"/></svg>Settings
-                    </a>
-                </nav>
+        <header class="inst-shell-header">
+            {% block header_lead %}{% endblock %}
+            <span class="inst-cluster-spacer"></span>
 
-                <span class="beacon-head-sep" aria-hidden="true"></span>
-
-                {# Вид — иконка с плашкой: шесть тем и три плотности под одной #}
-                {# кнопкой. Открытие, закрытие и возврат фокуса берёт Popover API. #}
-                <button class="inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost" type="button"
-                        popovertarget="beacon-view" aria-label="View: theme and density" title="View">
-                    <svg class="inst-icon" aria-hidden="true"><use href="#i-theme"/></svg>
-                </button>
-                <div class="inst-popover inst-popover--anchored" id="beacon-view" popover>
-                    <div class="beacon-view-body">
-                        <div class="beacon-view-row">
-                            <span class="inst-nav-label">Theme</span>
-                            <span class="inst-select-wrap">
-                                <select class="inst-select inst-select--sm" id="beaconTheme" aria-label="Colour theme">
-                                    <option value="system">System</option>
-                                    <option value="light-neutral">Light neutral</option>
-                                    <option value="light">Light warm</option>
-                                    <option value="light-cool">Light cool</option>
-                                    <option value="dark-light">Dark light-grey</option>
-                                    <option value="dark-soft">Dark grey</option>
-                                    <option value="dark">Dark black</option>
-                                </select>
-                            </span>
-                        </div>
-                        <div class="beacon-view-row">
-                            <span class="inst-nav-label">Density</span>
-                            <div class="inst-segmented" role="radiogroup" aria-label="Density" id="beaconDensity">
-                                <button type="button" role="radio" data-density="compact" aria-checked="false" tabindex="-1">Compact</button>
-                                <button type="button" role="radio" data-density="" aria-checked="true" tabindex="0">Default</button>
-                                <button type="button" role="radio" data-density="comfortable" aria-checked="false" tabindex="-1">Comfortable</button>
-                            </div>
+            {# View — one icon with a popover: six themes and three densities #}
+            {# under one button. Opening, closing and focus return come from the #}
+            {# Popover API. #}
+            <button class="inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost" type="button"
+                    popovertarget="beacon-view" aria-label="View: theme and density" title="View">
+                <svg class="inst-icon" aria-hidden="true"><use href="#i-theme"/></svg>
+            </button>
+            <div class="inst-popover inst-popover--anchored" id="beacon-view" popover>
+                <div class="beacon-view-body">
+                    <div class="beacon-view-row">
+                        <span class="inst-nav-label">Theme</span>
+                        <span class="inst-select-wrap">
+                            <select class="inst-select inst-select--sm" id="beaconTheme" aria-label="Colour theme">
+                                <option value="system">System</option>
+                                <option value="light-neutral">Light neutral</option>
+                                <option value="light">Light warm</option>
+                                <option value="light-cool">Light cool</option>
+                                <option value="dark-light">Dark light-grey</option>
+                                <option value="dark-soft">Dark grey</option>
+                                <option value="dark">Dark black</option>
+                            </select>
+                        </span>
+                    </div>
+                    <div class="beacon-view-row">
+                        <span class="inst-nav-label">Density</span>
+                        <div class="inst-segmented" role="radiogroup" aria-label="Density" id="beaconDensity">
+                            <button type="button" role="radio" data-density="compact" aria-checked="false" tabindex="-1">Compact</button>
+                            <button type="button" role="radio" data-density="" aria-checked="true" tabindex="0">Default</button>
+                            <button type="button" role="radio" data-density="comfortable" aria-checked="false" tabindex="-1">Comfortable</button>
                         </div>
                     </div>
                 </div>
-
-                <span class="beacon-head-sep" aria-hidden="true"></span>
-
-                <a class="inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost" href="/logout" aria-label="Log out" title="Log out">
-                    <svg class="inst-icon" aria-hidden="true"><use href="#i-logout"/></svg>
-                </a>
             </div>
+
+            <a class="inst-btn inst-btn--sm inst-btn--icon inst-btn--ghost" href="/logout" aria-label="Log out" title="Log out">
+                <svg class="inst-icon" aria-hidden="true"><use href="#i-logout"/></svg>
+            </a>
         </header>
 
         <main class="inst-shell-main" id="main">

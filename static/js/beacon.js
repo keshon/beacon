@@ -51,9 +51,9 @@
         }
     }
 
-    // Модалка — нативный <dialog>. Верхний слой, подложка, Escape,
-    // инертный фон и возврат фокуса приходят от платформы; приложению
-    // остаётся showModal() и закрытие по своим кнопкам.
+    // The modal is a native <dialog>. Top layer, backdrop, Escape, an inert
+    // background and focus return all come from the platform; the application
+    // is left with showModal() and closing on its own buttons.
     function wireModal(modalEl) {
         if (!modalEl) return null;
         if (modalEl._beaconModal) return modalEl._beaconModal;

@@ -20,15 +20,5 @@
             document.documentElement.setAttribute(
                 'data-colorize-down', localStorage.getItem('beaconColorizeDown') === '1' ? '1' : '0');
         } catch (e) { }
-        try {
-            var dv = localStorage.getItem('beaconDashboardView');
-            if (dv === 'grid') dv = 'list';
-            document.documentElement.setAttribute(
-                'data-dashboard-view',
-                (dv === 'list' || dv === 'table' || dv === 'cards') ? dv : 'cards'
-            );
-        } catch (e) {
-            document.documentElement.setAttribute('data-dashboard-view', 'cards');
-        }
     })();
 </script>

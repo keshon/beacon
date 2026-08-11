@@ -21,8 +21,8 @@
         try { localStorage.setItem('beaconTheme', v); } catch (e) { }
     });
 
-    // Плотность — атрибут документа. Отметку и стрелки ведёт кит по
-    // role="radiogroup"; приложению остаётся записать выбор.
+    // Density is a document attribute. The kit runs the mark and the arrow
+    // keys through role="radiogroup"; the application only records the choice.
     var dens = document.getElementById('beaconDensity');
     if (dens) {
         var savedD = null;

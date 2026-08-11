@@ -1,22 +1,13 @@
 {% extends "../base.html" %}
 {% block title %}Dashboard – Beacon{% endblock %}
 {% block content %}
-<div class="beacon-page">
+<div class="inst-container beacon-page inst-stack">
     <div class="inst-page-header">
         <div class="inst-page-header-main">
             <h1 class="inst-page-title">Dashboard</h1>
             <p class="inst-page-sub">Live status of every monitor</p>
         </div>
         <div class="inst-page-actions">
-            {% if rows or hasNetwork %}
-            {# Вид запоминается на весь сеанс. Стрелки и перенос отметки — кит, #}
-{# по role="radiogroup"; приложению остаётся записать выбор. #}
-            <div class="inst-segmented" role="radiogroup" aria-label="Dashboard layout" data-dashboard-views>
-                <button type="button" role="radio" data-dashboard-view="cards" aria-checked="true" tabindex="0">Cards</button>
-                <button type="button" role="radio" data-dashboard-view="list" aria-checked="false" tabindex="-1">List</button>
-                <button type="button" role="radio" data-dashboard-view="table" aria-checked="false" tabindex="-1">Table</button>
-            </div>
-            {% endif %}
             <button type="button" class="inst-btn inst-btn--primary" data-monitor-add>Add monitor</button>
         </div>
     </div>
@@ -48,75 +39,26 @@
 
     {% if rows or hasNetwork %}
 
-    {# ── Карточки ────────────────────────────────────────────────────── #}
-    <div class="beacon-view inst-stack inst-stack--loose" data-view="cards">
-        {% if networkEnabled and hasNetwork %}
-        <section class="inst-section">
-            <div class="inst-section-head"><h2 class="inst-section-title">Network</h2></div>
-            <div class="beacon-grid">
-                {% for n in networkNodes %}{% include "network/card.html" with n=n %}{% endfor %}
-            </div>
-        </section>
-        {% endif %}
-        {% if rows %}
-        <section class="inst-section">
-            <div class="inst-section-head"><h2 class="inst-section-title">Monitors</h2></div>
-            <div class="beacon-grid">
-                {% for row in rows %}{% include "monitor/card.html" with row=row %}{% endfor %}
-            </div>
-        </section>
-        {% endif %}
-    </div>
+    {% if networkEnabled and hasNetwork %}
+    <section class="inst-section">
+        <div class="inst-section-head"><h2 class="inst-section-title">Network</h2></div>
+        <div class="inst-panel"><div class="inst-panel-body inst-panel-body--list">
+            {% for n in networkNodes %}{% include "network/list_row.html" with n=n %}{% endfor %}
+        </div></div>
+    </section>
+    {% endif %}
 
-    {# ── Список ──────────────────────────────────────────────────────── #}
-    <div class="beacon-view inst-stack inst-stack--loose" data-view="list">
-        {% if networkEnabled and hasNetwork %}
-        <section class="inst-section">
-            <div class="inst-section-head"><h2 class="inst-section-title">Network</h2></div>
-            <div class="inst-panel"><div class="inst-panel-body inst-panel-body--list">
-                {% for n in networkNodes %}{% include "network/list_row.html" with n=n %}{% endfor %}
-            </div></div>
-        </section>
-        {% endif %}
-        {% if rows %}
-        <section class="inst-section">
-            <div class="inst-section-head"><h2 class="inst-section-title">Monitors</h2></div>
-            <div class="inst-panel"><div class="inst-panel-body inst-panel-body--list" role="listbox" aria-label="Monitors">
-                {% for row in rows %}{% include "monitor/list_row.html" with row=row %}{% endfor %}
-            </div></div>
-        </section>
-        {% endif %}
-    </div>
-
-    {# ── Таблица ─────────────────────────────────────────────────────── #}
-    <div class="beacon-view inst-stack inst-stack--loose" data-view="table">
-        {% if networkEnabled and hasNetwork %}
-        {% include "network/table.html" with networkNodes=networkNodes %}
-        {% endif %}
-        {% if rows %}
-        <section class="inst-section">
-            <div class="inst-section-head"><h2 class="inst-section-title">Monitors</h2></div>
-            <div class="inst-panel"><div class="inst-panel-body inst-panel-body--flush">
-                <table class="inst-table">
-                    <thead>
-                        <tr>
-                            <th>Monitor</th>
-                            <th>Source</th>
-                            <th>Recent checks</th>
-                            <th>Status</th>
-                            <th class="inst-num">Latency</th>
-                            <th>Last check</th>
-                            <th><span class="inst-u-visually-hidden">Actions</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in rows %}{% include "monitor/table_row.html" with row=row %}{% endfor %}
-                    </tbody>
-                </table>
-            </div></div>
-        </section>
-        {% endif %}
-    </div>
+    {% if rows %}
+    <section class="inst-section">
+        <div class="inst-section-head">
+            <h2 class="inst-section-title">Monitors</h2>
+            <span class="inst-section-actions"><span class="inst-u-dim">last 24 hours, one tick per hour</span></span>
+        </div>
+        <div class="inst-panel"><div class="inst-panel-body inst-panel-body--list" role="listbox" aria-label="Monitors">
+            {% for row in rows %}{% include "monitor/list_row.html" with row=row %}{% endfor %}
+        </div></div>
+    </section>
+    {% endif %}
 
     {% else %}
     <div class="inst-empty">

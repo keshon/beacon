@@ -1,4 +1,4 @@
-// Dashboard live updates: SSE and the client-side layout toggle.
+// Dashboard live updates: SSE only.
 //
 // The history strip is NOT drawn here any more. The server renders it from
 // hourly buckets, one tick per hour, the same hours on every row. Drawing it
@@ -12,13 +12,10 @@
 (function () {
     'use strict';
 
-    var storageKey = 'beaconDashboardView';
-
-    var currentView = null;
     var activeES = null;
 
-    // Тон из словаря кита; слово рядом с точкой обязательно — цвет не имеет
-    // права быть единственным носителем.
+    // Tone from the kit's vocabulary; the word next to the dot is required —
+    // colour has no right to be the only carrier of meaning.
     function statusBadgeHtml(status) {
         var labels = { up: 'Up', down: 'Down', unknown: 'Unknown' };
         var tones = { up: 'ok', down: 'error', unknown: 'neutral' };
@@ -78,68 +75,7 @@
         };
     }
 
-    function normalizeView(mode) {
-        if (mode === 'grid') mode = 'list';
-        if (mode !== 'cards' && mode !== 'list' && mode !== 'table') mode = 'cards';
-        return mode;
-    }
-
-    function resolveInitialView() {
-        try {
-            var params = new URLSearchParams(window.location.search);
-            var fromUrl = params.get('view');
-            if (fromUrl) return normalizeView(fromUrl);
-        } catch (e) {}
-        try {
-            var saved = localStorage.getItem(storageKey);
-            if (saved) return normalizeView(saved);
-        } catch (e) {}
-        return 'cards';
-    }
-
-    function setView(mode) {
-        mode = normalizeView(mode);
-        if (mode === currentView) return;
-        currentView = mode;
-        document.documentElement.setAttribute('data-dashboard-view', mode);
-        try {
-            localStorage.setItem(storageKey, mode);
-        } catch (e) {}
-        try {
-            var url = new URL(window.location.href);
-            url.searchParams.set('view', mode);
-            history.replaceState(null, '', url.toString());
-        } catch (e) {}
-    }
-
-    function initViewToggle() {
-        var group = document.querySelector('[data-dashboard-views]');
-        if (!group) return;
-        currentView = resolveInitialView();
-        document.documentElement.setAttribute('data-dashboard-view', currentView);
-        document.querySelectorAll('[data-dashboard-view]').forEach(function (b) {
-            if (b.getAttribute('role') !== 'radio') return;
-            var on = b.getAttribute('data-dashboard-view') === currentView;
-            b.setAttribute('aria-checked', String(on));
-            b.tabIndex = on ? 0 : -1;
-        });
-        try {
-            var url = new URL(window.location.href);
-            if (url.searchParams.get('view') !== currentView) {
-                url.searchParams.set('view', currentView);
-                history.replaceState(null, '', url.toString());
-            }
-        } catch (e) {}
-        // Отметку и клавиатуру ведёт кит по role="radiogroup"; приложение
-        // слушает результат и записывает выбор.
-        group.addEventListener('inst:select', function (e) {
-            var v = e.target.getAttribute('data-dashboard-view');
-            if (v) setView(v);
-        });
-    }
-
     function init() {
-        initViewToggle();
         connectSSE();
         window.addEventListener('pagehide', function () {
             if (activeES) {

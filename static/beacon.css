@@ -11,32 +11,25 @@
 
 .beacon-brand {
   display: flex; align-items: center; gap: var(--space-3);
-  color: var(--text-primary); text-decoration: none;
-  font-size: var(--text-lg); font-weight: var(--weight-medium);
-  letter-spacing: var(--tracking-tight);
   /* Clears the 24px tap minimum at every density: at comfortable the line
      box alone came to 23.8px, and a logo is a link like any other. */
   min-block-size: var(--control-h-md);
+  /* The column's own heading, so it stands ABOVE the sections rather than in
+     a row with them. */
+  margin-block-end: var(--space-5);
+  padding-inline: var(--space-3);
+  color: var(--text-primary); text-decoration: none;
+  font-size: var(--text-lg); font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
 }
 
 /* Разделы — пункты навигации кита, поставленные в строку. Не вкладки:
    вкладка садится на собственную линейку полосы (margin-block-end: -1px), и
    в шапке её подчёркивание пересекает границу шапки. */
-.beacon-nav { display: flex; gap: var(--space-2); }
 
 /* Всё, кроме логотипа, — одной группой справа. */
-.beacon-head-end {
-  display: flex; align-items: center; gap: var(--space-4);
-  margin-inline-start: auto;
-}
 
 /* Разделитель групп в шапке — тот же хайрлайн, что делит всё остальное. */
-.beacon-head-sep {
-  align-self: stretch;
-  inline-size: var(--hairline);
-  background: var(--border);
-  margin-block: var(--space-2);
-}
 
 /* Плашка «Вид»: строка на настройку, подпись над контролом. */
 .beacon-view-body { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-3); }
@@ -91,18 +84,19 @@
   inline-size: auto;
 }
 
+/* Row colouring — optional, switched in Settings. The tone comes from the
+   kit's vocabulary rather than a local rgba: "ok" and "error" are declared
+   once and follow the theme.
+
+   Only the queue row is left to colour: the card and table views are gone, and
+   with them the two other selectors this rule used to carry. */
+[data-colorize-up="1"] .inst-task[data-status="up"] { background: var(--ok-bg); }
+[data-colorize-down="1"] .inst-task[data-status="down"] { background: var(--err-bg); }
+
 .beacon-tick--gap {
   background: none;
   box-shadow: inset 0 0 0 var(--hairline) var(--border);
 }
-
-[data-colorize-up="1"] .beacon-monitor[data-status="up"],
-[data-colorize-up="1"] .inst-task[data-status="up"],
-[data-colorize-up="1"] .inst-table tbody tr[data-status="up"] { background: var(--ok-bg); }
-
-[data-colorize-down="1"] .beacon-monitor[data-status="down"],
-[data-colorize-down="1"] .inst-task[data-status="down"],
-[data-colorize-down="1"] .inst-table tbody tr[data-status="down"] { background: var(--err-bg); }
 
 /* Сетка карточек: минимум по ширине карточки монитора, дальше сколько
    поместится. Контейнерных запросов тут не нужно — сетка интринсик. */
@@ -110,35 +104,10 @@
    пикселей читается хуже короткой. Потолок берётся у узкого контейнера кита. */
 .beacon-page--narrow { max-inline-size: 44rem; }
 
-.beacon-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: var(--gap-row);
-}
-
-/* Переключатель вида показывает ровно один блок. Атрибут стоит на <html>,
-   поэтому выбранный вид переживает переход между страницами. */
-[data-dashboard-view="cards"] .beacon-view:not([data-view="cards"]),
-[data-dashboard-view="list"]  .beacon-view:not([data-view="list"]),
-[data-dashboard-view="table"] .beacon-view:not([data-view="table"]) { display: none; }
-
 /* ── Карточка монитора ────────────────────────────────────────────────── */
-
-/* Собственного вида у карточки нет: поверхность, радиус и рамка приходят от
-   inst-card. Здесь только раскладка её содержимого. */
-.beacon-monitor { display: flex; flex-direction: column; gap: var(--space-3); }
 
 /* Статус и действия прижаты к дальнему краю карточки, имя занимает остальное
    и обрезается. Иначе кебаб плавает сразу за именем, и в сетке из семнадцати
-   карточек он оказывается в семнадцати разных местах. */
-.beacon-monitor > .inst-card-head > .inst-cluster { margin-inline-start: auto; flex: none; }
-.beacon-monitor > .inst-card-head > .inst-card-title { min-inline-size: 0; }
-.beacon-monitor-meta {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--gap-inline);
-  font-size: var(--text-xs); color: var(--text-muted);
-}
-.beacon-monitor-target { min-inline-size: 0; }
-
 /* Строка ошибки узла: длинный текст обязан переноситься, а не распирать
    карточку — адреса и сообщения сети не имеют пробелов. */
 .beacon-error { overflow-wrap: anywhere; }
