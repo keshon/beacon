@@ -297,6 +297,14 @@ type MonitorState struct {
 	LastCheck   time.Time     `json:"last_check"`
 	LastSuccess time.Time     `json:"last_success"`
 	Latency     time.Duration `json:"latency"`
+	// CertExpiry is the deadline of the certificate seen on the last successful
+	// check. It lives on the state rather than in the history because only the
+	// current one matters: nobody needs to know what the certificate was.
+	//
+	// No omitempty: it does nothing on a time.Time — the zero value is a struct,
+	// not an empty one — and a tag that reads as a promise it cannot keep is
+	// worse than no tag.
+	CertExpiry time.Time `json:"cert_expiry"`
 }
 
 const (

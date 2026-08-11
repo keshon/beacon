@@ -23,6 +23,14 @@ type CheckResult struct {
 	Latency    time.Duration
 	Error      string
 	Time       time.Time
+	// CertExpiry is when the served TLS certificate stops being valid. Zero for
+	// plain HTTP and for checks that never reached a handshake.
+	//
+	// It costs one field read on a response we already have, and it answers a
+	// question nothing else in Beacon could: an expiring certificate takes a
+	// site down at a known moment in the future, which is the only kind of
+	// outage a monitor can warn about BEFORE it happens.
+	CertExpiry time.Time
 }
 
 // HTTPOptions holds optional HTTP check settings.
@@ -147,6 +155,8 @@ func HTTPCheck(ctx context.Context, target string, timeout time.Duration, opts *
 	}
 	defer resp.Body.Close()
 
+	result.CertExpiry = certDeadline(resp)
+
 	result.StatusCode = resp.StatusCode
 	result.Success = resp.StatusCode >= 200 && resp.StatusCode < 400
 	if !result.Success {
@@ -253,4 +263,19 @@ func keywordWordGapOK(gap []byte) bool {
 
 func isASCIILetterOrDigit(b byte) bool {
 	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9')
+}
+
+// certDeadline reads when the served certificate stops being valid.
+//
+// Zero means there is none to read — plain HTTP, or a response that never came
+// from a handshake. It must not mean "we did not look": the caller keeps the
+// previous deadline on a zero, and a wrong zero would erase a real warning.
+//
+// The leaf comes first in the chain and the issuers behind it outlive it by
+// construction, so the leaf is the deadline.
+func certDeadline(resp *http.Response) time.Time {
+	if resp == nil || resp.TLS == nil || len(resp.TLS.PeerCertificates) == 0 {
+		return time.Time{}
+	}
+	return resp.TLS.PeerCertificates[0].NotAfter
 }

@@ -65,6 +65,14 @@
         </div>
     {% endif %}
 
+    {% if cert %}
+    {# The only outage a monitor can warn about before it happens: the date is #}
+    {# known. One line about the nearest deadline, not a list of dates. #}
+    <div class="inst-note" data-tone="{{ cert.Tone }}">
+        {{ cert.Text }} · <a href="/monitors/{{ cert.MonitorID }}">open monitor</a>
+    </div>
+    {% endif %}
+
     {% else %}
     <div class="inst-empty">
         <p class="inst-empty-title">No monitors yet</p>

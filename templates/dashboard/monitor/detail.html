@@ -139,6 +139,10 @@
                         <dt>Interval</dt><dd>{% if intervalSec %}{{ intervalSec }}s{% else %}default{% endif %}</dd>
                         <dt>Retries</dt><dd>{{ mon.Retries }}</dd>
                         <dt>State</dt><dd>{% if enabled %}running{% else %}paused{% endif %}</dd>
+                        {% if certText %}
+                        <dt>Certificate</dt>
+                        <dd>{% if certTone %}<span class="inst-badge" data-tone="{{ certTone }}">{{ certText }}</span>{% else %}{{ certText }}{% endif %}</dd>
+                        {% endif %}
                     </dl>
                 </div>
             </div>

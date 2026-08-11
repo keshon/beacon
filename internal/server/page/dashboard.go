@@ -191,6 +191,14 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 
 	outage := buildOutage(h.Store, rows, now)
 
+	names := make(map[string]string, len(rows))
+	for _, r := range rows {
+		if !r.IsPeer && r.Monitor != nil {
+			names[r.Monitor.ID] = r.Monitor.Name
+		}
+	}
+	cert := buildCertNote(state, names, now)
+
 	networkEnabled := h.Cfg.Load().Network.Enabled
 	hasNetwork := false
 	if networkEnabled && networkNodes != nil {
@@ -232,6 +240,7 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		"fleetTone":      fleetTone(down, up),
 		"fleetLabel":     fleetLabel(down, up, paused),
 		"outage":         outage,
+		"cert":           cert,
 	})
 }
 

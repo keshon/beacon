@@ -32,6 +32,13 @@ func (e *StatusEvaluator) Process(result checks.CheckResult, state *MonitorState
 
 	state.LastCheck = result.Time
 
+	// A certificate deadline is only trustworthy from a handshake that
+	// succeeded; a failed check tells us nothing about it, and the previous
+	// value stays until a good check replaces it.
+	if !result.CertExpiry.IsZero() {
+		state.CertExpiry = result.CertExpiry
+	}
+
 	if result.Success {
 		if state.Status == StatusDown {
 			state.Status = StatusUp

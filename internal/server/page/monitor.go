@@ -106,6 +106,8 @@ func (h *Monitor) Serve(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	certText, certTone := certLine(state, now)
+
 	status := monitor.StatusUnknown
 	if state != nil && state.Status != "" {
 		status = state.Status
@@ -125,6 +127,8 @@ func (h *Monitor) Serve(w http.ResponseWriter, r *http.Request) {
 		"incidents":    rows,
 		"checks":       checks,
 		"repeats":      countWithin(incidents, now.Add(-7*24*time.Hour)),
+		"certText":     certText,
+		"certTone":     certTone,
 	})
 }
 
