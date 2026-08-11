@@ -1,0 +1,149 @@
+{% extends "../../base.html" %}
+{% block title %}{{ mon.Name }} – Beacon{% endblock %}
+
+{% block content %}
+<div class="inst-container beacon-page inst-stack">
+
+    <div class="inst-page-header">
+        <div class="inst-page-header-main">
+            <nav aria-label="Breadcrumbs">
+                <ol class="inst-crumbs">
+                    <li><a href="/dashboard">Monitors</a></li>
+                    <li><span aria-current="page">{{ mon.Name }}</span></li>
+                </ol>
+            </nav>
+            <h1 class="inst-page-title">{{ mon.Name }}</h1>
+            <p class="inst-page-desc">
+                <span class="inst-u-mono">{{ mon.Target }}</span>
+                · {{ mon.Type }}{% if intervalSec %} · every {{ intervalSec }}s{% endif %}
+                {% if not enabled %} · <span class="inst-badge">Paused</span>{% endif %}
+            </p>
+        </div>
+        <div class="inst-page-actions">
+            <span class="beacon-detail-status">{% include "./shared/status.html" with status=status %}</span>
+        </div>
+    </div>
+
+    {# The day as one picture. It is the first thing on the screen because #}
+    {# "what has been happening" comes before any single number. #}
+    <div class="inst-section">
+        <div class="inst-section-head">
+            <h2 class="inst-section-title">Last 24 hours</h2>
+            {% if repeats > 2 %}
+            <span class="inst-section-actions">
+                <span class="inst-badge" data-tone="warn">{{ repeats }} incidents this week</span>
+            </span>
+            {% endif %}
+        </div>
+        <div class="inst-history beacon-history--wide" role="img" aria-label="{{ historyLabel }}">
+            {% for tick in history %}<span class="inst-history-tick{% if tick.Gap %} beacon-tick--gap{% endif %}"{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
+        </div>
+    </div>
+
+    <div class="inst-split">
+        <div class="inst-split-main inst-stack">
+
+            <div class="inst-panel">
+                <div class="inst-panel-header">
+                    <span class="inst-panel-title">Incidents</span>
+                    <span class="inst-panel-actions"><span class="inst-u-dim">last 90 days</span></span>
+                </div>
+                {% if incidents %}
+                <div class="inst-panel-body inst-panel-body--flush">
+                    <table class="inst-table">
+                        <thead>
+                            <tr><th>Started</th><th class="inst-num">Lasted</th><th>Reason</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for inc in incidents %}
+                            <tr>
+                                <td>
+                                    <span class="inst-cluster inst-cluster--tight">
+                                        <span class="inst-dot" data-tone="{{ inc.Tone }}"></span>{{ inc.Started }}
+                                    </span>
+                                </td>
+                                <td class="inst-num">{{ inc.Duration }}</td>
+                                <td class="inst-u-dim">{{ inc.Reason|default:"—" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                {# Nothing recorded is not the same as nothing happened: incidents #}
+                {# are only kept from the moment the store learned to keep them. #}
+                <div class="inst-panel-body">
+                    <div class="inst-empty">
+                        <div class="inst-empty-title">No incidents recorded</div>
+                        <div class="inst-empty-desc">Outages appear here from the moment one happens.</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="inst-panel">
+                <div class="inst-panel-header">
+                    <span class="inst-panel-title">Recent checks</span>
+                </div>
+                {% if checks %}
+                <div class="inst-panel-body inst-panel-body--flush">
+                    <table class="inst-table">
+                        <thead>
+                            <tr><th>Time</th><th class="inst-num">Latency</th><th>Result</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for c in checks %}
+                            <tr>
+                                <td class="inst-u-mono">{{ c.Time }}</td>
+                                <td class="inst-num">{{ c.Latency }}</td>
+                                <td>
+                                    {% if c.OK %}<span class="inst-u-dim">ok</span>
+                                    {% else %}<span class="inst-badge" data-tone="error">{{ c.Error|default:"failed" }}</span>{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="inst-panel-body">
+                    <div class="inst-empty">
+                        <div class="inst-empty-title">No checks yet</div>
+                        <div class="inst-empty-desc">The first result appears within one interval.</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <aside class="inst-split-side inst-stack">
+            <div class="inst-panel">
+                <div class="inst-panel-header"><span class="inst-panel-title">Availability</span></div>
+                <div class="inst-panel-body inst-stack inst-stack--tight">
+                    {% for w in windows %}
+                    <div class="inst-meter-row">
+                        <span>{{ w.Label }}</span>
+                        <span class="inst-meter-value">{{ w.Percent }}</span>
+                    </div>
+                    <p class="inst-field-hint">{{ w.Downtime }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="inst-panel">
+                <div class="inst-panel-header"><span class="inst-panel-title">Setup</span></div>
+                <div class="inst-panel-body">
+                    <dl class="inst-kv">
+                        <dt>Type</dt><dd>{{ mon.Type }}</dd>
+                        <dt>Interval</dt><dd>{% if intervalSec %}{{ intervalSec }}s{% else %}default{% endif %}</dd>
+                        <dt>Retries</dt><dd>{{ mon.Retries }}</dd>
+                        <dt>State</dt><dd>{% if enabled %}running{% else %}paused{% endif %}</dd>
+                    </dl>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+</div>
+{% endblock %}

@@ -2,7 +2,7 @@
 <article class="inst-card beacon-monitor" data-status="{{ row.Status }}"
     {% if not row.IsPeer %} data-dashboard-monitor="{{ row.Monitor.ID }}"{% if row.ConfigJSON %} data-monitor-config="{{ row.ConfigJSON }}"{% endif %}{% endif %}>
     <div class="inst-card-head">
-        <span class="inst-card-title inst-u-truncate monitor-title">{{ row.Monitor.Name }}</span>
+        <span class="inst-card-title inst-u-truncate monitor-title">{% if not row.IsPeer %}<a href="/monitors/{{ row.Monitor.ID }}">{{ row.Monitor.Name }}</a>{% else %}{{ row.Monitor.Name }}{% endif %}</span>
         <span class="inst-cluster inst-cluster--tight">
             {% if not row.IsPeer and not row.Enabled %}
             <span class="inst-badge">Paused</span>
