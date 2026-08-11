@@ -1,41 +1,26 @@
 {% extends "../base.html" %}
-{% block title %}Dashboard – Beacon{% endblock %}
+{% block title %}Monitors – Beacon{% endblock %}
+{% block header_lead %}
+<span class="inst-badge" data-tone="{{ fleetTone }}"><span class="inst-dot"></span>{{ fleetLabel }}</span>
+{% endblock %}
+
 {% block content %}
 <div class="inst-container beacon-page inst-stack">
     <div class="inst-page-header">
         <div class="inst-page-header-main">
-            <h1 class="inst-page-title">Dashboard</h1>
-            <p class="inst-page-sub">Live status of every monitor</p>
+            <h1 class="inst-page-title">Monitors</h1>
         </div>
         <div class="inst-page-actions">
+            {# Each window is its own address, so a period survives a reload and #}
+            {# can be handed to someone else. #}
+            <nav class="inst-cluster inst-cluster--tight" aria-label="History window">
+                {% for w in windows %}
+                <a class="inst-btn inst-btn--sm{% if w.Key == window %} inst-btn--primary{% endif %}" href="?window={{ w.Key }}">{{ w.Label }}</a>
+                {% endfor %}
+            </nav>
             <button type="button" class="inst-btn inst-btn--primary" data-monitor-add>Add monitor</button>
         </div>
     </div>
-
-    {% if rows %}
-    {# Сводка отвечает на «всё ли цело» до чтения карточек. Отказ — единственное #}
-    {# число, которому положен тон: остальные это норма. #}
-    <div class="inst-metric-row">
-        <div class="inst-metric">
-            <div class="inst-metric-label">Monitors</div>
-            <div class="inst-metric-value">{{ countTotal }}</div>
-        </div>
-        <div class="inst-metric">
-            <div class="inst-metric-label">Up</div>
-            <div class="inst-metric-value">{{ countUp }}</div>
-        </div>
-        <div class="inst-metric"{% if countDown > 0 %} data-tone="error"{% endif %}>
-            <div class="inst-metric-label">Down</div>
-            <div class="inst-metric-value">{{ countDown }}</div>
-        </div>
-        {% if countPaused > 0 %}
-        <div class="inst-metric">
-            <div class="inst-metric-label">Paused</div>
-            <div class="inst-metric-value">{{ countPaused }}</div>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
 
     {% if rows or hasNetwork %}
 
@@ -49,15 +34,17 @@
     {% endif %}
 
     {% if rows %}
-    <section class="inst-section">
-        <div class="inst-section-head">
-            <h2 class="inst-section-title">Monitors</h2>
-            <span class="inst-section-actions"><span class="inst-u-dim">last 24 hours, one tick per hour</span></span>
+        <div class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">{{ countTotal }} monitor{{ countTotal|pluralize }}</span>
+            <span class="inst-panel-actions">
+                <span class="inst-u-dim">{{ windowLabel }} · anything with marks first</span>
+            </span>
         </div>
-        <div class="inst-panel"><div class="inst-panel-body inst-panel-body--list" role="listbox" aria-label="Monitors">
+        <div class="inst-panel-body inst-panel-body--list" role="listbox" aria-label="Monitors">
             {% for row in rows %}{% include "monitor/list_row.html" with row=row %}{% endfor %}
-        </div></div>
-    </section>
+        </div>
+        </div>
     {% endif %}
 
     {% else %}

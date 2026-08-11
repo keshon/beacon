@@ -3,6 +3,7 @@ package page
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -170,17 +171,23 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	rollups, _ := h.Store.GetRollupsBatch(ids, now.Add(-historyHours*time.Hour), now)
+	win := windowByKey(r.URL.Query().Get("window"))
+	rollups, _ := h.Store.GetRollupsBatch(ids, now.Add(-win.Span), now)
 	repeats, _ := h.Store.CountIncidentsBatch(ids, now.Add(-7*24*time.Hour))
 	for i := range rows {
 		if rows[i].IsPeer || rows[i].Monitor == nil || rows[i].Monitor.ID == "" {
 			continue
 		}
 		id := rows[i].Monitor.ID
-		rows[i].History = buildHistory(rollups[id], now)
+		rows[i].History = buildWindowHistory(rollups[id], win, now)
 		rows[i].HistoryLabel = historyLabel(rows[i].History)
 		rows[i].Repeats = repeats[id]
 	}
+
+	// Anything with marks on it comes first. Alphabetical order is fine for
+	// finding a monitor you already have in mind, and useless for the question
+	// the screen is actually open for.
+	sortRowsByAttention(rows)
 
 	networkEnabled := h.Cfg.Load().Network.Enabled
 	hasNetwork := false
@@ -217,10 +224,69 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		"networkNodes":   networkNodes,
 		"networkEnabled": networkEnabled,
 		"hasNetwork":     hasNetwork,
+		"window":         win.Key,
+		"windowLabel":    win.Label,
+		"windows":        histWindows,
+		"fleetTone":      fleetTone(down, up),
+		"fleetLabel":     fleetLabel(down, up, paused),
 	})
 }
 
 func buildVersion() string {
 	bi := buildinfo.Get()
 	return bi.BuildTime + " " + bi.GoVersion + " (" + bi.Commit + ")"
+}
+
+// sortRowsByAttention puts what needs looking at on top: down first, then
+// anything with failures in the window, then the rest by name.
+func sortRowsByAttention(rows []dashboardRow) {
+	rank := func(r dashboardRow) int {
+		if r.Status == "down" {
+			return 0
+		}
+		for _, t := range r.History {
+			if t.Tone != "" {
+				return 1
+			}
+		}
+		return 2
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		ri, rj := rank(rows[i]), rank(rows[j])
+		if ri != rj {
+			return ri < rj
+		}
+		if rows[i].Monitor == nil || rows[j].Monitor == nil {
+			return false
+		}
+		return rows[i].Monitor.Name < rows[j].Monitor.Name
+	})
+}
+
+// fleetTone and fleetLabel are the one summary the screen keeps. The row of
+// four metrics went: "Monitors 17" is not an action, and an aggregate is worse
+// than the list it summarises when the list is right there.
+func fleetTone(down, up int) string {
+	if down > 0 {
+		return "error"
+	}
+	if up == 0 {
+		return "neutral"
+	}
+	return "ok"
+}
+
+func fleetLabel(down, up, paused int) string {
+	switch {
+	case down == 1:
+		return "1 not responding"
+	case down > 1:
+		return strconv.Itoa(down) + " not responding"
+	case up == 0 && paused > 0:
+		return "all paused"
+	case up == 0:
+		return "nothing to check yet"
+	default:
+		return "all " + strconv.Itoa(up) + " responding"
+	}
 }

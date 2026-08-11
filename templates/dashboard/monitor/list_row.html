@@ -17,13 +17,16 @@
         <span class="inst-task-sub inst-u-truncate">
             {% include "./shared/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
             · <span class="inst-u-mono">{{ row.Monitor.Type }}</span>
+            {% if row.IntervalSec %} · every {{ row.IntervalSec }}s{% endif %}
+            · <span class="dashboard-latency">{{ row.LatencyMs }}</span>
         </span>
     </span>
+    {# The dot in the gutter already carries the state and the sub-line already #}
+    {# carries the latency; a badge and a number repeating them cost width that #}
+    {# the history strip uses better. #}
     <span class="inst-task-meta inst-cluster">
         {% if not row.IsPeer %}{% include "./shared/history.html" with row=row %}{% endif %}
-        <span class="dashboard-status">{% include "./shared/status.html" with status=row.Status %}</span>
-        <span class="inst-num dashboard-latency">{{ row.LatencyMs }}</span>
-        <span class="dashboard-lastcheck">{{ row.LastCheck }}</span>
+        <span class="beacon-when dashboard-lastcheck">{{ row.LastCheck }}</span>
         {% include "./shared/actions.html" with row=row view="list" %}
     </span>
 </div>
