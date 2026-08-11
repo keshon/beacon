@@ -119,6 +119,8 @@
         });
     }
 
+    // Подстановки — компонент кита: вставку на место каретки, возврат фокуса и
+    // событие делает kit.js. Здесь остаётся только список ключей.
     function placeholderChips(container, textarea) {
         if (!container || !textarea) return;
         container.innerHTML = '';
@@ -126,18 +128,9 @@
         list.forEach(function (p) {
             var btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'inst-btn inst-btn--sm inst-btn--ghost inst-u-mono';
+            btn.className = 'inst-insert';
             btn.textContent = '{{' + p.key + '}}';
             btn.title = p.description || p.key;
-            btn.addEventListener('click', function () {
-                var tag = '{{' + p.key + '}}';
-                var start = textarea.selectionStart;
-                var end = textarea.selectionEnd;
-                var val = textarea.value;
-                textarea.value = val.slice(0, start) + tag + val.slice(end);
-                textarea.focus();
-                textarea.selectionStart = textarea.selectionEnd = start + tag.length;
-            });
             container.appendChild(btn);
         });
     }
@@ -375,7 +368,7 @@
                             '<textarea class="inst-textarea inst-u-mono" rows="5"' +
                                 ' data-policy-template="down" placeholder="Leave empty for global"></textarea>' +
                             '<span data-policy-test-status class="inst-field-hint"></span>' +
-                            '<div class="inst-cluster inst-cluster--tight" data-policy-chips></div>' +
+                            '<div class="inst-inserts" data-policy-chips></div>' +
                         '</div>' +
 
                         '<div class="inst-field policy-template-row">' +
@@ -389,7 +382,7 @@
                             '<textarea class="inst-textarea inst-u-mono" rows="5"' +
                                 ' data-policy-template="recovered" placeholder="Leave empty for global"></textarea>' +
                             '<span data-policy-test-status class="inst-field-hint"></span>' +
-                            '<div class="inst-cluster inst-cluster--tight" data-policy-chips></div>' +
+                            '<div class="inst-inserts" data-policy-chips></div>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +

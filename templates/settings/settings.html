@@ -95,41 +95,39 @@
                         <span class="inst-panel-title">Notifications</span>
                     </div>
                     <div class="inst-panel-body inst-form" id="notificationsPolicyPanel" data-notify-policy>
-                        <p class="inst-label">
+                        <p class="inst-field-hint">
                             Default alert mode and message templates for new receivers. Leave fields empty in a
                             receiver&rsquo;s policy modal to inherit these values.
                         </p>
-                        <div class="beacon-bare">
-                            <div class="beacon-bare" data-policy-alert-mode-row>
-                                <label class="inst-label" for="notifications_alert_mode">Alert mode</label>
+                        <div class="inst-field" data-policy-alert-mode-row>
+                            <label class="inst-label" for="notifications_alert_mode">Alert mode</label>
+                            <span class="inst-select-wrap">
                                 <select class="inst-select" id="notifications_alert_mode" data-policy-alert-mode>
                                     <option value="repeat">Repeat while down (every check)</option>
                                     <option value="once">Once on down, once on recovery</option>
                                 </select>
+                            </span>
+                        </div>
+                        <div class="inst-field policy-template-row">
+                            <div class="beacon-field-action">
+                                <label class="inst-label" for="policy_template_down">Down template</label>
+                                <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
                             </div>
-                            <div class="-end">
-                                <button type="button" class="inst-btn inst-btn--sm" data-policy-reset-all>
-                                    Reset all to defaults
-                                </button>
+                            <textarea class="inst-textarea inst-u-mono" id="policy_template_down" rows="5" data-policy-template="down"></textarea>
+                            <div class="inst-inserts" data-policy-chips></div>
+                        </div>
+                        <div class="inst-field policy-template-row">
+                            <div class="beacon-field-action">
+                                <label class="inst-label" for="policy_template_recovered">Recovered template</label>
+                                <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
                             </div>
-                            <div class="beacon-bare">
-                                <div class="policy-template-">
-                                    <div class="inst-field">
-                                        <div class="beacon-field-action"><label class="inst-label">Down template</label><button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button></div>
-                                    </div>
-                                    <textarea class="inst-input font-monospace" rows="5" data-policy-template="down"></textarea>
-                                    <div class="beacon-bare" data-policy-chips></div>
-                                </div>
-                            </div>
-                            <div class="beacon-bare">
-                                <div class="policy-template-">
-                                    <div class="inst-field">
-                                        <div class="beacon-field-action"><label class="inst-label">Recovered template</label><button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button></div>
-                                    </div>
-                                    <textarea class="inst-input font-monospace" rows="5" data-policy-template="recovered"></textarea>
-                                    <div class="beacon-bare" data-policy-chips></div>
-                                </div>
-                            </div>
+                            <textarea class="inst-textarea inst-u-mono" id="policy_template_recovered" rows="5" data-policy-template="recovered"></textarea>
+                            <div class="inst-inserts" data-policy-chips></div>
+                        </div>
+                        <div class="inst-form-actions inst-form-actions--end">
+                            <button type="button" class="inst-btn inst-btn--sm" data-policy-reset-all>
+                                Reset all to defaults
+                            </button>
                         </div>
                     </div>
                 </section>

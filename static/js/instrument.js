@@ -677,12 +677,42 @@ function onTableToggle(box) {
   syncSelectAll(table);
 }
 
+/* ── Вставка подстановки в поле ──────────────────────────────────────────
+
+   Кнопка с надписью «{{name}}», которая ничего не кладёт в поле, — то же
+   невыполненное обещание, что роль без клавиатуры.
+
+   Вставляется НА МЕСТО КАРЕТКИ, а не в конец: человек ставит курсор туда,
+   где нужна подстановка, и ждёт её там. Выделенное заменяется. После
+   вставки фокус возвращается в поле — иначе следующую букву некуда набрать. */
+function onInsert(btn) {
+  const doc = btn.ownerDocument;
+  const sel = btn.dataset.insertInto;
+  const field = sel ? doc.querySelector(sel) : btn.closest('.inst-field')?.querySelector('textarea, input');
+  if (!field) return;
+
+  const text = btn.dataset.insert ?? btn.textContent.trim();
+  if (!emit(btn, 'insert', { text, field })) return;
+
+  const start = field.selectionStart ?? field.value.length;
+  const end = field.selectionEnd ?? field.value.length;
+  field.value = field.value.slice(0, start) + text + field.value.slice(end);
+  field.focus();
+  const caret = start + text.length;
+  field.setSelectionRange?.(caret, caret);
+  // Нативное событие, а не своё: рамки видят изменение без единой строки клея.
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 function onClick(e) {
   const copy = e.target.closest?.('.inst-copy');
   if (copy) { onCopy(copy); return; }
 
   const tagX = e.target.closest?.('.inst-tag-remove');
   if (tagX) { onTagRemove(tagX); return; }
+
+  const insert = e.target.closest?.('.inst-insert');
+  if (insert) { onInsert(insert); return; }
 
   // Щелчок по вкладке или варианту. Без этого кит рисовал выбранную вкладку,
   // стрелки её переключали, а мышь — нет: focusin переставляет только
