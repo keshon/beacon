@@ -175,8 +175,9 @@ func main() {
 
 	auth := server.NewAuth()
 	srv := server.NewServer(st, auth, live, sch, clusterRT, "templates", "static", streamHub)
-	// Разработка без входа обязана слушать только петлю: сервер без пароля
-	// на всех интерфейсах — это не удобство, а открытая дверь в сеть.
+	// Development without a login must listen on the loopback only. A
+	// password-less server on every interface is not convenience, it is
+	// an open door into the network.
 	listen := startCfg.Listen
 	if os.Getenv("BEACON_DEV") == "1" {
 		if strings.HasPrefix(listen, ":") {

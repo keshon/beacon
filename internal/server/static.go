@@ -62,10 +62,10 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 
 	setStaticContentType(w, filepath.Ext(full))
-	// Перепроверять на каждом запросе. ServeContent отдаёт Last-Modified и
-	// понимает If-Modified-Since, поэтому неизменившийся файл стоит один 304,
-	// а изменившийся доезжает сразу — без версии в адресе и без ручной
-	// чистки кэша после обновления.
+	// Revalidate on every request. ServeContent sends Last-Modified and
+	// honours If-Modified-Since, so an unchanged file costs one 304 while
+	// a changed one arrives at once — no version in the URL, and no
+	// manual cache clearing after an update.
 	w.Header().Set("Cache-Control", "no-cache")
 	http.ServeContent(w, r, name, fi.ModTime(), f)
 }

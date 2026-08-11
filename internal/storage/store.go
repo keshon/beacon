@@ -117,9 +117,11 @@ type Store struct {
 	peers    *datastore.Collection[*PeerData]
 	config   *datastore.Collection[*configRec]
 	marks    *datastore.Collection[*markRec]
+	rollups  *datastore.Collection[*Rollup]
 
 	checksByMonitor *datastore.Index[*CheckRecord]
 	checksByTime    *datastore.SortedIndex[*CheckRecord]
+	rollupsByHour   *datastore.SortedIndex[*Rollup]
 
 	dataDir string
 }
@@ -138,6 +140,7 @@ func New(dataDir string) (*Store, error) {
 	s.peers = datastore.Register[*PeerData](s.db, "peers")
 	s.config = datastore.Register[*configRec](s.db, "config")
 	s.marks = datastore.Register[*markRec](s.db, "marks")
+	s.rollups = datastore.Register[*Rollup](s.db, "rollups")
 
 	// Collections and indexes must be declared before Open: replaying the log
 	// rebuilds the indexes, so it has to know they exist.
@@ -145,6 +148,8 @@ func New(dataDir string) (*Store, error) {
 		func(r *CheckRecord) []string { return []string{r.MonitorID} })
 	s.checksByTime = datastore.AddSorted(s.checks, "time",
 		func(r *CheckRecord) int64 { return r.Time.UnixNano() })
+	s.rollupsByHour = datastore.AddSorted(s.rollups, "hour",
+		func(r *Rollup) int64 { return r.Hour })
 
 	if err := s.db.Open(); err != nil {
 		return nil, fmt.Errorf("open store: %w", err)
@@ -173,7 +178,7 @@ func (s *Store) Ping() error {
 	return nil
 }
 
-// ── Мониторы ──────────────────────────────────────────────────────────────
+// ── Monitors ──────────────────────────────────────────────────────────────
 
 func (s *Store) GetMonitors() ([]*monitor.Monitor, error) {
 	list := make([]*monitor.Monitor, 0, s.monitors.Len())
@@ -263,7 +268,7 @@ func (s *Store) UpdateMonitor(id string, fn func(*monitor.Monitor) error) (*moni
 	return out, nil
 }
 
-// ── Состояние ─────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────
 
 func (s *Store) GetState(monitorID string) (*monitor.MonitorState, error) {
 	rec, ok := s.state.Get(monitorID)
@@ -288,7 +293,7 @@ func (s *Store) SetState(st *monitor.MonitorState) error {
 	return s.state.Put(&stateRec{S: st})
 }
 
-// ── Проверки ──────────────────────────────────────────────────────────────
+// ── Checks ────────────────────────────────────────────────────────────────
 
 func (s *Store) AppendCheckRecord(rec CheckRecord) error {
 	return s.db.Update(func(tx *datastore.Tx) error {
@@ -313,26 +318,48 @@ func (s *Store) RecordCheckResult(rec CheckRecord, st *monitor.MonitorState, req
 	})
 }
 
-// appendCheckTx adds one outcome and drops whatever falls out of the monitor's
-// window, inside the caller's transaction.
+// appendCheckTx records one outcome inside the caller's transaction: the raw
+// sample, its hourly bucket, and whatever retention drops as a result.
+//
+// All three belong to one commit. A rollup that survived while its samples did
+// not — or the other way round — would be a lie that outlives the truth.
 func (s *Store) appendCheckTx(tx *datastore.Tx, rec CheckRecord) error {
 	checks := datastore.In(tx, s.checks)
 	cp := rec
 	if err := checks.Put(&cp); err != nil {
 		return err
 	}
-
-	kept := datastore.InIndex(tx, s.checksByMonitor).Find(rec.MonitorID)
-	if len(kept) <= uptimeIndexLimit {
-		return nil
+	if err := s.rollUpTx(tx, rec); err != nil {
+		return err
 	}
+	return s.pruneTx(tx, rec.MonitorID, rec.Time)
+}
+
+// pruneTx enforces both bounds on raw samples and the age bound on rollups.
+//
+// Two bounds on raw, not one, and they protect different monitors. The count
+// keeps a monitor checked every thirty seconds from filling memory; the age
+// keeps a monitor checked once an hour from holding samples from last spring.
+// Whichever bites first wins.
+func (s *Store) pruneTx(tx *datastore.Tx, monitorID string, now time.Time) error {
+	checks := datastore.In(tx, s.checks)
+	kept := datastore.InIndex(tx, s.checksByMonitor).Find(monitorID)
 	sortByTime(kept)
-	for _, old := range kept[:len(kept)-uptimeIndexLimit] {
+
+	drop := 0
+	if len(kept) > uptimeIndexLimit {
+		drop = len(kept) - uptimeIndexLimit
+	}
+	cutoff := now.Add(-rawMaxAge)
+	for drop < len(kept) && kept[drop].Time.Before(cutoff) {
+		drop++
+	}
+	for _, old := range kept[:drop] {
 		if err := checks.Delete(old.Key()); err != nil {
 			return err
 		}
 	}
-	return nil
+	return s.pruneRollupsTx(tx, now)
 }
 
 func sortByTime(list []*CheckRecord) {
@@ -403,7 +430,7 @@ func (s *Store) samples(monitorID string, limit int) []CheckRecord {
 	return out
 }
 
-// ── Конфигурация ──────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────
 
 func (s *Store) GetConfig(dest any) (bool, error) {
 	rec, ok := s.config.Get(configKey)
@@ -424,7 +451,7 @@ func (s *Store) SetConfig(cfg any) error {
 	return s.config.Put(&configRec{Raw: raw})
 }
 
-// ── Пиры ──────────────────────────────────────────────────────────────────
+// ── Peers ─────────────────────────────────────────────────────────────────
 
 func (s *Store) GetPeerData(nodeID string) (*PeerData, error) {
 	pd, ok := s.peers.Get(nodeID)
@@ -499,7 +526,7 @@ func (s *Store) GetAllPeerData() (map[string]*PeerData, error) {
 	return out, nil
 }
 
-// ── Снимок для экспорта ───────────────────────────────────────────────────
+// ── Export snapshot ───────────────────────────────────────────────────────
 
 // ExportSnapshot is a consistent monitors+state read for sync export.
 type ExportSnapshot struct {

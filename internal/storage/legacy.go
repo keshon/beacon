@@ -13,15 +13,17 @@ import (
 	"github.com/keshon/beacon/internal/monitor"
 )
 
-// Перенос со старых JSON-файлов.
+// Import from the legacy JSON files.
 //
-// До datastore каждая коллекция лежала в своём файле вида {"<ключ>": <данные>}.
-// Файлы НЕ удаляются: перенос читает их и оставляет как есть — если что-то
-// пойдёт не так, откатиться можно, просто вернув старый бинарник.
+// Before the datastore each collection lived in its own file shaped
+// {"<key>": <data>}. Those files are NOT deleted: the import reads them
+// and leaves them where they are, so rolling back is putting the old
+// binary back.
 //
-// Повторного переноса не будет, и это гарантирует запись-отметка, а не
-// «коллекции непусты». Разница важна: пользователь, удаливший все мониторы,
-// иначе получил бы их обратно при следующем запуске.
+// The import runs once, and what guarantees that is a marker record
+// rather than an "are the collections empty" test. The difference
+// matters: a user who deleted every monitor would otherwise get them all
+// back on the next start.
 
 const legacyMarkKey = "legacy-import"
 
@@ -66,12 +68,13 @@ func (s *Store) importLegacy() error {
 		found = found || ok
 	}
 	if !found {
-		// Чистая установка: отмечаем, чтобы больше не искать.
-		return s.marks.Put(&markRec{Name: legacyMarkKey, At: time.Now(), Note: "нечего переносить"})
+		// Fresh install: mark it so we stop looking.
+		return s.marks.Put(&markRec{Name: legacyMarkKey, At: time.Now(), Note: "nothing to import"})
 	}
 
-	// Всё одной транзакцией: либо старые данные целиком в новом хранилище,
-	// либо ничего и отметки нет — тогда следующий запуск попробует снова.
+	// One transaction for everything: either the whole of the old data lands
+	// in the new store, or nothing does and no marker is written — in which
+	// case the next start tries again.
 	err := s.db.Update(func(tx *datastore.Tx) error {
 		mons := datastore.In(tx, s.monitors)
 		for _, m := range monitors {
@@ -93,8 +96,8 @@ func (s *Store) importLegacy() error {
 			}
 		}
 
-		// Старое кольцо держало до десяти тысяч записей на всех; новое правило
-		// — свои N на каждый монитор, поэтому берём хвост по монитору.
+		// The old ring held up to ten thousand records across all monitors; the
+		// new rule is N per monitor, so take each monitor's own tail.
 		checks := datastore.In(tx, s.checks)
 		perMonitor := map[string][]CheckRecord{}
 		for _, rec := range events {
@@ -113,6 +116,12 @@ func (s *Store) importLegacy() error {
 					return err
 				}
 			}
+		}
+
+		// Rebuild the buckets from the imported samples so the history is
+		// visible immediately instead of accumulating from zero.
+		if err := s.buildRollupsTx(tx, events); err != nil {
+			return err
 		}
 
 		if len(cfg) > 0 {
@@ -134,12 +143,12 @@ func (s *Store) importLegacy() error {
 		return datastore.In(tx, s.marks).Put(&markRec{
 			Name: legacyMarkKey,
 			At:   time.Now(),
-			Note: fmt.Sprintf("мониторов %d, состояний %d, проверок %d, пиров %d",
+			Note: fmt.Sprintf("monitors %d, states %d, checks %d, peers %d",
 				len(monitors), len(states), len(events), len(peers)),
 		})
 	})
 	if err != nil {
-		return fmt.Errorf("перенос старых данных: %w", err)
+		return fmt.Errorf("import legacy data: %w", err)
 	}
 	return nil
 }

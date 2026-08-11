@@ -196,9 +196,9 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Сводка. Экран монитора обязан отвечать на «всё ли цело» до того, как
-	// человек начнёт читать карточки: сейчас для этого приходилось глазами
-	// пройти каждую.
+	// Summary. The dashboard must answer "is anything broken" before a
+	// person starts reading cards; until now that answer required scanning
+	// every one of them by eye.
 	var up, down, paused int
 	for _, r := range rows {
 		switch {

@@ -17,9 +17,9 @@ var (
 	tplStamp = map[string]time.Time{}
 )
 
-// devReload — перечитывать шаблон, если файл изменился. Только при
-// BEACON_DEV=1: в бою шаблоны не меняются, и лишний stat на каждый запрос
-// там не нужен.
+// devReload re-reads a template when its file changed. Only under
+// BEACON_DEV=1: in production templates do not change, and an extra
+// stat per request buys nothing there.
 var devReload = os.Getenv("BEACON_DEV") == "1"
 
 func JSON(w http.ResponseWriter, v any) {
@@ -30,9 +30,9 @@ func JSON(w http.ResponseWriter, v any) {
 func Render(w http.ResponseWriter, tplDir, name string, ctx pongo2.Context) error {
 	fullPath := filepath.Join(tplDir, name)
 
-	// В разработке кэш не используется вовсе. Следить за временем правки
-	// самого файла мало: pongo2 вкомпилирует include в родителя, и правка
-	// подключённого куска родителя не протухает.
+	// Development bypasses the cache entirely. Watching the file's own
+	// mtime is not enough: pongo2 compiles an include into its parent, so
+	// editing an included fragment does not invalidate the parent.
 	var mod time.Time
 	stale := devReload
 

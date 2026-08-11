@@ -53,8 +53,9 @@ func TestRecordCheckResultRejectsDeletedMonitor(t *testing.T) {
 	}
 }
 
-// Проверяется ДОЛГОВЕЧНОСТЬ, а не файл на диске: старый тест читал
-// monitors.json и вместе с движком сломался бы, хотя поведение осталось тем же.
+// This asserts DURABILITY, not a file on disk: the old test read
+// monitors.json and would have broken along with the engine even though
+// the behaviour it cared about never changed.
 func TestMonitorSurvivesReopen(t *testing.T) {
 	dir := t.TempDir()
 	st, err := storage.New(dir)
@@ -88,13 +89,13 @@ func TestMonitorSurvivesReopen(t *testing.T) {
 	}
 }
 
-// Старые JSON-файлы должны подхватываться при первом открытии, а второй запуск
-// не должен воскрешать удалённое.
+// Legacy JSON files must be picked up on the first open, and a second
+// open must not resurrect what was deleted in between.
 func TestLegacyImportRunsOnceAndDoesNotResurrect(t *testing.T) {
 	dir := t.TempDir()
 	legacy := map[string]any{"monitors": map[string]any{
 		"old1": map[string]any{
-			"id": "old1", "name": "старый", "type": "tcp",
+			"id": "old1", "name": "legacy", "type": "tcp",
 			"target": "example.com:80", "enabled": true,
 		},
 	}}
@@ -119,7 +120,7 @@ func TestLegacyImportRunsOnceAndDoesNotResurrect(t *testing.T) {
 	}
 	st.Close()
 
-	// Файл на месте — перенос обязан не повториться.
+	// The file is still there — the import must not run twice.
 	again, err := storage.New(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -134,8 +135,8 @@ func TestLegacyImportRunsOnceAndDoesNotResurrect(t *testing.T) {
 	}
 }
 
-// История ограничена ПО МОНИТОРУ: сосед, который проверяется часто, не должен
-// вытеснять чужие записи, как это делал общий предел в десять тысяч.
+// History is bounded PER MONITOR: a busy neighbour must not evict
+// anyone else's samples, which is what the old global cap did.
 func TestUptimeWindowIsPerMonitor(t *testing.T) {
 	dir := t.TempDir()
 	st, err := storage.New(dir)

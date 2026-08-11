@@ -103,16 +103,16 @@ func SessionCookieSecure(r *http.Request) bool {
 	return false
 }
 
-// devNoAuth — пропуск авторизации при BEACON_DEV=1. Отдельная переменная, а
-// не поле конфигурации: настройка, которую можно случайно сохранить в файл,
-// однажды уедет в бой.
+// devNoAuth skips authentication under BEACON_DEV=1. An environment
+// variable rather than a config field on purpose: a setting that can be
+// saved to a file by accident will one day ship to production.
 var devNoAuth = os.Getenv("BEACON_DEV") == "1"
 
 func (a *Auth) Middleware(username func() string, checkPassword func(user, pass string) bool, syncToken func() string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Разработка: вход не спрашивается. Включается только вместе с
-			// привязкой к 127.0.0.1 — см. cmd/beacon.
+			// Development: no login is asked for. Enabled only together with
+			// binding to 127.0.0.1 — see cmd/beacon.
 			if devNoAuth {
 				next.ServeHTTP(w, r)
 				return
