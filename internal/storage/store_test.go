@@ -1,6 +1,7 @@
 package storage_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -52,7 +53,9 @@ func TestRecordCheckResultRejectsDeletedMonitor(t *testing.T) {
 	}
 }
 
-func TestFlushPersistsMonitor(t *testing.T) {
+// Проверяется ДОЛГОВЕЧНОСТЬ, а не файл на диске: старый тест читал
+// monitors.json и вместе с движком сломался бы, хотя поведение осталось тем же.
+func TestMonitorSurvivesReopen(t *testing.T) {
 	dir := t.TempDir()
 	st, err := storage.New(dir)
 	if err != nil {
@@ -66,14 +69,115 @@ func TestFlushPersistsMonitor(t *testing.T) {
 	if err := st.SetMonitor(m); err != nil {
 		t.Fatal(err)
 	}
-	st.Close()
+	if err := st.Close(); err != nil {
+		t.Fatal(err)
+	}
 
-	raw, err := os.ReadFile(filepath.Join(dir, "monitors.json"))
+	again, err := storage.New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(raw) < 10 {
-		t.Fatalf("expected flushed monitors file, got %q", raw)
+	defer again.Close()
+
+	got, err := again.GetMonitor("m1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || got.Name != "t" || got.Target != "example.com:80" {
+		t.Fatalf("монитор не пережил перезапуск: %#v", got)
+	}
+}
+
+// Старые JSON-файлы должны подхватываться при первом открытии, а второй запуск
+// не должен воскрешать удалённое.
+func TestLegacyImportRunsOnceAndDoesNotResurrect(t *testing.T) {
+	dir := t.TempDir()
+	legacy := map[string]any{"monitors": map[string]any{
+		"old1": map[string]any{
+			"id": "old1", "name": "старый", "type": "tcp",
+			"target": "example.com:80", "enabled": true,
+		},
+	}}
+	raw, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "monitors.json"), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := storage.New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.GetMonitor("old1")
+	if err != nil || got == nil {
+		t.Fatalf("старый монитор не перенёсся: %v %#v", err, got)
+	}
+	if err := st.DeleteMonitor("old1"); err != nil {
+		t.Fatal(err)
+	}
+	st.Close()
+
+	// Файл на месте — перенос обязан не повториться.
+	again, err := storage.New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer again.Close()
+	back, err := again.GetMonitor("old1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back != nil {
+		t.Fatal("удалённый монитор вернулся: перенос повторился")
+	}
+}
+
+// История ограничена ПО МОНИТОРУ: сосед, который проверяется часто, не должен
+// вытеснять чужие записи, как это делал общий предел в десять тысяч.
+func TestUptimeWindowIsPerMonitor(t *testing.T) {
+	dir := t.TempDir()
+	st, err := storage.New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	for _, id := range []string{"a", "b"} {
+		if err := st.SetMonitor(&monitor.Monitor{
+			ID: id, Name: id, Type: "tcp", Target: "example.com:80", Enabled: true,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	base := time.Now().Add(-time.Hour)
+	for i := 0; i < 600; i++ {
+		if err := st.AppendCheckRecord(storage.CheckRecord{
+			MonitorID: "a", Success: true, Time: base.Add(time.Duration(i) * time.Second),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := st.AppendCheckRecord(storage.CheckRecord{
+		MonitorID: "b", Success: true, Time: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	a, err := st.GetUptimeSamples("a", 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(a) != 500 {
+		t.Fatalf("окно монитора a: ждали 500, получили %d", len(a))
+	}
+	b, err := st.GetUptimeSamples("b", 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(b) != 1 {
+		t.Fatalf("сосед вытеснил записи монитора b: осталось %d", len(b))
 	}
 }
 

@@ -1,3 +1,24 @@
+// Package storage keeps Beacon's data: monitors, their state, the outcomes of
+// individual checks, peer caches and the config blob.
+//
+// The engine underneath is github.com/keshon/datastore: everything lives in
+// memory, every commit is appended to a write-ahead log and fsynced before it
+// is acknowledged. That replaced hand-rolled JSON files, and it replaced them
+// for three concrete reasons, not for novelty.
+//
+//   - Appending ONE check outcome used to rewrite the WHOLE events file. At
+//     nineteen monitors and a thirty-second interval that was a ten-thousand
+//     record JSON dump roughly every second and a half.
+//   - Recording a check wrote two files in turn — events, then state. A crash
+//     between them left the two disagreeing, and nothing noticed.
+//   - History was two ring buffers in memory (ten thousand global, five hundred
+//     per monitor) with the same records in both.
+//
+// Now a check outcome and the state it produced commit as ONE transaction, and
+// the log grows by one framed record.
+//
+// The public API of Store is unchanged: the callers outside this package never
+// learned which engine is underneath, and that is the point of the seam.
 package storage
 
 import (
@@ -7,22 +28,16 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/keshon/datastore"
 
 	"github.com/keshon/beacon/internal/monitor"
 )
 
 var ErrMonitorNotFound = errors.New("monitor not found")
-
-const (
-	keyMonitors = "monitors"
-	keyState    = "state"
-	keyEvents   = "events"
-	keyConfig   = "config"
-	keyPeerData = "peer_data"
-)
 
 // CheckRecord is one persisted outcome of a monitor probe (uptime history sample).
 type CheckRecord struct {
@@ -33,417 +48,121 @@ type CheckRecord struct {
 	Error     string        `json:"error"`
 }
 
+// Key addresses the record in the log. Monitor plus nanosecond: a single
+// monitor cannot produce two outcomes in the same nanosecond, and prefixing by
+// monitor keeps a monitor's samples adjacent in the snapshot.
+func (r *CheckRecord) Key() string {
+	return r.MonitorID + "/" + strconv.FormatInt(r.Time.UnixNano(), 10)
+}
+
 // PeerData holds synced data from a peer node.
 type PeerData struct {
-	NodeID    string                           `json:"node_id"`
-	PeerURL   string                           `json:"peer_url,omitempty"`
-	Monitors  []*monitor.Monitor               `json:"monitors"`
-	State     map[string]*monitor.MonitorState `json:"state"`
-	LastSeen   time.Time                        `json:"last_seen"`
-	LastExport time.Time                        `json:"last_export,omitempty"`
-	LastError  string                           `json:"last_error,omitempty"`
-	SyncWarnings []string                       `json:"sync_warnings,omitempty"`
+	NodeID       string                           `json:"node_id"`
+	PeerURL      string                           `json:"peer_url,omitempty"`
+	Monitors     []*monitor.Monitor               `json:"monitors"`
+	State        map[string]*monitor.MonitorState `json:"state"`
+	LastSeen     time.Time                        `json:"last_seen"`
+	LastExport   time.Time                        `json:"last_export,omitempty"`
+	LastError    string                           `json:"last_error,omitempty"`
+	SyncWarnings []string                         `json:"sync_warnings,omitempty"`
 }
 
-// Store keeps all data in memory under one lock and flushes each mutation to
-// its JSON file via flushJSON — the single persistence path. Reads hand out
-// copies, never pointers into the in-memory maps.
-type Store struct {
-	mu sync.RWMutex
+func (p *PeerData) Key() string { return p.NodeID }
 
-	monitors map[string]*monitor.Monitor
-	state    map[string]*monitor.MonitorState
-	events   []CheckRecord
-	config   json.RawMessage
-	peers    map[string]*PeerData
-
-	dataDir      string
-	monitorsPath string
-	statePath    string
-	eventsPath   string
-	configPath   string
-	peerPath     string
-
-	uptimeIdx map[string][]CheckRecord // per-monitor ring buffer, oldest first
+// The domain types live in package monitor and must not learn about storage,
+// so they are wrapped here rather than given a Key method there.
+type monitorRec struct {
+	M *monitor.Monitor `json:"m"`
 }
 
+func (r *monitorRec) Key() string { return r.M.ID }
+
+type stateRec struct {
+	S *monitor.MonitorState `json:"s"`
+}
+
+func (r *stateRec) Key() string { return r.S.MonitorID }
+
+// The config is one opaque JSON blob owned by package config; storage only
+// carries it. One record in a collection of one.
+type configRec struct {
+	Raw json.RawMessage `json:"raw"`
+}
+
+func (r *configRec) Key() string { return configKey }
+
+const configKey = "config"
+
+// uptimeIndexLimit is how many outcomes are kept PER MONITOR.
+//
+// The old store kept two limits at once — five hundred per monitor and ten
+// thousand across all of them — and the global one could starve a busy monitor
+// out of its own history. One rule now: every monitor keeps its own last N,
+// whatever the neighbours do.
+//
+// At a thirty-second interval this is four hours. That is not enough for the
+// day-long history the interface wants, and raising it is a deliberate
+// decision about memory, not a constant to nudge: see the note on rollups in
+// the project plan.
 const uptimeIndexLimit = 500
 
+// Store is the whole persistence layer. Reads hand out copies, never pointers
+// into the store.
+type Store struct {
+	db *datastore.DB
+
+	monitors *datastore.Collection[*monitorRec]
+	state    *datastore.Collection[*stateRec]
+	checks   *datastore.Collection[*CheckRecord]
+	peers    *datastore.Collection[*PeerData]
+	config   *datastore.Collection[*configRec]
+	marks    *datastore.Collection[*markRec]
+
+	checksByMonitor *datastore.Index[*CheckRecord]
+	checksByTime    *datastore.SortedIndex[*CheckRecord]
+
+	dataDir string
+}
+
 func New(dataDir string) (*Store, error) {
-	s := &Store{
-		monitors:     make(map[string]*monitor.Monitor),
-		state:        make(map[string]*monitor.MonitorState),
-		peers:        make(map[string]*PeerData),
-		dataDir:      dataDir,
-		monitorsPath: filepath.Join(dataDir, "monitors.json"),
-		statePath:    filepath.Join(dataDir, "state.json"),
-		eventsPath:   filepath.Join(dataDir, "events.json"),
-		configPath:   filepath.Join(dataDir, "config.json"),
-		peerPath:     filepath.Join(dataDir, "peer_data.json"),
-		uptimeIdx:    make(map[string][]CheckRecord),
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		return nil, fmt.Errorf("data dir: %w", err)
 	}
-	if err := loadWrapped(s.monitorsPath, keyMonitors, &s.monitors); err != nil {
+
+	s := &Store{dataDir: dataDir}
+	s.db = datastore.New(datastore.Options{Dir: filepath.Join(dataDir, "db")})
+
+	s.monitors = datastore.Register[*monitorRec](s.db, "monitors")
+	s.state = datastore.Register[*stateRec](s.db, "state")
+	s.checks = datastore.Register[*CheckRecord](s.db, "checks")
+	s.peers = datastore.Register[*PeerData](s.db, "peers")
+	s.config = datastore.Register[*configRec](s.db, "config")
+	s.marks = datastore.Register[*markRec](s.db, "marks")
+
+	// Collections and indexes must be declared before Open: replaying the log
+	// rebuilds the indexes, so it has to know they exist.
+	s.checksByMonitor = datastore.AddIndex(s.checks, "monitor",
+		func(r *CheckRecord) []string { return []string{r.MonitorID} })
+	s.checksByTime = datastore.AddSorted(s.checks, "time",
+		func(r *CheckRecord) int64 { return r.Time.UnixNano() })
+
+	if err := s.db.Open(); err != nil {
+		return nil, fmt.Errorf("open store: %w", err)
+	}
+
+	if err := s.importLegacy(); err != nil {
+		s.db.Close()
 		return nil, err
-	}
-	if err := loadWrapped(s.statePath, keyState, &s.state); err != nil {
-		return nil, err
-	}
-	if err := loadWrapped(s.eventsPath, keyEvents, &s.events); err != nil {
-		return nil, err
-	}
-	if err := loadWrapped(s.configPath, keyConfig, &s.config); err != nil {
-		return nil, err
-	}
-	if err := loadWrapped(s.peerPath, keyPeerData, &s.peers); err != nil {
-		return nil, err
-	}
-	if s.monitors == nil {
-		s.monitors = make(map[string]*monitor.Monitor)
-	}
-	if s.state == nil {
-		s.state = make(map[string]*monitor.MonitorState)
-	}
-	if s.peers == nil {
-		s.peers = make(map[string]*PeerData)
-	}
-	for _, rec := range s.events {
-		s.indexUptimeRecordLocked(rec)
 	}
 	return s, nil
 }
 
-// loadWrapped reads {"<key>": <value>} from path into dest. Missing file is fine.
-func loadWrapped(path, key string, dest any) error {
-	raw, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("read %q: %w", path, err)
-	}
-	if len(raw) == 0 {
-		return nil
-	}
-	var wrap map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &wrap); err != nil {
-		return fmt.Errorf("parse %q: %w", path, err)
-	}
-	v, ok := wrap[key]
-	if !ok || len(v) == 0 || string(v) == "null" {
-		return nil
-	}
-	if err := json.Unmarshal(v, dest); err != nil {
-		return fmt.Errorf("parse %q key %q: %w", path, key, err)
-	}
-	return nil
-}
-
-// clone deep-copies v via a JSON round-trip (same semantics reads always had).
-func clone[T any](v T) T {
-	raw, err := json.Marshal(v)
-	if err != nil {
-		return v
-	}
-	var out T
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return v
-	}
-	return out
-}
-
-func (s *Store) indexUptimeRecordLocked(rec CheckRecord) {
-	buf := s.uptimeIdx[rec.MonitorID]
-	buf = append(buf, rec)
-	if len(buf) > uptimeIndexLimit {
-		buf = buf[len(buf)-uptimeIndexLimit:]
-	}
-	s.uptimeIdx[rec.MonitorID] = buf
-}
-
-// Close is a no-op: every mutation is flushed synchronously.
+// Close releases the database and its directory lock.
 func (s *Store) Close() error {
-	return nil
-}
-
-func (s *Store) GetMonitors() ([]*monitor.Monitor, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if len(s.monitors) == 0 {
-		return nil, nil
-	}
-	list := make([]*monitor.Monitor, 0, len(s.monitors))
-	for _, v := range s.monitors {
-		list = append(list, clone(v))
-	}
-	sortMonitorsByName(list)
-	return list, nil
-}
-
-func sortMonitorsByName(list []*monitor.Monitor) {
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].Name < list[j].Name
-	})
-}
-
-func (s *Store) GetMonitor(id string) (*monitor.Monitor, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	m := s.monitors[id]
-	if m == nil {
-		return nil, nil
-	}
-	return clone(m), nil
-}
-
-func (s *Store) SetMonitor(mon *monitor.Monitor) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.monitors[mon.ID] = clone(mon)
-	return flushJSON(s.monitorsPath, map[string]any{keyMonitors: s.monitors})
-}
-
-func (s *Store) DeleteMonitor(id string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.monitors[id] == nil {
-		return ErrMonitorNotFound
-	}
-	delete(s.monitors, id)
-	delete(s.state, id)
-	filtered := s.events[:0]
-	for _, rec := range s.events {
-		if rec.MonitorID != id {
-			filtered = append(filtered, rec)
-		}
-	}
-	s.events = filtered
-	delete(s.uptimeIdx, id)
-	if err := flushJSON(s.monitorsPath, map[string]any{keyMonitors: s.monitors}); err != nil {
-		return err
-	}
-	if err := flushJSON(s.statePath, map[string]any{keyState: s.state}); err != nil {
-		return err
-	}
-	return flushJSON(s.eventsPath, map[string]any{keyEvents: s.events})
-}
-
-func (s *Store) GetState(monitorID string) (*monitor.MonitorState, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	st := s.state[monitorID]
-	if st == nil {
-		return nil, nil
-	}
-	cp := *st
-	return &cp, nil
-}
-
-func (s *Store) GetAllState() (map[string]*monitor.MonitorState, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if len(s.state) == 0 {
-		return nil, nil
-	}
-	out := make(map[string]*monitor.MonitorState, len(s.state))
-	for id, st := range s.state {
-		cp := *st
-		out[id] = &cp
-	}
-	return out, nil
-}
-
-func (s *Store) SetState(st *monitor.MonitorState) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	cp := *st
-	s.state[st.MonitorID] = &cp
-	return flushJSON(s.statePath, map[string]any{keyState: s.state})
-}
-
-func (s *Store) AppendCheckRecord(rec CheckRecord) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.appendEventLocked(rec)
-	return flushJSON(s.eventsPath, map[string]any{keyEvents: s.events})
-}
-
-func (s *Store) appendEventLocked(rec CheckRecord) {
-	s.events = append(s.events, rec)
-	if len(s.events) > 10000 {
-		s.events = s.events[len(s.events)-10000:]
-	}
-	s.indexUptimeRecordLocked(rec)
-}
-
-func (s *Store) GetCheckRecords(limit int) ([]CheckRecord, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if len(s.events) == 0 {
-		return nil, nil
-	}
-	if limit <= 0 || limit > len(s.events) {
-		limit = len(s.events)
-	}
-	start := len(s.events) - limit
-	out := make([]CheckRecord, limit)
-	copy(out, s.events[start:])
-	return out, nil
-}
-
-// GetUptimeSamples returns the last limit check outcomes for monitorID, oldest first.
-func (s *Store) GetUptimeSamples(monitorID string, limit int) ([]CheckRecord, error) {
-	if limit <= 0 {
-		limit = 120
-	}
-	const maxLimit = 500
-	if limit > maxLimit {
-		limit = maxLimit
-	}
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.uptimeSamplesLocked(monitorID, limit), nil
-}
-
-func (s *Store) uptimeSamplesLocked(monitorID string, limit int) []CheckRecord {
-	buf := s.uptimeIdx[monitorID]
-	if len(buf) == 0 {
+	if s == nil || s.db == nil {
 		return nil
 	}
-	if limit > len(buf) {
-		limit = len(buf)
-	}
-	start := len(buf) - limit
-	out := make([]CheckRecord, limit)
-	copy(out, buf[start:])
-	return out
-}
-
-// GetUptimeSamplesBatch returns the last limit check outcomes for each monitor ID, oldest first.
-func (s *Store) GetUptimeSamplesBatch(monitorIDs []string, limit int) (map[string][]CheckRecord, error) {
-	if len(monitorIDs) == 0 {
-		return map[string][]CheckRecord{}, nil
-	}
-	if limit <= 0 {
-		limit = 120
-	}
-	const maxLimit = 500
-	if limit > maxLimit {
-		limit = maxLimit
-	}
-
-	want := make(map[string]struct{}, len(monitorIDs))
-	for _, id := range monitorIDs {
-		if id == "" {
-			continue
-		}
-		want[id] = struct{}{}
-	}
-	if len(want) == 0 {
-		return map[string][]CheckRecord{}, nil
-	}
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	out := make(map[string][]CheckRecord, len(want))
-	for id := range want {
-		out[id] = s.uptimeSamplesLocked(id, limit)
-	}
-	return out, nil
-}
-
-func (s *Store) GetConfig(dest any) (bool, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if len(s.config) == 0 {
-		return false, nil
-	}
-	if err := json.Unmarshal(s.config, dest); err != nil {
-		return false, fmt.Errorf("read config: %w", err)
-	}
-	return true, nil
-}
-
-func (s *Store) SetConfig(cfg any) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	raw, err := json.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("write config: %w", err)
-	}
-	s.config = raw
-	return flushJSON(s.configPath, map[string]any{keyConfig: json.RawMessage(raw)})
-}
-
-func (s *Store) GetPeerData(nodeID string) (*PeerData, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	pd := s.peers[nodeID]
-	if pd == nil {
-		return nil, nil
-	}
-	return clone(pd), nil
-}
-
-func (s *Store) SetPeerData(data *PeerData) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.peers[data.NodeID] = clone(data)
-	return flushJSON(s.peerPath, map[string]any{keyPeerData: s.peers})
-}
-
-// SetPeerDataError records a sync error for the peer URL without replacing cached data.
-func (s *Store) SetPeerDataError(peerURL, errMsg string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	normalized := strings.TrimSuffix(peerURL, "/")
-	for _, pd := range s.peers {
-		if strings.TrimSuffix(pd.PeerURL, "/") == normalized {
-			pd.LastError = errMsg
-			return flushJSON(s.peerPath, map[string]any{keyPeerData: s.peers})
-		}
-	}
-	return nil
-}
-
-// PrunePeerData removes cache entries whose peer URL is not in configuredPeers.
-func (s *Store) PrunePeerData(configuredPeers []string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(s.peers) == 0 {
-		return nil
-	}
-	allowed := make(map[string]struct{}, len(configuredPeers))
-	for _, u := range configuredPeers {
-		u = strings.TrimSuffix(strings.TrimSpace(u), "/")
-		if u != "" {
-			allowed[u] = struct{}{}
-		}
-	}
-	changed := false
-	for nodeID, pd := range s.peers {
-		key := strings.TrimSuffix(pd.PeerURL, "/")
-		if key == "" {
-			key = nodeID
-		}
-		if _, ok := allowed[key]; !ok {
-			delete(s.peers, nodeID)
-			changed = true
-		}
-	}
-	if !changed {
-		return nil
-	}
-	return flushJSON(s.peerPath, map[string]any{keyPeerData: s.peers})
-}
-
-func (s *Store) GetAllPeerData() (map[string]*PeerData, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if len(s.peers) == 0 {
-		return nil, nil
-	}
-	return clone(s.peers), nil
+	return s.db.Close()
 }
 
 // Ping verifies the data directory is still accessible.
@@ -454,37 +173,333 @@ func (s *Store) Ping() error {
 	return nil
 }
 
-// flushJSON durably writes v to path (write temp + fsync + rename).
-func flushJSON(path string, v any) error {
-	raw, err := json.MarshalIndent(v, "", "  ")
+// ── Мониторы ──────────────────────────────────────────────────────────────
+
+func (s *Store) GetMonitors() ([]*monitor.Monitor, error) {
+	list := make([]*monitor.Monitor, 0, s.monitors.Len())
+	for rec := range s.monitors.All() {
+		list = append(list, rec.M)
+	}
+	if len(list) == 0 {
+		return nil, nil
+	}
+	sortMonitorsByName(list)
+	return list, nil
+}
+
+func sortMonitorsByName(list []*monitor.Monitor) {
+	sort.Slice(list, func(i, j int) bool { return list[i].Name < list[j].Name })
+}
+
+func (s *Store) GetMonitor(id string) (*monitor.Monitor, error) {
+	rec, ok := s.monitors.Get(id)
+	if !ok {
+		return nil, nil
+	}
+	return rec.M, nil
+}
+
+func (s *Store) SetMonitor(mon *monitor.Monitor) error {
+	return s.monitors.Put(&monitorRec{M: mon})
+}
+
+// MonitorExists reports whether a monitor ID is defined locally.
+func (s *Store) MonitorExists(id string) (bool, error) {
+	_, ok := s.monitors.Get(id)
+	return ok, nil
+}
+
+// DeleteMonitor removes the monitor together with everything that belonged to
+// it — its state and every check outcome — as one transaction. Half a deletion
+// was possible before and left orphaned samples behind.
+func (s *Store) DeleteMonitor(id string) error {
+	return s.db.Update(func(tx *datastore.Tx) error {
+		mons := datastore.In(tx, s.monitors)
+		if _, ok := mons.Get(id); !ok {
+			return ErrMonitorNotFound
+		}
+		if err := mons.Delete(id); err != nil {
+			return err
+		}
+		// Removing an absent key is not an error in the datastore, so a monitor
+		// that never ran needs no special case here.
+		if err := datastore.In(tx, s.state).Delete(id); err != nil {
+			return err
+		}
+		checks := datastore.In(tx, s.checks)
+		for _, rec := range datastore.InIndex(tx, s.checksByMonitor).Find(id) {
+			if err := checks.Delete(rec.Key()); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// UpdateMonitor applies fn to the stored monitor and writes the result back.
+// Read and write are one transaction, so a concurrent writer cannot slip
+// between them.
+func (s *Store) UpdateMonitor(id string, fn func(*monitor.Monitor) error) (*monitor.Monitor, error) {
+	var out *monitor.Monitor
+	err := s.db.Update(func(tx *datastore.Tx) error {
+		mons := datastore.In(tx, s.monitors)
+		rec, ok := mons.Get(id)
+		if !ok {
+			return ErrMonitorNotFound
+		}
+		work := rec.M
+		if err := fn(work); err != nil {
+			return err
+		}
+		if err := mons.Put(&monitorRec{M: work}); err != nil {
+			return err
+		}
+		out = work
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("marshal %q: %w", path, err)
+		return nil, err
 	}
-	tmp := path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
-	if err != nil {
-		return fmt.Errorf("write %q: %w", tmp, err)
+	return out, nil
+}
+
+// ── Состояние ─────────────────────────────────────────────────────────────
+
+func (s *Store) GetState(monitorID string) (*monitor.MonitorState, error) {
+	rec, ok := s.state.Get(monitorID)
+	if !ok {
+		return nil, nil
 	}
-	if _, err := f.Write(raw); err != nil {
-		f.Close()
-		_ = os.Remove(tmp)
-		return fmt.Errorf("write %q: %w", tmp, err)
+	return rec.S, nil
+}
+
+func (s *Store) GetAllState() (map[string]*monitor.MonitorState, error) {
+	if s.state.Len() == 0 {
+		return nil, nil
 	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		_ = os.Remove(tmp)
-		return fmt.Errorf("sync %q: %w", tmp, err)
+	out := make(map[string]*monitor.MonitorState, s.state.Len())
+	for rec := range s.state.All() {
+		out[rec.S.MonitorID] = rec.S
 	}
-	if err := f.Close(); err != nil {
-		_ = os.Remove(tmp)
-		return fmt.Errorf("close %q: %w", tmp, err)
+	return out, nil
+}
+
+func (s *Store) SetState(st *monitor.MonitorState) error {
+	return s.state.Put(&stateRec{S: st})
+}
+
+// ── Проверки ──────────────────────────────────────────────────────────────
+
+func (s *Store) AppendCheckRecord(rec CheckRecord) error {
+	return s.db.Update(func(tx *datastore.Tx) error {
+		return s.appendCheckTx(tx, rec)
+	})
+}
+
+// RecordCheckResult stores the outcome and the state it produced as ONE
+// transaction. Previously these were two file writes in a row, and a crash
+// between them left the history and the state disagreeing.
+func (s *Store) RecordCheckResult(rec CheckRecord, st *monitor.MonitorState, requireLocalMonitor bool) error {
+	return s.db.Update(func(tx *datastore.Tx) error {
+		if requireLocalMonitor {
+			if _, ok := datastore.In(tx, s.monitors).Get(rec.MonitorID); !ok {
+				return ErrMonitorNotFound
+			}
+		}
+		if err := s.appendCheckTx(tx, rec); err != nil {
+			return err
+		}
+		return datastore.In(tx, s.state).Put(&stateRec{S: st})
+	})
+}
+
+// appendCheckTx adds one outcome and drops whatever falls out of the monitor's
+// window, inside the caller's transaction.
+func (s *Store) appendCheckTx(tx *datastore.Tx, rec CheckRecord) error {
+	checks := datastore.In(tx, s.checks)
+	cp := rec
+	if err := checks.Put(&cp); err != nil {
+		return err
 	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return fmt.Errorf("rename %q: %w", path, err)
+
+	kept := datastore.InIndex(tx, s.checksByMonitor).Find(rec.MonitorID)
+	if len(kept) <= uptimeIndexLimit {
+		return nil
+	}
+	sortByTime(kept)
+	for _, old := range kept[:len(kept)-uptimeIndexLimit] {
+		if err := checks.Delete(old.Key()); err != nil {
+			return err
+		}
 	}
 	return nil
 }
+
+func sortByTime(list []*CheckRecord) {
+	sort.Slice(list, func(i, j int) bool { return list[i].Time.Before(list[j].Time) })
+}
+
+// GetCheckRecords returns the most recent outcomes across all monitors, oldest
+// first — the shape the callers already expected.
+func (s *Store) GetCheckRecords(limit int) ([]CheckRecord, error) {
+	total := s.checksByTime.Len()
+	if total == 0 {
+		return nil, nil
+	}
+	if limit <= 0 || limit > total {
+		limit = total
+	}
+	// Desc gives newest first; the contract is oldest first.
+	recent := s.checksByTime.Desc(limit, 0)
+	out := make([]CheckRecord, len(recent))
+	for i, r := range recent {
+		out[len(recent)-1-i] = *r
+	}
+	return out, nil
+}
+
+// GetUptimeSamples returns the last limit check outcomes for monitorID, oldest first.
+func (s *Store) GetUptimeSamples(monitorID string, limit int) ([]CheckRecord, error) {
+	return s.samples(monitorID, limit), nil
+}
+
+// GetUptimeSamplesBatch returns the last limit check outcomes for each monitor ID, oldest first.
+func (s *Store) GetUptimeSamplesBatch(monitorIDs []string, limit int) (map[string][]CheckRecord, error) {
+	out := make(map[string][]CheckRecord, len(monitorIDs))
+	seen := make(map[string]struct{}, len(monitorIDs))
+	for _, id := range monitorIDs {
+		if id == "" {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		out[id] = s.samples(id, limit)
+	}
+	return out, nil
+}
+
+func (s *Store) samples(monitorID string, limit int) []CheckRecord {
+	if limit <= 0 {
+		limit = 120
+	}
+	if limit > uptimeIndexLimit {
+		limit = uptimeIndexLimit
+	}
+	found := s.checksByMonitor.Find(monitorID)
+	if len(found) == 0 {
+		return nil
+	}
+	sortByTime(found)
+	if limit > len(found) {
+		limit = len(found)
+	}
+	tail := found[len(found)-limit:]
+	out := make([]CheckRecord, len(tail))
+	for i, r := range tail {
+		out[i] = *r
+	}
+	return out
+}
+
+// ── Конфигурация ──────────────────────────────────────────────────────────
+
+func (s *Store) GetConfig(dest any) (bool, error) {
+	rec, ok := s.config.Get(configKey)
+	if !ok || len(rec.Raw) == 0 {
+		return false, nil
+	}
+	if err := json.Unmarshal(rec.Raw, dest); err != nil {
+		return false, fmt.Errorf("read config: %w", err)
+	}
+	return true, nil
+}
+
+func (s *Store) SetConfig(cfg any) error {
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	return s.config.Put(&configRec{Raw: raw})
+}
+
+// ── Пиры ──────────────────────────────────────────────────────────────────
+
+func (s *Store) GetPeerData(nodeID string) (*PeerData, error) {
+	pd, ok := s.peers.Get(nodeID)
+	if !ok {
+		return nil, nil
+	}
+	return pd, nil
+}
+
+func (s *Store) SetPeerData(data *PeerData) error {
+	return s.peers.Put(data)
+}
+
+// SetPeerDataError records a sync error for the peer URL without replacing cached data.
+func (s *Store) SetPeerDataError(peerURL, errMsg string) error {
+	normalized := strings.TrimSuffix(peerURL, "/")
+	return s.db.Update(func(tx *datastore.Tx) error {
+		peers := datastore.In(tx, s.peers)
+		for _, key := range peers.Keys() {
+			pd, ok := peers.Get(key)
+			if !ok {
+				continue
+			}
+			if strings.TrimSuffix(pd.PeerURL, "/") == normalized {
+				pd.LastError = errMsg
+				return peers.Put(pd)
+			}
+		}
+		return nil
+	})
+}
+
+// PrunePeerData removes cache entries whose peer URL is not in configuredPeers.
+func (s *Store) PrunePeerData(configuredPeers []string) error {
+	allowed := make(map[string]struct{}, len(configuredPeers))
+	for _, u := range configuredPeers {
+		u = strings.TrimSuffix(strings.TrimSpace(u), "/")
+		if u != "" {
+			allowed[u] = struct{}{}
+		}
+	}
+	return s.db.Update(func(tx *datastore.Tx) error {
+		peers := datastore.In(tx, s.peers)
+		for _, nodeID := range peers.Keys() {
+			pd, ok := peers.Get(nodeID)
+			if !ok {
+				continue
+			}
+			key := strings.TrimSuffix(pd.PeerURL, "/")
+			if key == "" {
+				key = nodeID
+			}
+			if _, ok := allowed[key]; ok {
+				continue
+			}
+			if err := peers.Delete(nodeID); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *Store) GetAllPeerData() (map[string]*PeerData, error) {
+	if s.peers.Len() == 0 {
+		return nil, nil
+	}
+	out := make(map[string]*PeerData, s.peers.Len())
+	for pd := range s.peers.All() {
+		out[pd.NodeID] = pd
+	}
+	return out, nil
+}
+
+// ── Снимок для экспорта ───────────────────────────────────────────────────
 
 // ExportSnapshot is a consistent monitors+state read for sync export.
 type ExportSnapshot struct {
@@ -492,75 +507,36 @@ type ExportSnapshot struct {
 	State    map[string]*monitor.MonitorState
 }
 
-// GetExportSnapshot returns monitors and state under a single read lock.
+// GetExportSnapshot returns monitors and state read together, so the pair
+// cannot straddle a write.
 func (s *Store) GetExportSnapshot() (ExportSnapshot, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var snap ExportSnapshot
-	if len(s.monitors) > 0 {
-		snap.Monitors = make([]*monitor.Monitor, 0, len(s.monitors))
-		for _, v := range s.monitors {
-			snap.Monitors = append(snap.Monitors, clone(v))
+	err := s.db.View(func(tx *datastore.Tx) error {
+		mons := datastore.In(tx, s.monitors)
+		states := datastore.In(tx, s.state)
+
+		for _, id := range mons.Keys() {
+			rec, ok := mons.Get(id)
+			if !ok {
+				continue
+			}
+			snap.Monitors = append(snap.Monitors, rec.M)
 		}
 		sortMonitorsByName(snap.Monitors)
-	}
-	snap.State = make(map[string]*monitor.MonitorState)
-	for id, st := range s.state {
-		// Drop state entries with no matching local monitor.
-		if s.monitors[id] == nil {
-			continue
+
+		snap.State = make(map[string]*monitor.MonitorState)
+		for _, id := range states.Keys() {
+			// Drop state entries with no matching local monitor.
+			if _, ok := mons.Get(id); !ok {
+				continue
+			}
+			st, ok := states.Get(id)
+			if !ok {
+				continue
+			}
+			snap.State[id] = st.S
 		}
-		cp := *st
-		snap.State[id] = &cp
-	}
-	return snap, nil
-}
-
-// MonitorExists reports whether a monitor ID is defined locally.
-func (s *Store) MonitorExists(id string) (bool, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	_, exists := s.monitors[id]
-	return exists, nil
-}
-
-// RecordCheckResult appends an event and updates state atomically, then flushes both files.
-// When requireLocalMonitor is true, the monitor must exist in the local monitors map.
-func (s *Store) RecordCheckResult(rec CheckRecord, st *monitor.MonitorState, requireLocalMonitor bool) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if requireLocalMonitor && s.monitors[rec.MonitorID] == nil {
-		return ErrMonitorNotFound
-	}
-
-	s.appendEventLocked(rec)
-	cp := *st
-	s.state[st.MonitorID] = &cp
-
-	if err := flushJSON(s.eventsPath, map[string]any{keyEvents: s.events}); err != nil {
-		return err
-	}
-	return flushJSON(s.statePath, map[string]any{keyState: s.state})
-}
-
-// UpdateMonitor applies fn under the store write lock (read-modify-write).
-func (s *Store) UpdateMonitor(id string, fn func(*monitor.Monitor) error) (*monitor.Monitor, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	mon := s.monitors[id]
-	if mon == nil {
-		return nil, ErrMonitorNotFound
-	}
-	work := clone(mon)
-	if err := fn(work); err != nil {
-		return nil, err
-	}
-	s.monitors[id] = work
-	if err := flushJSON(s.monitorsPath, map[string]any{keyMonitors: s.monitors}); err != nil {
-		return nil, err
-	}
-	return clone(work), nil
+		return nil
+	})
+	return snap, err
 }
