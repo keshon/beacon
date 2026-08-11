@@ -1,0 +1,80 @@
+{% extends "../base.html" %}
+{% block title %}Incidents – Beacon{% endblock %}
+
+{% block content %}
+<div class="inst-container beacon-page inst-stack">
+
+    <div class="inst-page-header">
+        <div class="inst-page-header-main">
+            <h1 class="inst-page-title">Incidents</h1>
+            <p class="inst-page-desc">One outage is an event. The third for the same monitor is a cause.</p>
+        </div>
+        <div class="inst-page-actions">
+            {# Plain links, not a segmented control: each window is its own #}
+            {# address, so a period can be shared and bookmarked. #}
+            <nav class="inst-cluster inst-cluster--tight" aria-label="Period">
+                <a class="inst-btn inst-btn--sm{% if window == 'day' %} inst-btn--primary{% endif %}" href="?window=day">Day</a>
+                <a class="inst-btn inst-btn--sm{% if window == 'week' %} inst-btn--primary{% endif %}" href="?window=week">Week</a>
+                <a class="inst-btn inst-btn--sm{% if window == 'month' %} inst-btn--primary{% endif %}" href="?window=month">Month</a>
+            </nav>
+        </div>
+    </div>
+
+    {% if incidents %}
+    <div class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">
+                {{ total }} incident{{ total|pluralize }}, {{ downtime }} of downtime
+            </span>
+            <span class="inst-panel-actions">
+                {% if ongoing %}<span class="inst-badge" data-tone="error">{{ ongoing }} running now</span>{% endif %}
+                <span class="inst-u-dim">newest first</span>
+            </span>
+        </div>
+        <div class="inst-panel-body inst-panel-body--flush">
+            <table class="inst-table">
+                <thead>
+                    <tr>
+                        <th>Monitor</th>
+                        <th>Started</th>
+                        <th class="inst-num">Lasted</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inc in incidents %}
+                    <tr>
+                        <td>
+                            <span class="inst-cluster inst-cluster--tight">
+                                <span class="inst-dot" data-tone="error"></span>
+                                <a href="/monitors/{{ inc.MonitorID }}">{{ inc.Name }}</a>
+                                {% if inc.Repeats > 2 %}<span class="inst-badge" data-tone="warn">{{ inc.Repeats }}×</span>{% endif %}
+                            </span>
+                        </td>
+                        <td>{{ inc.Started }}</td>
+                        <td class="inst-num">{{ inc.Duration }}</td>
+                        <td class="inst-u-dim">{{ inc.Reason|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    {# Quiet is the normal state and must not look like a broken screen. #}
+    <div class="inst-panel">
+        <div class="inst-panel-body">
+            <div class="inst-empty">
+                <div class="inst-empty-title">Nothing broke in this period</div>
+                <div class="inst-empty-desc">
+                    Outages are recorded from the moment a monitor is declared down.
+                    Try a longer window, or check the monitors list.
+                </div>
+                <a class="inst-btn inst-btn--sm" href="/dashboard">Open monitors</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
