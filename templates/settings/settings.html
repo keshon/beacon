@@ -17,30 +17,12 @@
                         <span class="inst-panel-title">Appearance</span>
                     </div>
                     <div class="inst-panel-body inst-form">
-                        <div class="beacon-bare">
-                            <div class="inst-field inst-field--side">
-                                <label class="inst-label" for="ui_font_size">Base font size</label>
-                                <select class="inst-select" id="ui_font_size">
-                                    <option value="0.8125rem">13px</option>
-                                    <option value="0.875rem">14px</option>
-                                    <option value="0.9375rem">15px</option>
-                                    <option value="1rem">16px</option>
-                                    <option value="1.0625rem">17px</option>
-                                    <option value="1.125rem">18px</option>
-                                </select>
-                            </div>
-                            <div class="beacon-bare">
-                                <button type="button" class="inst-btn" id="ui_font_reset">Reset</button>
-                            </div>
-                        </div>
-                        <div class="beacon-bare">
-                            <div class="beacon-bare">
-                                <label class="inst-checkbox"><input type="checkbox" id="ui_colorize_up" /><span>Colorize UP</span></label>
-                            </div>
-                            <div class="beacon-bare">
-                                <label class="inst-checkbox"><input type="checkbox" id="ui_colorize_down" /><span>Colorize DOWN</span></label>
-                            </div>
-                        </div>
+                        <label class="inst-checkbox">
+                            <input type="checkbox" id="ui_colorize_up" /><span>Colorize UP</span>
+                        </label>
+                        <label class="inst-checkbox">
+                            <input type="checkbox" id="ui_colorize_down" /><span>Colorize DOWN</span>
+                        </label>
                     </div>
                 </section>
             </div>
@@ -281,46 +263,6 @@
 <script src="/static/js/notify.js"></script>
 <script>
     (function () {
-        (function initUiFontSize() {
-            var select = document.getElementById('ui_font_size');
-            var reset = document.getElementById('ui_font_reset');
-            if (!select || !reset) return;
-
-            function apply(v) {
-                document.documentElement.style.setProperty('--ui-font-size', v);
-            }
-
-            function getDefault() {
-                return '0.9375rem';
-            }
-
-            try {
-                var saved = localStorage.getItem('uiFontSize') || getDefault();
-                select.value = saved;
-                apply(saved);
-            } catch (e) {
-                select.value = getDefault();
-                apply(getDefault());
-            }
-
-            select.addEventListener('change', function () {
-                var v = select.value || getDefault();
-                apply(v);
-                try {
-                    localStorage.setItem('uiFontSize', v);
-                } catch (e) { }
-            });
-
-            reset.addEventListener('click', function () {
-                var v = getDefault();
-                select.value = v;
-                apply(v);
-                try {
-                    localStorage.setItem('uiFontSize', v);
-                } catch (e) { }
-            });
-        })();
-
         (function initUiColorize() {
             var up = document.getElementById('ui_colorize_up');
             var down = document.getElementById('ui_colorize_down');
