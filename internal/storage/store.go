@@ -119,9 +119,13 @@ type Store struct {
 	marks    *datastore.Collection[*markRec]
 	rollups  *datastore.Collection[*Rollup]
 
-	checksByMonitor *datastore.Index[*CheckRecord]
-	checksByTime    *datastore.SortedIndex[*CheckRecord]
-	rollupsByHour   *datastore.SortedIndex[*Rollup]
+	incidents *datastore.Collection[*Incident]
+
+	checksByMonitor    *datastore.Index[*CheckRecord]
+	checksByTime       *datastore.SortedIndex[*CheckRecord]
+	rollupsByHour      *datastore.SortedIndex[*Rollup]
+	incidentsByMonitor *datastore.Index[*Incident]
+	incidentsByStart   *datastore.SortedIndex[*Incident]
 
 	dataDir string
 }
@@ -141,6 +145,7 @@ func New(dataDir string) (*Store, error) {
 	s.config = datastore.Register[*configRec](s.db, "config")
 	s.marks = datastore.Register[*markRec](s.db, "marks")
 	s.rollups = datastore.Register[*Rollup](s.db, "rollups")
+	s.incidents = datastore.Register[*Incident](s.db, "incidents")
 
 	// Collections and indexes must be declared before Open: replaying the log
 	// rebuilds the indexes, so it has to know they exist.
@@ -150,6 +155,10 @@ func New(dataDir string) (*Store, error) {
 		func(r *CheckRecord) int64 { return r.Time.UnixNano() })
 	s.rollupsByHour = datastore.AddSorted(s.rollups, "hour",
 		func(r *Rollup) int64 { return r.Hour })
+	s.incidentsByMonitor = datastore.AddIndex(s.incidents, "monitor",
+		func(i *Incident) []string { return []string{i.MonitorID} })
+	s.incidentsByStart = datastore.AddSorted(s.incidents, "start",
+		func(i *Incident) int64 { return i.StartedAt.UnixNano() })
 
 	if err := s.db.Open(); err != nil {
 		return nil, fmt.Errorf("open store: %w", err)
@@ -237,6 +246,25 @@ func (s *Store) DeleteMonitor(id string) error {
 				return err
 			}
 		}
+		incs := datastore.In(tx, s.incidents)
+		for _, inc := range datastore.InIndex(tx, s.incidentsByMonitor).Find(id) {
+			if err := incs.Delete(inc.Key()); err != nil {
+				return err
+			}
+		}
+		// The hourly buckets go too. They have no index by monitor — the sorted
+		// one is by hour, which is what every read needs — so this walks the
+		// keys. A deleted monitor is rare; a stale bucket would outlive it and
+		// quietly inflate a summary.
+		rolls := datastore.In(tx, s.rollups)
+		prefix := id + "/"
+		for _, key := range rolls.Keys() {
+			if strings.HasPrefix(key, prefix) {
+				if err := rolls.Delete(key); err != nil {
+					return err
+				}
+			}
+		}
 		return nil
 	})
 }
@@ -314,6 +342,9 @@ func (s *Store) RecordCheckResult(rec CheckRecord, st *monitor.MonitorState, req
 		if err := s.appendCheckTx(tx, rec); err != nil {
 			return err
 		}
+		if err := s.trackIncidentTx(tx, rec, st); err != nil {
+			return err
+		}
 		return datastore.In(tx, s.state).Put(&stateRec{S: st})
 	})
 }
@@ -359,7 +390,10 @@ func (s *Store) pruneTx(tx *datastore.Tx, monitorID string, now time.Time) error
 			return err
 		}
 	}
-	return s.pruneRollupsTx(tx, now)
+	if err := s.pruneRollupsTx(tx, now); err != nil {
+		return err
+	}
+	return s.pruneIncidentsTx(tx, now)
 }
 
 func sortByTime(list []*CheckRecord) {
