@@ -48,23 +48,6 @@
    края экрана до правого ради одной строки.
 
    Между секциями воздух шире, чем внутри них: это и делит экран на части. */
-/* The page is a STACK and nothing more.
-
-   It used to also cap the width, centre itself and set its own padding — all
-   three of which .inst-container already does, and the element carries both
-   classes. Two centrings nested inside one another pushed content off to the
-   right of the column instead of starting beside it, and the doubled padding
-   made that gap look deliberate. Width and inset belong to the container;
-   rhythm belongs here. */
-.beacon-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-/* Внутри секции — свой, более тесный шаг: заголовок принадлежит тому, что
-   под ним. Между секциями воздух даёт стопка кита, а не своё правило. */
-.inst-section { gap: var(--space-4); }
 
 /* Подсветка состояния — по желанию, переключается в настройках.
    Тон берётся из словаря кита, а не из своего rgba: у «ok» и «error» цвет
@@ -89,6 +72,24 @@
 .beacon-history--wide .inst-history-tick {
   flex: 1 1 auto;
   inline-size: auto;
+}
+
+/* The monitor name is a link, and a line of text is 17px tall — under the 24px
+   tap minimum once the density is compact. The kit's own answer to a small
+   target is to grow the AREA and leave the glyph alone; the row is already
+   tall enough to hold it, so the area simply reaches the row's edges.
+
+   Not a stretched link over the whole row: the row also carries a kebab menu,
+   and one target swallowing another is a worse bug than the one being fixed. */
+.inst-task-title a {
+  position: relative;
+}
+.inst-task-title a::before {
+  content: "";
+  position: absolute;
+  inset-block: calc((var(--tap-min) - 1lh) / -2);
+  inset-inline: 0;
+  min-block-size: var(--tap-min);
 }
 
 /* Row colouring — optional, switched in Settings. The tone comes from the
