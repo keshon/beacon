@@ -81,6 +81,13 @@ func applyConfigPatch(st *storage.Store, body []byte) (*config.Config, config.Pu
 	if err := json.Unmarshal(body, &incoming); err != nil {
 		return nil, config.PublicConfig{}, errInvalidJSON
 	}
+	// Which sections the patch mentioned — see config.Sections. Without this a
+	// screen that saves only its own part would zero everyone else's.
+	sec, err := config.ParseSections(body)
+	if err != nil {
+		return nil, config.PublicConfig{}, errInvalidJSON
+	}
+
 	var existing config.Config
 	ok, err := st.GetConfig(&existing)
 	if err != nil {
@@ -89,8 +96,8 @@ func applyConfigPatch(st *storage.Store, body []byte) (*config.Config, config.Pu
 	if !ok {
 		existing = *config.Default()
 	}
-	config.ApplyNonSecret(&existing, &incoming)
-	if err := config.MergeSecrets(&existing, &incoming); err != nil {
+	config.ApplyNonSecret(&existing, &incoming, sec)
+	if err := config.MergeSecrets(&existing, &incoming, sec); err != nil {
 		return nil, config.PublicConfig{}, err
 	}
 	existing.Normalize()

@@ -236,31 +236,43 @@ func publicSMTP(s SMTPConfig) PublicSMTPConfig {
 }
 
 // MergeSecrets applies patch semantics: empty secret fields keep existing values.
-func MergeSecrets(existing, incoming *Config) error {
+func MergeSecrets(existing, incoming *Config, sec Sections) error {
 	if existing == nil || incoming == nil {
 		return nil
 	}
-	if pw := strings.TrimSpace(incoming.Auth.Password); pw != "" {
-		if err := existing.Auth.SetPassword(pw); err != nil {
-			return err
+	if sec.Has("auth") {
+		if pw := strings.TrimSpace(incoming.Auth.Password); pw != "" {
+			if err := existing.Auth.SetPassword(pw); err != nil {
+				return err
+			}
+		}
+		existing.Auth.Username = incoming.Auth.Username
+		if existing.Auth.Username == "" {
+			existing.Auth.Username = "admin"
 		}
 	}
-	existing.Auth.Username = incoming.Auth.Username
-	if existing.Auth.Username == "" {
-		existing.Auth.Username = "admin"
-	}
 
-	existing.Telegram.Enabled = incoming.Telegram.Enabled
-	existing.Discord.Enabled = incoming.Discord.Enabled
-	existing.Email.Enabled = incoming.Email.Enabled
-	existing.Webhook.Enabled = incoming.Webhook.Enabled
-	existing.Telegram.Targets = mergeTelegramTargets(existing.Telegram.Targets, incoming.Telegram.Targets)
-	existing.Discord.Webhooks = mergeDiscordWebhooks(existing.Discord.Webhooks, incoming.Discord.Webhooks)
-	existing.Email.SMTP = mergeSMTPConfig(existing.Email.SMTP, incoming.Email.SMTP)
-	existing.Email.Targets = mergeEmailTargets(existing.Email.Targets, incoming.Email.Targets)
-	existing.Webhook.Webhooks = mergeWebhookReceivers(existing.Webhook.Webhooks, incoming.Webhook.Webhooks)
-	if tok := strings.TrimSpace(incoming.Network.SyncToken); tok != "" {
-		existing.Network.SyncToken = tok
+	if sec.Has("telegram") {
+		existing.Telegram.Enabled = incoming.Telegram.Enabled
+		existing.Telegram.Targets = mergeTelegramTargets(existing.Telegram.Targets, incoming.Telegram.Targets)
+	}
+	if sec.Has("discord") {
+		existing.Discord.Enabled = incoming.Discord.Enabled
+		existing.Discord.Webhooks = mergeDiscordWebhooks(existing.Discord.Webhooks, incoming.Discord.Webhooks)
+	}
+	if sec.Has("email") {
+		existing.Email.Enabled = incoming.Email.Enabled
+		existing.Email.SMTP = mergeSMTPConfig(existing.Email.SMTP, incoming.Email.SMTP)
+		existing.Email.Targets = mergeEmailTargets(existing.Email.Targets, incoming.Email.Targets)
+	}
+	if sec.Has("webhook") {
+		existing.Webhook.Enabled = incoming.Webhook.Enabled
+		existing.Webhook.Webhooks = mergeWebhookReceivers(existing.Webhook.Webhooks, incoming.Webhook.Webhooks)
+	}
+	if sec.Has("network") {
+		if tok := strings.TrimSpace(incoming.Network.SyncToken); tok != "" {
+			existing.Network.SyncToken = tok
+		}
 	}
 	return nil
 }
@@ -429,13 +441,24 @@ func mergeDiscordWebhooks(existing, incoming []DiscordReceiver) []DiscordReceive
 	return out
 }
 
-// ApplyNonSecret copies non-secret settings from incoming onto existing.
-func ApplyNonSecret(existing, incoming *Config) {
-	existing.Listen = incoming.Listen
-	existing.Workers = incoming.Workers
-	existing.DefaultInterval = incoming.DefaultInterval
-	mergeNotifications(&existing.Notifications, incoming.Notifications)
-	existing.Network = mergeNetworkConfig(existing.Network, incoming.Network)
+// ApplyNonSecret copies non-secret settings from incoming onto existing,
+// touching only the sections the patch mentioned.
+func ApplyNonSecret(existing, incoming *Config, sec Sections) {
+	if sec.Has("listen") {
+		existing.Listen = incoming.Listen
+	}
+	if sec.Has("workers") {
+		existing.Workers = incoming.Workers
+	}
+	if sec.Has("default_interval") {
+		existing.DefaultInterval = incoming.DefaultInterval
+	}
+	if sec.Has("notifications") {
+		mergeNotifications(&existing.Notifications, incoming.Notifications)
+	}
+	if sec.Has("network") {
+		existing.Network = mergeNetworkConfig(existing.Network, incoming.Network)
+	}
 }
 
 func mergeNotifications(existing *NotificationsConfig, incoming NotificationsConfig) {

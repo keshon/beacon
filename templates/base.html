@@ -77,6 +77,19 @@
                             <button type="button" role="radio" data-density="comfortable" aria-checked="false" tabindex="-1">Comfortable</button>
                         </div>
                     </div>
+                    {# Row colouring belongs here, with theme and density: all #}
+                    {# three are this browser's preferences, kept in local #}
+                    {# storage. In Settings they sat in a form whose Save button #}
+                    {# never touched them — a category error with a tell. #}
+                    <div class="beacon-view-row">
+                        <span class="inst-nav-label">Colour rows</span>
+                        <label class="inst-checkbox">
+                            <input type="checkbox" id="ui_colorize_up" /><span>when up</span>
+                        </label>
+                        <label class="inst-checkbox">
+                            <input type="checkbox" id="ui_colorize_down" /><span>when down</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 

@@ -14,19 +14,6 @@
     <form id="configForm" class="inst-stack inst-stack--loose">
         <section class="inst-panel">
             <div class="inst-panel-header">
-                <span class="inst-panel-title">Appearance</span>
-            </div>
-            <div class="inst-panel-body inst-form">
-                <label class="inst-checkbox">
-                    <input type="checkbox" id="ui_colorize_up" /><span>Colorize UP</span>
-                </label>
-                <label class="inst-checkbox">
-                    <input type="checkbox" id="ui_colorize_down" /><span>Colorize DOWN</span>
-                </label>
-            </div>
-        </section>
-        <section class="inst-panel">
-            <div class="inst-panel-header">
                 <span class="inst-panel-title">Server</span>
             </div>
             <div class="inst-panel-body inst-form">
@@ -225,41 +212,6 @@
 <script src="/static/js/notify.js"></script>
 <script>
     (function () {
-        (function initUiColorize() {
-            var up = document.getElementById('ui_colorize_up');
-            var down = document.getElementById('ui_colorize_down');
-            if (!up || !down) return;
-
-            function apply() {
-                if (window.Beacon && window.Beacon.applyAppearancePrefs) {
-                    window.Beacon.applyAppearancePrefs();
-                }
-            }
-
-            function load() {
-                try {
-                    up.checked = localStorage.getItem('beaconColorizeUp') === '1';
-                    down.checked = localStorage.getItem('beaconColorizeDown') === '1';
-                } catch (e) {
-                    up.checked = false;
-                    down.checked = false;
-                }
-                apply();
-            }
-
-            function save() {
-                try {
-                    localStorage.setItem('beaconColorizeUp', up.checked ? '1' : '0');
-                    localStorage.setItem('beaconColorizeDown', down.checked ? '1' : '0');
-                } catch (e) { }
-                apply();
-            }
-
-            up.addEventListener('change', save);
-            down.addEventListener('change', save);
-            load();
-        })();
-
         function fieldByName(form, name) {
             return form.querySelector('[name="' + name + '"]');
         }

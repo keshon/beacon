@@ -38,4 +38,25 @@
             try { localStorage.setItem('beaconDensity', v); } catch (e2) { }
         });
     }
+
+    // Row colouring lives with theme and density: same scope (this browser),
+    // same storage, same popover. The pre-paint script in head_theme.html sets
+    // the attributes before the first frame; this only handles changes.
+    var colorize = [
+        { el: document.getElementById('ui_colorize_up'), key: 'beaconColorizeUp', attr: 'data-colorize-up' },
+        { el: document.getElementById('ui_colorize_down'), key: 'beaconColorizeDown', attr: 'data-colorize-down' },
+    ];
+    colorize.forEach(function (c) {
+        if (!c.el) return;
+        try {
+            c.el.checked = localStorage.getItem(c.key) === '1';
+        } catch (e) {}
+        c.el.addEventListener('change', function () {
+            var on = c.el.checked ? '1' : '0';
+            document.documentElement.setAttribute(c.attr, on);
+            try {
+                localStorage.setItem(c.key, on);
+            } catch (e) {}
+        });
+    });
 })();
