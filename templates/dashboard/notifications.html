@@ -12,9 +12,7 @@
             {# not". Configuration answers a question asked far less often. #}
             <p class="inst-page-desc">Whether alerts actually went out — and when they did not, why.</p>
         </div>
-        <div class="inst-page-actions">
-            <a class="inst-btn inst-btn--sm" href="/settings">Configure channels</a>
-        </div>
+
     </div>
 
     {% if not anyConfig %}
@@ -26,7 +24,7 @@
                     Beacon is checking, but nobody is being told. Add a Telegram chat,
                     an address or a webhook and outages will reach you.
                 </div>
-                <a class="inst-btn inst-btn--sm inst-btn--primary" href="/settings">Set up a channel</a>
+                <a class="inst-btn inst-btn--sm inst-btn--primary" href="#channels">Set up a channel</a>
             </div>
         </div>
     </div>
@@ -111,5 +109,22 @@
 
     {% endif %}
 
+    {# Configuration sits below what happened: you come here to check delivery #}
+    {# far more often than to change a token, and the fix belongs on the same #}
+    {# screen as the symptom. #}
+    <form id="channelsForm" class="inst-stack inst-stack--loose" tabindex="-1">
+        {% include "../shared/notify_channels.html" %}
+        <div class="inst-form-actions">
+            <button type="submit" class="inst-btn inst-btn--primary">Save channels</button>
+            <span id="channelsMsg" class="inst-field-hint" role="status"></span>
+        </div>
+    </form>
+
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/notify.js"></script>
+<script src="/static/js/settings_form.js"></script>
+<script src="/static/js/notify_config.js"></script>
 {% endblock %}

@@ -5,418 +5,63 @@
     <div class="inst-page-header">
         <div class="inst-page-header-main">
             <h1 class="inst-page-title">Settings</h1>
-            <p class="inst-page-sub">Server, access and notifications</p>
+            {# What is left once every setting went to the screen it is about: #}
+            {# channels to notifications, peers to the peers screen, colours to #}
+            {# the view popover. This is the process itself. #}
+            <p class="inst-page-desc">The server process and who may reach it.</p>
         </div>
     </div>
 
-    {# The panels stand in a stack — the kit's primitive, not a rule keyed to #}
-    {# this form's id. #}
-    <form id="configForm" class="inst-stack inst-stack--loose">
+    <form id="serverForm" class="inst-stack inst-stack--loose">
         <section class="inst-panel">
             <div class="inst-panel-header">
                 <span class="inst-panel-title">Server</span>
             </div>
             <div class="inst-panel-body inst-form">
-                <p class="inst-u-dim" id="restartHint">
+                <p class="inst-field-hint" id="restartHint">
                     Changes to listen address or worker count require a process restart to take effect.
                 </p>
                 <div class="inst-field inst-field--side">
-                    <label class="inst-label">Listen address</label>
-                    <input type="text" class="inst-input" name="listen" placeholder=":8080" />
+                    <label class="inst-label" for="set_listen">Listen address</label>
+                    <input type="text" class="inst-input" id="set_listen" name="listen" placeholder=":8080" />
                 </div>
                 <div class="inst-field inst-field--side">
-                    <label class="inst-label">Workers</label>
-                    <input type="number" class="inst-input" name="workers" min="1" placeholder="10" />
+                    <label class="inst-label" for="set_workers">Workers</label>
+                    <input type="number" class="inst-input" id="set_workers" name="workers" min="1" placeholder="10" />
                 </div>
                 <div class="inst-field inst-field--side">
-                    <label class="inst-label">Default check interval (sec)</label>
-                    <input type="number" class="inst-input" name="default_interval" min="0" placeholder="30" />
+                    <label class="inst-label" for="set_interval">Default check interval (sec)</label>
+                    <input type="number" class="inst-input" id="set_interval" name="default_interval" min="0" placeholder="30" />
                 </div>
             </div>
         </section>
+
         <section class="inst-panel">
             <div class="inst-panel-header">
-                <span class="inst-panel-title">Auth</span>
+                <span class="inst-panel-title">Access</span>
             </div>
             <div class="inst-panel-body inst-form">
                 <div class="inst-field inst-field--side">
-                    <label class="inst-label">Username</label>
-                    <input type="text" class="inst-input" name="username" />
+                    <label class="inst-label" for="set_username">Username</label>
+                    <input type="text" class="inst-input" id="set_username" name="username" autocomplete="username" />
                 </div>
                 <div class="inst-field inst-field--side">
-                    <label class="inst-label">Password</label>
-                    <input type="password" class="inst-input" name="password" placeholder="Leave blank to keep current" autocomplete="new-password" />
+                    <label class="inst-label" for="set_password">Password</label>
+                    <input type="password" class="inst-input" id="set_password" name="password"
+                           placeholder="Leave blank to keep current" autocomplete="new-password" />
                 </div>
             </div>
         </section>
-        <section class="inst-panel">
-            <div class="inst-panel-header">
-                <span class="inst-panel-title">Notifications</span>
-            </div>
-            <div class="inst-panel-body inst-form" id="notificationsPolicyPanel" data-notify-policy>
-                <p class="inst-field-hint">
-                    Default alert mode and message templates for new receivers. Leave fields empty in a
-                    receiver&rsquo;s policy modal to inherit these values.
-                </p>
-                <div class="inst-field" data-policy-alert-mode-row>
-                    <label class="inst-label" for="notifications_alert_mode">Alert mode</label>
-                    <span class="inst-select-wrap">
-                        <select class="inst-select" id="notifications_alert_mode" data-policy-alert-mode>
-                            <option value="repeat">Repeat while down (every check)</option>
-                            <option value="once">Once on down, once on recovery</option>
-                        </select>
-                    </span>
-                </div>
-                <div class="inst-field policy-template-row">
-                    <div class="beacon-field-action">
-                        <label class="inst-label" for="policy_template_down">Down template</label>
-                        <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
-                    </div>
-                    <textarea class="inst-textarea inst-u-mono" id="policy_template_down" rows="5" data-policy-template="down"></textarea>
-                    <div class="inst-inserts" data-policy-chips></div>
-                </div>
-                <div class="inst-field policy-template-row">
-                    <div class="beacon-field-action">
-                        <label class="inst-label" for="policy_template_recovered">Recovered template</label>
-                        <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
-                    </div>
-                    <textarea class="inst-textarea inst-u-mono" id="policy_template_recovered" rows="5" data-policy-template="recovered"></textarea>
-                    <div class="inst-inserts" data-policy-chips></div>
-                </div>
-                <div class="inst-form-actions inst-form-actions--end">
-                    <button type="button" class="inst-btn inst-btn--sm" data-policy-reset-all>
-                        Reset all to defaults
-                    </button>
-                </div>
-            </div>
-        </section>
-        <section class="inst-panel">
-            <div class="inst-panel-header">
-                <span class="inst-panel-title">Telegram</span>
-            </div>
-            <div class="inst-panel-body inst-form" id="telegramPanel">
-                <label class="inst-checkbox"><input type="checkbox" name="telegram_enabled" id="telegram_enabled" /><span>Enabled</span></label>
-                <div data-notify-list></div>
-                <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
-                    Add receiver
-                </button>
-                <span class="inst-label" data-notify-helper></span>
-            </div>
-        </section>
-        <section class="inst-panel">
-            <div class="inst-panel-header">
-                <span class="inst-panel-title">Discord</span>
-            </div>
-            <div class="inst-panel-body inst-form" id="discordPanel">
-                <label class="inst-checkbox"><input type="checkbox" name="discord_enabled" id="discord_enabled" /><span>Enabled</span></label>
-                <div data-notify-list></div>
-                <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
-                    Add receiver
-                </button>
-                <span class="inst-label" data-notify-helper></span>
-            </div>
-        </section>
-        <section class="inst-panel">
-            <div class="inst-panel-header">
-                <span class="inst-panel-title">Email</span>
-            </div>
-            <div class="inst-panel-body inst-form" id="emailPanel">
-                <label class="inst-checkbox"><input type="checkbox" name="email_enabled" id="email_enabled" /><span>Enabled</span></label>
-                <p class="inst-u-dim">Global SMTP settings. Receivers can override SMTP per row in the policy modal.</p>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">SMTP host</label>
-                    <input type="text" class="inst-input" name="email_smtp_host" placeholder="smtp.example.com" />
-                </div>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">Port</label>
-                    <input type="number" class="inst-input" name="email_smtp_port" min="1" placeholder="587" />
-                </div>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">Username</label>
-                    <input type="text" class="inst-input" name="email_smtp_username" autocomplete="off" />
-                </div>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">Password</label>
-                    <input type="password" class="inst-input" name="email_smtp_password" autocomplete="new-password" placeholder="Leave blank to keep" />
-                </div>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">From address</label>
-                    <input type="email" class="inst-input" name="email_smtp_from" placeholder="beacon@example.com" />
-                </div>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">TLS mode</label>
-                    <select class="inst-select" name="email_smtp_tls">
-                        <option value="starttls">STARTTLS</option>
-                        <option value="ssl">SSL/TLS</option>
-                        <option value="plain">Plain</option>
-                    </select>
-                </div>
-                <div data-notify-list></div>
-                <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
-                    Add receiver
-                </button>
-                <span class="inst-label" data-notify-helper></span>
-            </div>
-        </section>
-        <section class="inst-panel">
-            <div class="inst-panel-header">
-                <span class="inst-panel-title">Webhook</span>
-            </div>
-            <div class="inst-panel-body inst-form" id="webhookPanel">
-                <label class="inst-checkbox"><input type="checkbox" name="webhook_enabled" id="webhook_enabled" /><span>Enabled</span></label>
-                <p class="inst-u-dim">Generic HTTP POST webhooks.</p>
-                <div data-notify-list></div>
-                <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
-                    Add receiver
-                </button>
-                <span class="inst-label" data-notify-helper></span>
-            </div>
-        </section>
-        <section class="inst-panel">
-            <div class="inst-panel-header">
-                <span class="inst-panel-title">Network (peer sync)</span>
-            </div>
-            <div class="inst-panel-body inst-form">
-                <label class="inst-checkbox"><input type="checkbox" name="network_enabled" id="network_enabled" /><span>Enable peer sync</span></label>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">Self URL</label>
-                    <input type="text" class="inst-input" name="network_self_url" placeholder="https://beacon1.example.com" />
-                </div>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">Peers (one URL per line)</label>
-                    <textarea class="inst-input" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
-                </div>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">Sync interval (sec)</label>
-                    <input type="number" class="inst-input" name="network_sync_interval" min="10" placeholder="60" />
-                </div>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">Dead timeout (sec)</label>
-                    <input type="number" class="inst-input" name="network_dead_timeout" min="60" placeholder="300" />
-                </div>
-                <div class="inst-field inst-field--side">
-                    <label class="inst-label">Sync token</label>
-                    <input type="password" class="inst-input" name="network_sync_token" autocomplete="new-password" placeholder="Shared secret for all nodes" />
-                    <div class="inst-field-hint">Same token on every node. Web login can differ per node.</div>
-                </div>
-                <label class="inst-label inst-u-dim">Node ID</label>
-                <input type="text" class="inst-input app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
-            </div>
-        </section>
-        <button type="submit" class="inst-btn inst-btn--primary">Save settings</button>
-        <span id="msg" class="inst-field-hint" role="status"></span>
+
+        <div class="inst-form-actions">
+            <button type="submit" class="inst-btn inst-btn--primary">Save</button>
+            <span id="serverMsg" class="inst-field-hint" role="status"></span>
+        </div>
     </form>
 </div>
 {% endblock %}
+
 {% block scripts %}
-<script src="/static/js/notify.js"></script>
-<script>
-    (function () {
-        function fieldByName(form, name) {
-            return form.querySelector('[name="' + name + '"]');
-        }
-
-        function applySecretInput(input, value) {
-            if (!input) return;
-            value = (value || '').trim();
-            if (!value) {
-                input.value = '';
-                return;
-            }
-            if (window.Beacon.notify && window.Beacon.notify.attachSecretField) {
-                window.Beacon.notify.attachSecretField(input, value);
-            } else {
-                input.value = value;
-            }
-        }
-        const notify = window.Beacon.notify;
-        const telegramList = notify.init(document.getElementById('telegramPanel'), 'telegram', []);
-        const discordList = notify.init(document.getElementById('discordPanel'), 'discord', []);
-        const emailList = notify.init(document.getElementById('emailPanel'), 'email', []);
-        const webhookList = notify.init(document.getElementById('webhookPanel'), 'webhook', []);
-        const policyPanel = document.getElementById('notificationsPolicyPanel');
-        let policyForm = null;
-        window.Beacon.settings = { telegramList, discordList, emailList, webhookList };
-        window.Beacon.apiFetch('/api/config')
-            .then((r) => {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
-            })
-            .then((cfg) => {
-                const f = document.getElementById('configForm');
-                fieldByName(f, 'listen').value = cfg.listen || ':8080';
-                fieldByName(f, 'workers').value = cfg.workers || 10;
-                fieldByName(f, 'default_interval').value = cfg.default_interval || '';
-                fieldByName(f, 'username').value = cfg.auth?.username || '';
-                fieldByName(f, 'password').value = '';
-                fieldByName(f, 'password').placeholder = cfg.secrets?.password
-                    ? 'Leave blank to keep current'
-                    : 'Set password';
-                fieldByName(f, 'telegram_enabled').checked = cfg.telegram?.enabled || false;
-                fieldByName(f, 'discord_enabled').checked = cfg.discord?.enabled || false;
-                fieldByName(f, 'email_enabled').checked = cfg.email?.enabled || false;
-                fieldByName(f, 'webhook_enabled').checked = cfg.webhook?.enabled || false;
-                fieldByName(f, 'email_smtp_host').value = cfg.email?.smtp?.host || '';
-                fieldByName(f, 'email_smtp_port').value = cfg.email?.smtp?.port || '';
-                fieldByName(f, 'email_smtp_username').value = cfg.email?.smtp?.username || '';
-                applySecretInput(fieldByName(f, 'email_smtp_password'), cfg.email?.smtp?.password || '');
-                if (!cfg.email?.smtp?.password) {
-                    fieldByName(f, 'email_smtp_password').placeholder = cfg.secrets?.email_smtp
-                        ? 'Leave blank to keep current'
-                        : 'Set password';
-                }
-                fieldByName(f, 'email_smtp_from').value = cfg.email?.smtp?.from || '';
-                fieldByName(f, 'email_smtp_tls').value = cfg.email?.smtp?.tls || 'starttls';
-                fieldByName(f, 'network_enabled').checked = cfg.network?.enabled || false;
-                fieldByName(f, 'network_self_url').value = cfg.network?.self_url || '';
-                fieldByName(f, 'network_peers').value = (cfg.network?.peers || []).join('\n');
-                fieldByName(f, 'network_sync_interval').value = cfg.network?.sync_interval || '';
-                fieldByName(f, 'network_dead_timeout').value = cfg.network?.dead_timeout || '';
-                fieldByName(f, 'network_node_id').value = cfg.network?.node_id || '';
-                applySecretInput(fieldByName(f, 'network_sync_token'), cfg.network?.sync_token || '');
-                if (!cfg.network?.sync_token) {
-                    fieldByName(f, 'network_sync_token').placeholder = cfg.secrets?.sync_token
-                        ? 'Leave blank to keep current'
-                        : 'Set shared sync token';
-                }
-
-                telegramList.setValues(cfg.telegram?.targets || []);
-                const webhooks = (cfg.discord?.webhooks || []).map((w) =>
-                    typeof w === 'string' ? { webhook: w } : w
-                );
-                discordList.setValues(webhooks);
-                emailList.setValues(cfg.email?.targets || []);
-                webhookList.setValues(cfg.webhook?.webhooks || []);
-                const notifications = cfg.notifications || {};
-                notify.setGlobalDefaults(notifications);
-                window.Beacon.policy.init(policyPanel, notifications, { globalMode: true }).then(function (pf) {
-                    policyForm = pf;
-                });
-
-                bindToggle('telegram_enabled');
-                bindToggle('discord_enabled');
-                bindToggle('email_enabled');
-                bindToggle('webhook_enabled');
-                bindToggle('network_enabled');
-            })
-            .catch(function () {
-                const msg = document.getElementById('msg');
-                msg.textContent = 'Failed to load settings.';
-                msg.className = 'small inst-field-error';
-            });
-    })();
-    document.getElementById('configForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const f = e.target;
-        function namedField(name) {
-            return f.querySelector('[name="' + name + '"]');
-        }
-        const msg = document.getElementById('msg');
-        msg.textContent = 'Saving…';
-        msg.className = 'small inst-u-dim';
-        const peersRaw = (namedField('network_peers').value || '')
-            .trim()
-            .split('\n')
-            .map((s) => s.trim())
-            .filter(Boolean);
-        const telegramTargets = window.Beacon.settings.telegramList.values();
-        const discordWebhooks = window.Beacon.settings.discordList.values();
-        const emailTargets = window.Beacon.settings.emailList.values();
-        const webhookReceivers = window.Beacon.settings.webhookList.values();
-        const pp = document.getElementById('notificationsPolicyPanel');
-        const notifications = {
-            alert_mode: (pp.querySelector('[data-policy-alert-mode]').value || 'repeat').trim(),
-            templates: {
-                down: (pp.querySelector('[data-policy-template="down"]').value || '').trim(),
-                recovered: (pp.querySelector('[data-policy-template="recovered"]').value || '').trim(),
-            },
-        };
-        window.Beacon.notify.setGlobalDefaults(notifications);
-        const cfg = {
-            listen: namedField('listen').value || ':8080',
-            workers: parseInt(namedField('workers').value) || 10,
-            default_interval: parseInt(namedField('default_interval').value) || 0,
-            auth: { username: namedField('username').value, password: namedField('password').value },
-            notifications: notifications,
-            telegram: { enabled: namedField('telegram_enabled').checked, targets: telegramTargets },
-            discord: { enabled: namedField('discord_enabled').checked, webhooks: discordWebhooks },
-            email: {
-                enabled: namedField('email_enabled').checked,
-                smtp: {
-                    host: namedField('email_smtp_host').value.trim(),
-                    port: parseInt(namedField('email_smtp_port').value) || 587,
-                    username: namedField('email_smtp_username').value.trim(),
-                    password: namedField('email_smtp_password').value,
-                    from: namedField('email_smtp_from').value.trim(),
-                    tls: namedField('email_smtp_tls').value || 'starttls',
-                },
-                targets: emailTargets,
-            },
-            webhook: { enabled: namedField('webhook_enabled').checked, webhooks: webhookReceivers },
-            network: {
-                enabled: namedField('network_enabled').checked,
-                self_url: namedField('network_self_url').value.trim(),
-                peers: peersRaw,
-                sync_interval: parseInt(namedField('network_sync_interval').value) || 60,
-                dead_timeout: parseInt(namedField('network_dead_timeout').value) || 300,
-                node_id: namedField('network_node_id').value.trim(),
-                sync_token: namedField('network_sync_token').value,
-            },
-        };
-        const res = await window.Beacon.apiFetch('/api/config', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(cfg),
-        });
-        if (res.ok) {
-            const saved = await res.json();
-            if (saved.network?.node_id) namedField('network_node_id').value = saved.network.node_id;
-            window.Beacon.settings.telegramList.setValues(saved.telegram?.targets || []);
-            const savedWebhooks = (saved.discord?.webhooks || []).map((w) =>
-                typeof w === 'string' ? { webhook: w } : w
-            );
-            window.Beacon.settings.discordList.setValues(savedWebhooks);
-            window.Beacon.settings.emailList.setValues(saved.email?.targets || []);
-            window.Beacon.settings.webhookList.setValues(saved.webhook?.webhooks || []);
-            msg.textContent = saved.requires_restart
-                ? 'Saved. Restart the Beacon process to apply listen address or worker changes.'
-                : 'Saved';
-            msg.className = 'small text-success';
-        } else {
-            msg.textContent = 'Error.';
-            msg.className = 'small inst-field-error';
-        }
-    };
-    function bindToggle(sectionCheckboxName) {
-        const f = document.getElementById('configForm');
-        const checkbox = f.querySelector('[name="' + sectionCheckboxName + '"]');
-        if (!checkbox) {
-            return;
-        }
-
-        const panel = checkbox.closest('.inst-panel');
-        if (!panel) {
-            return;
-        }
-
-        function update() {
-            const fields = panel.querySelectorAll('input, textarea, select, button');
-
-            fields.forEach(function (field) {
-                if (field === checkbox) {
-                    return;
-                }
-
-                if (checkbox.checked) {
-                    field.disabled = false;
-                } else {
-                    field.disabled = true;
-                }
-            });
-        }
-
-        checkbox.addEventListener('change', update);
-        update();
-    }
-</script>
+<script src="/static/js/settings_form.js"></script>
+<script src="/static/js/settings_server.js"></script>
 {% endblock %}

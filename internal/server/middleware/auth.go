@@ -205,6 +205,14 @@ func (a *Auth) CSRFMiddleware() func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
+			// Development skips the login, and the login is what issues the
+			// CSRF cookie — so without this every mutating request in dev mode
+			// is rejected and nothing can be saved. Same switch as the auth
+			// skip, and it only ever comes with the bind to 127.0.0.1.
+			if devNoAuth {
+				next.ServeHTTP(w, r)
+				return
+			}
 			switch r.Method {
 			case http.MethodGet, http.MethodHead, http.MethodOptions:
 				next.ServeHTTP(w, r)

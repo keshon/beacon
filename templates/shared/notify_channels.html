@@ -1,0 +1,126 @@
+{# Alert channels and the global policy. Shared because the markup belongs #}
+{# to the notifications screen while the monitor dialog reuses the same #}
+{# receiver editors. #}
+    <section class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">Notifications</span>
+        </div>
+        <div class="inst-panel-body inst-form" id="notificationsPolicyPanel" data-notify-policy>
+            <p class="inst-field-hint">
+                Default alert mode and message templates for new receivers. Leave fields empty in a
+                receiver&rsquo;s policy modal to inherit these values.
+            </p>
+            <div class="inst-field" data-policy-alert-mode-row>
+                <label class="inst-label" for="notifications_alert_mode">Alert mode</label>
+                <span class="inst-select-wrap">
+                    <select class="inst-select" id="notifications_alert_mode" data-policy-alert-mode>
+                        <option value="repeat">Repeat while down (every check)</option>
+                        <option value="once">Once on down, once on recovery</option>
+                    </select>
+                </span>
+            </div>
+            <div class="inst-field policy-template-row">
+                <div class="beacon-field-action">
+                    <label class="inst-label" for="policy_template_down">Down template</label>
+                    <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
+                </div>
+                <textarea class="inst-textarea inst-u-mono" id="policy_template_down" rows="5" data-policy-template="down"></textarea>
+                <div class="inst-inserts" data-policy-chips></div>
+            </div>
+            <div class="inst-field policy-template-row">
+                <div class="beacon-field-action">
+                    <label class="inst-label" for="policy_template_recovered">Recovered template</label>
+                    <button type="button" class="inst-btn inst-btn--sm" data-policy-reset>Reset</button>
+                </div>
+                <textarea class="inst-textarea inst-u-mono" id="policy_template_recovered" rows="5" data-policy-template="recovered"></textarea>
+                <div class="inst-inserts" data-policy-chips></div>
+            </div>
+            <div class="inst-form-actions inst-form-actions--end">
+                <button type="button" class="inst-btn inst-btn--sm" data-policy-reset-all>
+                    Reset all to defaults
+                </button>
+            </div>
+        </div>
+    </section>
+    <section class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">Telegram</span>
+        </div>
+        <div class="inst-panel-body inst-form" id="telegramPanel">
+            <label class="inst-checkbox"><input type="checkbox" name="telegram_enabled" id="telegram_enabled" /><span>Enabled</span></label>
+            <div data-notify-list></div>
+            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                Add receiver
+            </button>
+            <span class="inst-label" data-notify-helper></span>
+        </div>
+    </section>
+    <section class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">Discord</span>
+        </div>
+        <div class="inst-panel-body inst-form" id="discordPanel">
+            <label class="inst-checkbox"><input type="checkbox" name="discord_enabled" id="discord_enabled" /><span>Enabled</span></label>
+            <div data-notify-list></div>
+            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                Add receiver
+            </button>
+            <span class="inst-label" data-notify-helper></span>
+        </div>
+    </section>
+    <section class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">Email</span>
+        </div>
+        <div class="inst-panel-body inst-form" id="emailPanel">
+            <label class="inst-checkbox"><input type="checkbox" name="email_enabled" id="email_enabled" /><span>Enabled</span></label>
+            <p class="inst-u-dim">Global SMTP settings. Receivers can override SMTP per row in the policy modal.</p>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">SMTP host</label>
+                <input type="text" class="inst-input" name="email_smtp_host" placeholder="smtp.example.com" />
+            </div>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">Port</label>
+                <input type="number" class="inst-input" name="email_smtp_port" min="1" placeholder="587" />
+            </div>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">Username</label>
+                <input type="text" class="inst-input" name="email_smtp_username" autocomplete="off" />
+            </div>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">Password</label>
+                <input type="password" class="inst-input" name="email_smtp_password" autocomplete="new-password" placeholder="Leave blank to keep" />
+            </div>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">From address</label>
+                <input type="email" class="inst-input" name="email_smtp_from" placeholder="beacon@example.com" />
+            </div>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">TLS mode</label>
+                <select class="inst-select" name="email_smtp_tls">
+                    <option value="starttls">STARTTLS</option>
+                    <option value="ssl">SSL/TLS</option>
+                    <option value="plain">Plain</option>
+                </select>
+            </div>
+            <div data-notify-list></div>
+            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                Add receiver
+            </button>
+            <span class="inst-label" data-notify-helper></span>
+        </div>
+    </section>
+    <section class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">Webhook</span>
+        </div>
+        <div class="inst-panel-body inst-form" id="webhookPanel">
+            <label class="inst-checkbox"><input type="checkbox" name="webhook_enabled" id="webhook_enabled" /><span>Enabled</span></label>
+            <p class="inst-u-dim">Generic HTTP POST webhooks.</p>
+            <div data-notify-list></div>
+            <button type="button" class="inst-btn inst-btn--sm" data-notify-add>
+                Add receiver
+            </button>
+            <span class="inst-label" data-notify-helper></span>
+        </div>
+    </section>

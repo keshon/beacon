@@ -1,0 +1,33 @@
+{# Peer sync configuration. It lives on the peers screen: the settings it #}
+{# carries are about the peers, not about this process. #}
+    <section class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">Network (peer sync)</span>
+        </div>
+        <div class="inst-panel-body inst-form">
+            <label class="inst-checkbox"><input type="checkbox" name="network_enabled" id="network_enabled" /><span>Enable peer sync</span></label>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">Self URL</label>
+                <input type="text" class="inst-input" name="network_self_url" placeholder="https://beacon1.example.com" />
+            </div>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">Peers (one URL per line)</label>
+                <textarea class="inst-input" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
+            </div>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">Sync interval (sec)</label>
+                <input type="number" class="inst-input" name="network_sync_interval" min="10" placeholder="60" />
+            </div>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">Dead timeout (sec)</label>
+                <input type="number" class="inst-input" name="network_dead_timeout" min="60" placeholder="300" />
+            </div>
+            <div class="inst-field inst-field--side">
+                <label class="inst-label">Sync token</label>
+                <input type="password" class="inst-input" name="network_sync_token" autocomplete="new-password" placeholder="Shared secret for all nodes" />
+                <div class="inst-field-hint">Same token on every node. Web login can differ per node.</div>
+            </div>
+            <label class="inst-label inst-u-dim">Node ID</label>
+            <input type="text" class="inst-input app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
+        </div>
+    </section>

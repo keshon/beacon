@@ -28,7 +28,7 @@
                     Beacon runs as a single node. Turn sync on to have several nodes
                     check the same targets and see each other's results.
                 </div>
-                <a class="inst-btn inst-btn--sm" href="/settings">Open settings</a>
+                <a class="inst-btn inst-btn--sm" href="#networkForm">Turn sync on</a>
             </div>
         </div>
     </div>
@@ -38,7 +38,7 @@
             <div class="inst-empty">
                 <div class="inst-empty-title">No peers configured</div>
                 <div class="inst-empty-desc">Sync is on, but no addresses have been added yet.</div>
-                <a class="inst-btn inst-btn--sm" href="/settings">Add a peer</a>
+                <a class="inst-btn inst-btn--sm" href="#networkForm">Add a peer</a>
             </div>
         </div>
     </div>
@@ -80,7 +80,7 @@
                 <div class="inst-failure-reason">{{ p.LastError }}</div>
                 <div class="inst-failure-actions">
                     <a class="inst-btn inst-btn--sm" href="{{ p.URL }}" target="_blank" rel="noopener">Open the node</a>
-                    <a class="inst-btn inst-btn--sm" href="/settings">Check the address and token</a>
+                    <a class="inst-btn inst-btn--sm" href="#networkForm">Check the address and token</a>
                 </div>
             </div>
             {% endif %}
@@ -96,5 +96,19 @@
 
     {% endif %}
 
+    {# Turning sync on and seeing who answered are one task. #}
+    <form id="networkForm" class="inst-stack inst-stack--loose">
+        {% include "../shared/network_panel.html" %}
+        <div class="inst-form-actions">
+            <button type="submit" class="inst-btn inst-btn--primary">Save peer sync</button>
+            <span id="networkMsg" class="inst-field-hint" role="status"></span>
+        </div>
+    </form>
+
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/settings_form.js"></script>
+<script src="/static/js/peers_config.js"></script>
 {% endblock %}
