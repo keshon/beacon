@@ -67,7 +67,8 @@
                 </span>
                 <span class="inst-task-meta inst-cluster">
                     <span class="inst-u-dim">{{ p.MonitorsCount }} monitor{{ p.MonitorsCount|pluralize }}</span>
-                    <span class="beacon-when">{{ p.LastSeen|default:"—" }}</span>
+                    {# "Last seen" has no meaning for the node you are looking at it from. #}
+                    <span class="beacon-when">{% if p.Self %}now{% else %}{{ p.LastSeen|default:"—" }}{% endif %}</span>
                 </span>
             </div>
 

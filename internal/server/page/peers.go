@@ -63,6 +63,11 @@ func (h *Peers) Serve(w http.ResponseWriter, r *http.Request) {
 				dead++
 			case "self":
 				row.Tone = "running"
+				// This node is alive by construction — it is rendering the page.
+				// Leaving it out of the count made the badge read "1 live" of
+				// two healthy nodes, which is the screen telling the reader
+				// half the cluster is down while nothing is wrong.
+				live++
 			default:
 				row.Tone = "neutral"
 			}

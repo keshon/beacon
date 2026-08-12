@@ -17,11 +17,15 @@
             {# stopped doing is telling anyone. Saying so is the difference #}
             {# between a quiet monitor and a silenced one. #}
             {% if row.MutedUntil %}<span class="inst-badge">muted till {{ row.MutedUntil }}</span>{% endif %}
+            {# Silence is not health. Without this the row is green on the #}
+            {# strength of a fact hours old, and the only clue is a timestamp #}
+            {# nobody subtracts from the clock. #}
+            {% if row.Stale %}<span class="inst-badge" data-tone="warn">{{ row.Stale }}</span>{% endif %}
         </span>
         <span class="inst-task-sub inst-u-truncate">
             {% include "./shared/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}
             · <span class="inst-u-mono">{{ row.Monitor.Type }}</span>
-            {% if row.IntervalSec %} · every {{ row.IntervalSec }}s{% endif %}
+            {% if row.IntervalSec %} · {{ row.IntervalHuman }}{% endif %}
             · <span class="dashboard-latency">{{ row.LatencyMs }}</span>
         </span>
     </span>

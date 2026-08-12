@@ -322,7 +322,7 @@ func (rt *Runtime) dashboardRowsWithPeerData(localState map[string]*monitor.Moni
 		}
 		row := DashboardRow{
 			Monitor: am.Monitor, State: st,
-			SourceLabel: "Adopted: " + peerDisplayName(am.OwnerLabel),
+			SourceLabel:  "Adopted: " + peerDisplayName(am.OwnerLabel),
 			SourceNodeID: am.OwnerNodeID, IsPeer: true, Adopted: true,
 		}
 		fillRowMetrics(&row)
@@ -340,7 +340,11 @@ func fillRowMetrics(row *DashboardRow) {
 			row.LatencyMs = strconv.FormatInt(row.State.Latency.Milliseconds(), 10) + "ms"
 		}
 		if !row.State.LastCheck.IsZero() {
-			row.LastCheck = row.State.LastCheck.Format("15:04:05")
+			// In the READER'S clock. A peer's state carries the peer's own
+			// offset, and printing it raw made a check six minutes old read as
+			// three hours old on a node in another zone — the interface
+			// inventing an outage out of arithmetic.
+			row.LastCheck = row.State.LastCheck.Local().Format("15:04:05")
 		}
 	}
 	if row.LatencyMs == "" {
@@ -485,7 +489,6 @@ func formatTimeAgo(t time.Time) string {
 	return strconv.Itoa(days) + " days ago"
 }
 
-
 // ExportPayload is returned by GET /api/sync/export.
 type ExportPayload struct {
 	NodeID   string                           `json:"node_id"`
@@ -493,7 +496,6 @@ type ExportPayload struct {
 	State    map[string]*monitor.MonitorState `json:"state"`
 	Time     time.Time                        `json:"time"`
 }
-
 
 const syncTokenHeader = "X-Beacon-Sync-Token"
 
@@ -539,7 +541,6 @@ func setOutboundSyncAuth(req *http.Request, cfg *config.Config) {
 	}
 	req.SetBasicAuth(cfg.Auth.Username, pw)
 }
-
 
 // ExportView is the monitor/state pair served to peers.
 type ExportView struct {

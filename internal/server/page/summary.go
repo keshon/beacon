@@ -43,9 +43,12 @@ var summaryWindows = []summaryWindow{
 }
 
 type worstRow struct {
-	ID        string
-	Name      string
-	Failed    int
+	ID     string
+	Name   string
+	Failed int
+	// Ratio is availability as a number, kept beside the formatted Percent so
+	// the ordering and the printed column cannot drift apart.
+	Ratio     float64
 	Total     int
 	Percent   string
 	Tone      string
@@ -107,7 +110,7 @@ func (h *Summary) Serve(w http.ResponseWriter, r *http.Request) {
 		}
 		ratio := float64(total-failed) / float64(total) * 100
 		row := worstRow{
-			ID: m.ID, Name: m.Name, Failed: failed, Total: total,
+			ID: m.ID, Name: m.Name, Failed: failed, Total: total, Ratio: ratio,
 			Percent: strconv.FormatFloat(ratio, 'f', 2, 64) + "%",
 			History: buildWindowHistory(list, tick, now),
 			Tone:    "warn",
@@ -118,8 +121,22 @@ func (h *Summary) Serve(w http.ResponseWriter, r *http.Request) {
 		worst = append(worst, row)
 	}
 
-	// Ranked by how much broke, because that is the order the work gets done in.
+	// Ranked by the column the reader is looking at.
+	//
+	// This used to rank by the ABSOLUTE number of failed checks, and on real
+	// data that put the worst monitor last: something available 78.95% of the
+	// time sat at the bottom because it is checked once an hour, under a
+	// monitor at 99.04% that is checked twice a minute. A screen headed "what
+	// to fix first" was answering "what was checked most often".
+	//
+	// Sorting by the visible percentage also keeps the order EXPLICABLE: any
+	// hidden statistic — a confidence bound, a weighting by sample size —
+	// makes a correctly sorted table look broken. How much evidence is behind
+	// each row is right there in "4 of 19"; the reader can weigh it.
 	sort.Slice(worst, func(i, j int) bool {
+		if worst[i].Ratio != worst[j].Ratio {
+			return worst[i].Ratio < worst[j].Ratio
+		}
 		if worst[i].Failed != worst[j].Failed {
 			return worst[i].Failed > worst[j].Failed
 		}

@@ -35,16 +35,24 @@ type dashboardRow struct {
 	IsPeer       bool
 	Adopted      bool
 	IntervalSec  int
-	NotifyJSON   string
-	HTTPJSON     string
-	Enabled      bool
-	ConfigJSON   string
+	// IntervalHuman is the same number in words. "every 3600s" is arithmetic
+	// homework in the middle of a sentence a person is skimming.
+	IntervalHuman string
+	NotifyJSON    string
+	HTTPJSON      string
+	Enabled       bool
+	ConfigJSON    string
 
 	History      []HistTick
 	HistoryLabel string
 	// MutedUntil is set while alerts are silenced. Empty means the monitor
 	// speaks normally.
 	MutedUntil string
+	// Stale is set when the newest check is older than this monitor's own
+	// schedule allows. A green row whose fact is three hours old looks exactly
+	// like one checked a second ago — the difference is a timestamp nobody
+	// subtracts from the clock. This is the row saying so out loud.
+	Stale string
 	// Repeats is how many incidents this monitor had in the last week. One
 	// outage is an event; the third in a week is a cause, and the row is the
 	// only place a person will notice the difference.
@@ -58,6 +66,7 @@ func enrichDashboardRowFromMonitor(row *dashboardRow, m *monitor.Monitor) {
 	row.Enabled = m.Enabled
 	if m.Interval > 0 {
 		row.IntervalSec = int(m.Interval / time.Second)
+		row.IntervalHuman = humanEvery(m.Interval)
 	}
 	notifyJSON := "{}"
 	if m.NotifyOverride != nil {
@@ -141,7 +150,7 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 					row.LatencyMs = strconv.FormatInt(st.Latency.Milliseconds(), 10) + "ms"
 				}
 				if !st.LastCheck.IsZero() {
-					row.LastCheck = st.LastCheck.Format("15:04:05")
+					row.LastCheck = st.LastCheck.Local().Format("15:04:05")
 				}
 			}
 			if row.LatencyMs == "" {
@@ -204,6 +213,34 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Silence is not health.
+	//
+	// The threshold is the monitor's OWN interval, not a number somebody
+	// picked: one missed cycle can be jitter, two in a row means the checking
+	// stopped. For a peer-owned monitor the local interval is unknown, so the
+	// server default stands in — the alternative is to trust a fact of unknown
+	// age, which is the failure this exists to catch.
+	defaultInterval := time.Duration(h.Cfg.Load().DefaultInterval) * time.Second
+	for i := range rows {
+		st := rows[i].State
+		if st == nil || st.LastCheck.IsZero() {
+			continue
+		}
+		if !rows[i].IsPeer && !rows[i].Enabled {
+			continue // a paused monitor is silent on purpose
+		}
+		every := defaultInterval
+		if rows[i].Monitor != nil && rows[i].Monitor.Interval > 0 {
+			every = rows[i].Monitor.Interval
+		}
+		if every <= 0 {
+			continue
+		}
+		if now.Sub(st.LastCheck) > 2*every {
+			rows[i].Stale = "no check since " + st.LastCheck.Local().Format("15:04")
+		}
+	}
+
 	names := make(map[string]string, len(rows))
 	for _, r := range rows {
 		if !r.IsPeer && r.Monitor != nil {
@@ -215,11 +252,15 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	// Summary. The dashboard must answer "is anything broken" before a
 	// person starts reading cards; until now that answer required scanning
 	// every one of them by eye.
-	var up, down, paused int
+	var up, down, paused, stale int
 	for _, r := range rows {
 		switch {
 		case !r.IsPeer && !r.Enabled:
 			paused++
+		case r.Stale != "":
+			// Counting a stale row as responding is how "all 17 responding"
+			// gets said about a monitor nobody has heard from since morning.
+			stale++
 		case r.Status == "up":
 			up++
 		case r.Status == "down":
@@ -238,8 +279,9 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 		"window":      win.Key,
 		"windowLabel": win.Label,
 		"windows":     histWindows,
-		"fleetTone":   fleetTone(down, up),
-		"fleetLabel":  fleetLabel(down, up, paused),
+		"countStale":  stale,
+		"fleetTone":   fleetTone(down, up, stale),
+		"fleetLabel":  fleetLabel(down, up, paused, stale),
 		"outage":      outage,
 		"cert":        cert,
 	})
@@ -279,9 +321,14 @@ func sortRowsByAttention(rows []dashboardRow) {
 // fleetTone and fleetLabel are the one summary the screen keeps. The row of
 // four metrics went: "Monitors 17" is not an action, and an aggregate is worse
 // than the list it summarises when the list is right there.
-func fleetTone(down, up int) string {
+func fleetTone(down, up, stale int) string {
 	if down > 0 {
 		return "error"
+	}
+	// Not knowing is not the same as being fine, and it is not the same as
+	// being broken either.
+	if stale > 0 {
+		return "warn"
 	}
 	if up == 0 {
 		return "neutral"
@@ -289,12 +336,16 @@ func fleetTone(down, up int) string {
 	return "ok"
 }
 
-func fleetLabel(down, up, paused int) string {
+func fleetLabel(down, up, paused, stale int) string {
 	switch {
 	case down == 1:
 		return "1 not responding"
 	case down > 1:
 		return strconv.Itoa(down) + " not responding"
+	case stale == 1:
+		return "1 not being checked"
+	case stale > 1:
+		return strconv.Itoa(stale) + " not being checked"
 	case up == 0 && paused > 0:
 		return "all paused"
 	case up == 0:
@@ -373,4 +424,24 @@ func buildOutage(store *storage.Store, rows []dashboardRow, now time.Time) *outa
 			strconv.Itoa(first.Monitor.Retries)+" retries, so a single blip is not it")
 	}
 	return out
+}
+
+// humanEvery says how often in the unit a person would say it in. Only whole
+// units are spelled out: "every 90s" stays as it is, because "every 1.5 min"
+// is a worse sentence than the number it replaces.
+func humanEvery(d time.Duration) string {
+	switch {
+	case d%time.Hour == 0 && d >= time.Hour:
+		if d == time.Hour {
+			return "every hour"
+		}
+		return "every " + strconv.Itoa(int(d/time.Hour)) + " hours"
+	case d%time.Minute == 0 && d >= time.Minute:
+		if d == time.Minute {
+			return "every minute"
+		}
+		return "every " + strconv.Itoa(int(d/time.Minute)) + " min"
+	default:
+		return "every " + strconv.Itoa(int(d/time.Second)) + "s"
+	}
 }
