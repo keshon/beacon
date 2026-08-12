@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/keshon/beacon/internal/cluster"
 	"github.com/keshon/beacon/internal/config"
 	"github.com/keshon/beacon/internal/monitor"
 	"github.com/keshon/beacon/internal/server/httpx"
@@ -25,9 +26,10 @@ import (
 // buckets go back ninety days; incidents only exist from the day the store
 // learned to keep them. Each block says which one it is standing on.
 type Summary struct {
-	Store  *storage.Store
-	Cfg    *config.Live
-	TplDir string
+	Store   *storage.Store
+	Cfg     *config.Live
+	Cluster *cluster.Runtime
+	TplDir  string
 }
 
 type summaryWindow struct {
@@ -85,6 +87,20 @@ func (h *Summary) Serve(w http.ResponseWriter, r *http.Request) {
 	for _, m := range monitors {
 		ids = append(ids, m.ID)
 		names[m.ID] = m.Name
+	}
+
+	// The fleet is what the monitors screen counts — peers included. This
+	// screen can only MEASURE what this node checks, so the two numbers differ
+	// legitimately: 16 measured out of 17 in the fleet. Silently showing the
+	// smaller one made a reader who had just counted 17 rows wonder which
+	// screen was lying.
+	fleet := len(monitors)
+	if h.Cluster != nil && h.Cluster.Enabled() {
+		if state, err := h.Store.GetAllState(); err == nil {
+			if rows, err := h.Cluster.DashboardRows(state, monitors); err == nil {
+				fleet = len(rows)
+			}
+		}
 	}
 
 	rollups, _ := h.Store.GetRollupsBatch(ids, from, now)
@@ -169,6 +185,8 @@ func (h *Summary) Serve(w http.ResponseWriter, r *http.Request) {
 		"version":        buildVersion(),
 		"nav_active":     "summary",
 		"window":         win.Key,
+		"fleet":          fleet,
+		"elsewhere":      fleet - tracked,
 		"incidentsSince": incidentsSince,
 		"windowLabel":    win.Label,
 		"windows":        summaryWindows,

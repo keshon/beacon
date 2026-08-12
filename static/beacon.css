@@ -52,14 +52,11 @@
    GLYPH — as tall as one, with a fixed tick width — and a day-wide bar is a
    different component it does not have. Second app-level class standing in for
    the same kit gap. */
-.beacon-history--wide {
-  block-size: var(--space-6);
-  gap: var(--space-1);
-}
-.beacon-history--wide .inst-history-tick {
-  flex: 1 1 auto;
-  inline-size: auto;
-}
+/* The hero strip on the monitor screen is taller than the one in a row: there
+   it stands beside a name and must read as a mark next to it, here it is the
+   subject of the screen. Width and spacing come from the kit — the strip is
+   built of groups, and the kit makes those fill their line. */
+.beacon-history--wide { block-size: var(--space-6); }
 
 /* The monitor name is a link, and a line of text is 17px tall — under the 24px
    tap minimum once the density is compact. The kit's own answer to a small

@@ -53,9 +53,23 @@
         {# working it out again. #}
         <div class="inst-note" data-tone="neutral">Known: {{ ackNote }}</div>
         {% endif %}
-        <div class="inst-history beacon-history--wide" role="img" aria-label="{{ historyLabel }}">
-            {% for tick in history %}<span class="inst-history-tick"{% if tick.Gap %} data-empty{% endif %}{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
+        {# A tick is a CHECK here, a group is an hour, and the group's width is #}
+        {# its share of the checks. On the list row a tick has to be an hour so #}
+        {# that twenty rows line up; on this screen there is no column to line #}
+        {# up with, and the hourly tick threw away how much stood behind each #}
+        {# hour — one check looked exactly like a hundred. #}
+        {% if strip %}
+        <div class="inst-history beacon-history--wide" role="img" aria-label="{{ stripLabel }}">
+            {% for g in strip %}<span class="inst-history-group inst-tooltip" style="--n:{{ g.N }}">{% if g.Empty %}<span class="inst-history-tick" data-empty></span><span class="inst-tooltip-text">{{ g.Summary }}</span>{% else %}{% for t in g.Ticks %}<span class="inst-history-tick"{% if t.Tone %} data-tone="{{ t.Tone }}"{% endif %}></span>{% endfor %}<span class="inst-tooltip-text{% if g.Wide %} inst-tooltip-text--wide{% endif %}">{{ g.Summary }}</span>{% endif %}</span>{% endfor %}
         </div>
+        {% else %}
+        {# Older than a week: raw checks are gone and only the hourly rollups #}
+        {# are left. Same strip, groups of one — so the layout is the kit's in #}
+        {# both branches and the screen does not change shape with age. #}
+        <div class="inst-history beacon-history--wide" role="img" aria-label="{{ historyLabel }}">
+            {% for tick in history %}<span class="inst-history-group inst-tooltip" style="--n:1"><span class="inst-history-tick"{% if tick.Gap %} data-empty{% endif %}{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %}></span><span class="inst-tooltip-text">{{ tick.Title }}</span></span>{% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     <div class="inst-split">

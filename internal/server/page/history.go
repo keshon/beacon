@@ -67,7 +67,7 @@ func buildHistory(rollups []storage.Rollup, now time.Time) []HistTick {
 			continue
 		}
 		started = true
-		tick := HistTick{Title: fmt.Sprintf("%s — %d checks", label, r.Total)}
+		tick := HistTick{Title: fmt.Sprintf("%s — %s", label, plural(r.Total, "check", "checks"))}
 		if r.Failed > 0 {
 			tick.Tone = "error"
 			tick.Title = fmt.Sprintf("%s — %d of %d failed", label, r.Failed, r.Total)

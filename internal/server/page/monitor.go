@@ -71,6 +71,14 @@ func (h *Monitor) Serve(w http.ResponseWriter, r *http.Request) {
 	rollups, _ := h.Store.GetRollups(id, now.Add(-historyHours*time.Hour), now)
 	history := buildHistory(rollups, now)
 
+	// The monitor's own screen draws a tick per CHECK, grouped by hour: here
+	// there is no column of rows to line up with, and the hourly tick threw
+	// away how much evidence stood behind each hour.
+	//
+	// Raw records only reach back a week; past that the hourly strip above is
+	// all there is, and it stays as the fallback.
+	strip := buildCheckStrip(recentChecks(h.Store, id, now), historyHours, now)
+
 	monthly, _ := h.Store.GetRollups(id, now.Add(-30*24*time.Hour), now)
 	windows := []uptimeWindow{
 		uptimeOver(monthly, now.Add(-24*time.Hour), now, "24 hours"),
@@ -146,6 +154,8 @@ func (h *Monitor) Serve(w http.ResponseWriter, r *http.Request) {
 		"intervalSec":  int(mon.Interval / time.Second),
 		"history":      history,
 		"historyLabel": historyLabel(history),
+		"strip":        strip,
+		"stripLabel":   checkStripLabel(strip, historyHours),
 		"windows":      windows,
 		"incidents":    rows,
 		"checks":       checks,
@@ -235,4 +245,24 @@ func lastCheckLabel(st *monitor.MonitorState) string {
 		return "no checks yet"
 	}
 	return st.LastCheck.Local().Format("15:04:05")
+}
+
+// recentChecks reads the raw outcomes inside the strip's window.
+//
+// The cap is the store's own index limit, not a number chosen here: past it
+// the samples are not available anyway, and asking for more only pretends.
+func recentChecks(store *storage.Store, monitorID string, now time.Time) []storage.CheckRecord {
+	all, err := store.GetUptimeSamples(monitorID, 0)
+	if err != nil {
+		return nil
+	}
+	from := now.Add(-historyHours * time.Hour)
+	out := all[:0]
+	for _, r := range all {
+		if r.Time.Before(from) {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
 }

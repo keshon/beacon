@@ -26,7 +26,11 @@
             {# The unit slot is for what attaches to the number — %, ms — and #}
             {# "of 19" is a sentence, not a unit. It goes on its own line. #}
             <div class="inst-metric-value">{{ clean }}</div>
-            <div class="inst-metric-delta">of {{ tracked }} checked</div>
+            {# The fleet is what the monitors screen counts, peers included; #}
+            {# this screen can only measure what THIS node checks. Naming both #}
+            {# is what stops a reader who has just counted 17 rows from #}
+            {# wondering which screen lies. #}
+            <div class="inst-metric-delta">of {{ tracked }} checked here{% if elsewhere > 0 %} · {{ elsewhere }} of {{ fleet }} checked by a peer{% endif %}</div>
         </div>
         <div class="inst-metric">
             <div class="inst-metric-label">Recorded incidents</div>
