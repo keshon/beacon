@@ -42,7 +42,10 @@
                 {% endif %}
             </div>
             {% if c.Configured %}
-            <dl class="inst-kv">
+            {# Narrow container: labels by content. A fixed label column ate #}
+            {# four tenths of a 235px card and left "1" in the middle of #}
+            {# nowhere. #}
+            <dl class="inst-kv inst-kv--tight">
                 <dt>Targets</dt><dd>{{ c.Targets }}</dd>
                 <dt>Sent</dt><dd>{{ c.Sent }}</dd>
                 {% if c.Failed %}<dt>Failed</dt><dd>{{ c.Failed }}</dd>{% endif %}

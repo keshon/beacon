@@ -1,6 +1,9 @@
 {# Expects: target, type (http|tcp) #}
-{% if type == 'tcp' %}
-<span class="inst-u-mono">{{ target }}</span>
-{% else %}
-<a href="{{ target }}" target="_blank" rel="noopener" class="app-monitor-target-link">{{ target }}</a>
-{% endif %}
+{# The address IDENTIFIES the monitor, it does not navigate. #}
+{# Two links per row is one link too many: the name went to the monitor, the #}
+{# address to the site, both blue, both on the same line, and which one a #}
+{# person got depended on which half of the row they hit. A row read in a #}
+{# hurry must have ONE destination. #}
+{# Going to the site is still there, in the menu, next to the other #}
+{# monitor-level actions. #}
+<span class="inst-u-mono inst-u-dim">{{ target }}</span>

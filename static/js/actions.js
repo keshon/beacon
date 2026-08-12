@@ -45,11 +45,25 @@
     document.addEventListener('click', function (e) {
         var btn = e.target.closest('[data-action]');
         if (!btn) return;
+        var action = btn.getAttribute('data-action');
+
+        if (action === 'sync') {
+            e.preventDefault();
+            busy(btn, 'Syncing…');
+            post('/api/peers/sync')
+                .then(function (r) {
+                    done(btn, r.ok ? 'Sync queued' : 'Failed', r.ok);
+                })
+                .catch(function () {
+                    done(btn, 'Failed');
+                });
+            return;
+        }
+
         var id = btn.getAttribute('data-monitor');
         if (!id) return;
 
         e.preventDefault();
-        var action = btn.getAttribute('data-action');
 
         if (action === 'check') {
             busy(btn, 'Checking…');

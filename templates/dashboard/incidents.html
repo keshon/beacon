@@ -10,12 +10,14 @@
             <p class="inst-page-desc">One outage is an event. The third for the same monitor is a cause.</p>
         </div>
         <div class="inst-page-actions">
-            {# Plain links, not a segmented control: each window is its own #}
-            {# address, so a period can be shared and bookmarked. #}
-            <nav class="inst-cluster inst-cluster--tight" aria-label="Period">
-                <a class="inst-btn inst-btn--sm{% if window == 'day' %} inst-btn--primary{% endif %}" href="?window=day">Day</a>
-                <a class="inst-btn inst-btn--sm{% if window == 'week' %} inst-btn--primary{% endif %}" href="?window=week">Week</a>
-                <a class="inst-btn inst-btn--sm{% if window == 'month' %} inst-btn--primary{% endif %}" href="?window=month">Month</a>
+            {# Links inside a segmented control: each window is its own #}
+            {# address, so a period can be shared and bookmarked — and it is #}
+            {# still a choice of one value among equals, which is what the #}
+            {# control is for. #}
+            <nav class="inst-segmented" aria-label="Period">
+                <a href="?window=day"{% if window == 'day' %} aria-current="page"{% endif %}>Day</a>
+                <a href="?window=week"{% if window == 'week' %} aria-current="page"{% endif %}>Week</a>
+                <a href="?window=month"{% if window == 'month' %} aria-current="page"{% endif %}>Month</a>
             </nav>
         </div>
     </div>

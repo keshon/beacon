@@ -1,4 +1,14 @@
 {% extends "../base.html" %}
+{% block header_lead %}
+{# The verdict goes where the other screens put theirs — the app header. #}
+{# Two screens answering "is everything fine" in two different places is #}
+{# two places to look. #}
+{% if enabled and peers %}
+<span class="inst-badge" data-tone="{% if dead %}error{% else %}ok{% endif %}">
+    <span class="inst-dot"></span>{{ live }} live{% if dead %}, {{ dead }} unreachable{% endif %}
+</span>
+{% endif %}
+{% endblock %}
 {% block title %}Peers – Beacon{% endblock %}
 
 {% block content %}
@@ -9,13 +19,6 @@
             <h1 class="inst-page-title">Peers</h1>
             <p class="inst-page-desc">Who is alive, what they see, and what is wrong with the sync.</p>
         </div>
-        {% if enabled and peers %}
-        <div class="inst-page-actions">
-            <span class="inst-badge" data-tone="{% if dead %}error{% else %}ok{% endif %}">
-                <span class="inst-dot"></span>{{ live }} live{% if dead %}, {{ dead }} unreachable{% endif %}
-            </span>
-        </div>
-        {% endif %}
     </div>
 
     {% if not enabled %}
@@ -79,9 +82,12 @@
             <div class="inst-failure" role="alert">
                 <div class="inst-failure-head">Sync with {{ p.URL }} is failing</div>
                 <div class="inst-failure-reason">{{ p.LastError }}</div>
+                {# "Check the address and token" was homework, not an action: #}
+                {# the form that holds both is on this very screen, right below. #}
                 <div class="inst-failure-actions">
-                    <a class="inst-btn inst-btn--sm" href="{{ p.URL }}" target="_blank" rel="noopener">Open the node</a>
-                    <a class="inst-btn inst-btn--sm" href="#networkForm">Check the address and token</a>
+                    <button class="inst-btn inst-btn--sm inst-btn--primary" type="button"
+                            data-action="sync">Try again now</button>
+                    <a class="inst-btn inst-btn--sm inst-btn--ghost" href="{{ p.URL }}" target="_blank" rel="noopener">Open the node</a>
                 </div>
             </div>
             {% endif %}
@@ -98,12 +104,8 @@
     {% endif %}
 
     {# Turning sync on and seeing who answered are one task. #}
-    <form id="networkForm" class="inst-stack inst-stack--loose">
+    <form id="networkForm">
         {% include "../shared/network_panel.html" %}
-        <div class="inst-form-actions">
-            <button type="submit" class="inst-btn inst-btn--primary">Save peer sync</button>
-            <span id="networkMsg" class="inst-field-hint" role="status"></span>
-        </div>
     </form>
 
 </div>

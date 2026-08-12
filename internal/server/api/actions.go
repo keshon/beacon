@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/keshon/beacon/internal/cluster"
+
 	"github.com/keshon/beacon/internal/monitor/scheduler"
 	"github.com/keshon/beacon/internal/server/httpx"
 	"github.com/keshon/beacon/internal/storage"
@@ -23,6 +25,17 @@ import (
 type Actions struct {
 	Store     *storage.Store
 	Scheduler *scheduler.Scheduler
+	Cluster   *cluster.Runtime
+}
+
+// SyncPeers runs the peer sync immediately.
+func (h *Actions) SyncPeers(w http.ResponseWriter, r *http.Request) {
+	if h.Cluster == nil || !h.Cluster.Enabled() {
+		http.Error(w, "peer sync is off", http.StatusConflict)
+		return
+	}
+	h.Cluster.SyncNow()
+	httpx.JSON(w, map[string]any{"queued": true})
 }
 
 // CheckNow runs a check immediately, through the ordinary queue.

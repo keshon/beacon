@@ -52,6 +52,14 @@ func (rt *Runtime) Enabled() bool {
 	return rt != nil && rt.config().Network.Enabled
 }
 
+// SyncNow asks the sync loop to run immediately.
+//
+// The same nudge the config editor sends, under the name a person would use.
+// A failing peer is the one place where "try again" is the whole of what
+// somebody wants to say, and the screen had nowhere to say it: the offer was
+// to go and re-read the address they had just typed.
+func (rt *Runtime) SyncNow() { rt.NotifyConfigChange() }
+
 // NotifyConfigChange triggers an immediate peer sync (e.g. after peers list edit).
 func (rt *Runtime) NotifyConfigChange() {
 	if rt == nil {

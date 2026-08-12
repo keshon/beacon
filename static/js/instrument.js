@@ -704,9 +704,42 @@ function onInsert(btn) {
   field.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+/* ── Раскрыть все / свернуть все ─────────────────────────────────────────
+
+   Список из шести <details> — это шесть нажатий, чтобы прочитать его целиком,
+   и ещё шесть, чтобы вернуть как было. Кнопка есть у каждого файлового
+   менеджера и почтового клиента ровно поэтому.
+
+   Состояние определяется по СОДЕРЖИМОМУ, а не запоминается: если хоть один
+   узел закрыт, нажатие раскрывает всё. Кнопка, которая помнит своё «сейчас
+   сверну», рано или поздно расходится с тем, что человек открыл руками.
+
+   Область — ближайшая панель, либо элемент, названный в `data-details-all`
+   селектором. */
+function onDetailsAll(btn) {
+  const doc = btn.ownerDocument;
+  const sel = btn.dataset.detailsAll;
+  const scope = (sel && doc.querySelector(sel)) || btn.closest('.inst-panel') || btn.parentElement;
+  if (!scope) return;
+
+  const all = [...scope.querySelectorAll('details')];
+  if (!all.length) return;
+
+  const expand = all.some((d) => !d.open);
+  if (!emit(btn, 'details-all', { expand, count: all.length })) return;
+  for (const d of all) d.open = expand;
+
+  btn.setAttribute('aria-expanded', String(expand));
+  const label = expand ? btn.dataset.labelCollapse : btn.dataset.labelExpand;
+  if (label) btn.textContent = label;
+}
+
 function onClick(e) {
   const copy = e.target.closest?.('.inst-copy');
   if (copy) { onCopy(copy); return; }
+
+  const detailsAll = e.target.closest?.('[data-details-all]');
+  if (detailsAll) { onDetailsAll(detailsAll); return; }
 
   const tagX = e.target.closest?.('.inst-tag-remove');
   if (tagX) { onTagRemove(tagX); return; }

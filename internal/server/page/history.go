@@ -22,9 +22,10 @@ import (
 type HistTick struct {
 	// Tone is the kit's tone: empty means an hour without remarks.
 	Tone string
-	// Gap marks an hour with no checks at all. That is not "fine" and not
-	// "broken" — nobody looked. Colour cannot say that, so the tick is drawn
-	// as an outline instead of a fill.
+	// Gap marks an hour that had no checks although this monitor was already
+	// being checked. Nobody looked — which is a fact about US, not about the
+	// target, so the tick keeps its place and carries no mark. The alarm, when
+	// it is due, is the badge on the row: "no check since 07:14".
 	Gap   bool
 	Title string
 }
@@ -45,15 +46,27 @@ func buildHistory(rollups []storage.Rollup, now time.Time) []HistTick {
 
 	end := now.UTC().Truncate(time.Hour)
 	out := make([]HistTick, 0, historyHours)
+	// Hours BEFORE the first check ever are not drawn at all.
+	//
+	// A monitor added an hour ago used to render twenty-three empty bricks —
+	// a wall of "no data" that looks like a wall of trouble, and reads as the
+	// same thing as a monitor that stopped being checked this morning. They
+	// are not the same thing: one has no history, the other lost it. A short
+	// strip says "this is all we have" without a single mark of alarm.
+	started := false
 	for i := historyHours - 1; i >= 0; i-- {
 		hour := end.Add(-time.Duration(i) * time.Hour)
 		label := hour.Local().Format("15:04")
 
 		r, ok := byHour[hour.Unix()]
 		if !ok || r.Total == 0 {
+			if !started {
+				continue
+			}
 			out = append(out, HistTick{Gap: true, Title: label + " — no checks"})
 			continue
 		}
+		started = true
 		tick := HistTick{Title: fmt.Sprintf("%s — %d checks", label, r.Total)}
 		if r.Failed > 0 {
 			tick.Tone = "error"

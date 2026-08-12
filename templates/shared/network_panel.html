@@ -29,5 +29,12 @@
             </div>
             <label class="inst-label inst-u-dim">Node ID</label>
             <input type="text" class="inst-input app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
+            {# The bar lives with the fields it saves: inside the panel it #}
+            {# is opaque against the panel's own surface, and it is the #}
+            {# bottom of that area rather than a strip sliding over it. #}
+            <div class="inst-form-actions">
+                <button type="submit" class="inst-btn inst-btn--primary" form="networkForm">Save peer sync</button>
+                <span id="networkMsg" class="inst-field-hint" role="status"></span>
+            </div>
         </div>
     </section>

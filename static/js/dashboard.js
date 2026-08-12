@@ -33,7 +33,6 @@
         document.querySelectorAll('.inst-history[data-monitor-id="' + monitorId + '"]').forEach(function (strip) {
             var last = strip.lastElementChild;
             if (!last) return;
-            last.classList.remove('beacon-tick--gap');
             last.setAttribute('data-tone', 'error');
         });
     }

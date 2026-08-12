@@ -6,5 +6,5 @@
 {# hundreds of ticks a green one stops being a signal by the tenth. #}
 <span class="inst-history" role="img" aria-label="{{ row.HistoryLabel }}"
       data-monitor-id="{{ row.Monitor.ID }}">
-    {% for tick in row.History %}<span class="inst-history-tick{% if tick.Gap %} beacon-tick--gap{% endif %}"{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
+    {% for tick in row.History %}<span class="inst-history-tick"{% if tick.Gap %} data-empty{% endif %}{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
 </span>

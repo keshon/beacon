@@ -14,6 +14,12 @@
         <div class="inst-menu" role="menu" aria-label="Monitor actions">
             <button class="inst-menu-item" type="button" role="menuitem" tabindex="0"
                     data-monitor-action="edit">Edit</button>
+            {# The row's own link goes to the monitor; going to the checked #}
+            {# site is a different destination and belongs here, named. #}
+            {% if row.Monitor.Type != 'tcp' %}
+            <a class="inst-menu-item" role="menuitem" tabindex="-1"
+               href="{{ row.Monitor.Target }}" target="_blank" rel="noopener">Open site</a>
+            {% endif %}
             <button class="inst-menu-item" type="button" role="menuitem" tabindex="-1"
                     data-monitor-action="toggle" data-enabled="{% if row.Enabled %}true{% else %}false{% endif %}">{% if row.Enabled %}Pause{% else %}Resume{% endif %}</button>
             <div class="inst-menu-sep" role="separator"></div>

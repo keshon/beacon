@@ -54,7 +54,7 @@
         <div class="inst-note" data-tone="neutral">Known: {{ ackNote }}</div>
         {% endif %}
         <div class="inst-history beacon-history--wide" role="img" aria-label="{{ historyLabel }}">
-            {% for tick in history %}<span class="inst-history-tick{% if tick.Gap %} beacon-tick--gap{% endif %}"{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
+            {% for tick in history %}<span class="inst-history-tick"{% if tick.Gap %} data-empty{% endif %}{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
         </div>
     </div>
 
@@ -105,7 +105,14 @@
             <div class="inst-panel">
                 <div class="inst-panel-header">
                     <span class="inst-panel-title">Last check</span>
-                    <span class="inst-panel-actions"><span class="inst-u-dim">{{ lastCheck }}</span></span>
+                    <span class="inst-panel-actions">
+                        <span class="inst-u-dim">{{ lastCheck }}</span>
+                        {# Four phases are four clicks to read the check, and #}
+                        {# four more to put it back. #}
+                        <button class="inst-btn inst-btn--sm" type="button" aria-expanded="false"
+                                data-details-all data-label-expand="Expand all"
+                                data-label-collapse="Collapse all">Expand all</button>
+                    </span>
                 </div>
                 <div class="inst-panel-body inst-panel-body--list">
                     {% for s in steps %}
@@ -165,13 +172,19 @@
         <aside class="inst-split-side inst-stack">
             <div class="inst-panel">
                 <div class="inst-panel-header"><span class="inst-panel-title">Availability</span></div>
-                <div class="inst-panel-body inst-stack inst-stack--tight">
+                {# Each window is ONE unit: the number and the sentence that #}
+                {# qualifies it. As siblings in a stack they were 12px from #}
+                {# their own row and 6px from the next one, so the caption #}
+                {# belonged, by eye, to the wrong number. #}
+                <div class="inst-panel-body inst-stack">
                     {% for w in windows %}
-                    <div class="inst-meter-row">
-                        <span>{{ w.Label }}</span>
-                        <span class="inst-meter-value">{{ w.Percent }}</span>
+                    <div>
+                        <div class="inst-meter-row">
+                            <span>{{ w.Label }}</span>
+                            <span class="inst-meter-value">{{ w.Percent }}</span>
+                        </div>
+                        <p class="inst-field-hint">{{ w.Downtime }}</p>
                     </div>
-                    <p class="inst-field-hint">{{ w.Downtime }}</p>
                     {% endfor %}
                 </div>
             </div>

@@ -13,9 +13,9 @@
         <div class="inst-page-actions">
             {# Each window is its own address, so a period survives a reload and #}
             {# can be handed to someone else. #}
-            <nav class="inst-cluster inst-cluster--tight" aria-label="History window">
+            <nav class="inst-segmented" aria-label="History window">
                 {% for w in windows %}
-                <a class="inst-btn inst-btn--sm{% if w.Key == window %} inst-btn--primary{% endif %}" href="?window={{ w.Key }}">{{ w.Label }}</a>
+                <a href="?window={{ w.Key }}"{% if w.Key == window %} aria-current="page"{% endif %}>{{ w.Label }}</a>
                 {% endfor %}
             </nav>
             <button type="button" class="inst-btn inst-btn--primary" data-monitor-add>Add monitor</button>

@@ -49,6 +49,9 @@ func buildWindowHistory(rollups []storage.Rollup, w histWindow, now time.Time) [
 
 	end := now.UTC().Truncate(time.Hour).Add(time.Hour)
 	out := make([]HistTick, 0, tickCount)
+	// Same rule as the hourly strip: nothing is drawn for the time before the
+	// first check ever, and a gap AFTER it is painted. See buildHistory.
+	started := false
 	for i := tickCount - 1; i >= 0; i-- {
 		to := end.Add(-time.Duration(i) * w.PerTick)
 		from := to.Add(-w.PerTick)
@@ -63,9 +66,13 @@ func buildWindowHistory(rollups []storage.Rollup, w histWindow, now time.Time) [
 
 		label := tickLabel(from, w)
 		if total == 0 {
+			if !started {
+				continue
+			}
 			out = append(out, HistTick{Gap: true, Title: label + " — no checks"})
 			continue
 		}
+		started = true
 		tick := HistTick{Title: label + " — " + strconv.Itoa(total) + " checks"}
 		if failed > 0 {
 			tick.Tone = "error"

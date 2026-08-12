@@ -111,10 +111,6 @@
   font-size: var(--text-xs);
 }
 
-.beacon-tick--gap {
-  background: none;
-  box-shadow: inset 0 0 0 var(--hairline) var(--border);
-}
 
 /* Сетка карточек: минимум по ширине карточки монитора, дальше сколько
    поместится. Контейнерных запросов тут не нужно — сетка интринсик. */

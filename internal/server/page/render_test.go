@@ -113,8 +113,14 @@ func TestMonitorScreenRendersBothBranches(t *testing.T) {
 		{Time: "14:34:07", Latency: "38ms", OK: true},
 	}
 	body := render(t, "dashboard/monitor/detail.html", full)
+	// An hour nobody checked keeps its place and carries no mark. It used to
+	// be outlined, and an outline reads as a change of TEXTURE — the eye takes
+	// it for a change of rhythm rather than of meaning, and the strip floats.
+	if !strings.Contains(body, "data-empty") {
+		t.Fatal("an hour without checks lost its place in the strip")
+	}
 	for _, want := range []string{"shop.example.com", "connection timeout", "97.22%",
-		"2 of 72 checks failed", "3 incidents this week", "beacon-tick--gap", "10000ms",
+		"2 of 72 checks failed", "3 incidents this week", "10000ms",
 		"inst-step", "name resolved", "10.0s · timeout", "14:35:07"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("monitor screen is missing %q", want)

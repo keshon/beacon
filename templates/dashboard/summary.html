@@ -12,9 +12,9 @@
             <p class="inst-page-desc">What to fix first. Ranked, not averaged.</p>
         </div>
         <div class="inst-page-actions">
-            <nav class="inst-cluster inst-cluster--tight" aria-label="Period">
+            <nav class="inst-segmented" aria-label="Period">
                 {% for w in windows %}
-                <a class="inst-btn inst-btn--sm{% if w.Key == window %} inst-btn--primary{% endif %}" href="?window={{ w.Key }}">{{ w.Label }}</a>
+                <a href="?window={{ w.Key }}"{% if w.Key == window %} aria-current="page"{% endif %}>{{ w.Label }}</a>
                 {% endfor %}
             </nav>
         </div>
@@ -65,7 +65,7 @@
                         <td class="inst-num">{{ m.Incidents }}</td>
                         <td>
                             <span class="inst-history" role="img" aria-label="{{ m.Failed }} failed checks over the period">
-                                {% for tick in m.History %}<span class="inst-history-tick{% if tick.Gap %} beacon-tick--gap{% endif %}"{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
+                                {% for tick in m.History %}<span class="inst-history-tick"{% if tick.Gap %} data-empty{% endif %}{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
                             </span>
                         </td>
                         <td class="inst-num">{{ m.Percent }}</td>
