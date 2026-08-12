@@ -121,6 +121,7 @@ type Store struct {
 
 	incidents  *datastore.Collection[*Incident]
 	deliveries *datastore.Collection[*Delivery]
+	mutes      *datastore.Collection[*Mute]
 
 	checksByMonitor    *datastore.Index[*CheckRecord]
 	checksByTime       *datastore.SortedIndex[*CheckRecord]
@@ -149,6 +150,7 @@ func New(dataDir string) (*Store, error) {
 	s.rollups = datastore.Register[*Rollup](s.db, "rollups")
 	s.incidents = datastore.Register[*Incident](s.db, "incidents")
 	s.deliveries = datastore.Register[*Delivery](s.db, "deliveries")
+	s.mutes = datastore.Register[*Mute](s.db, "mutes")
 
 	// Collections and indexes must be declared before Open: replaying the log
 	// rebuilds the indexes, so it has to know they exist.

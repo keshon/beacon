@@ -38,7 +38,17 @@ type Incident struct {
 	Reason string `json:"reason,omitempty"`
 	// Checks counts the failed probes inside the incident.
 	Checks int `json:"checks"`
+
+	// Acknowledgement. It changes nothing about the outage and everything
+	// about the next person to look: a red row with "known, nightly backup"
+	// on it is a decided row, not an open question.
+	AckBy   string    `json:"ack_by,omitempty"`
+	AckNote string    `json:"ack_note,omitempty"`
+	AckAt   time.Time `json:"ack_at,omitempty"`
 }
+
+// Acknowledged reports whether someone has claimed this incident.
+func (i *Incident) Acknowledged() bool { return !i.AckAt.IsZero() }
 
 func (i *Incident) Key() string {
 	return i.MonitorID + "/" + strconv.FormatInt(i.StartedAt.UnixNano(), 10)

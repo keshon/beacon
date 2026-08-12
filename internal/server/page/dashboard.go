@@ -42,6 +42,9 @@ type dashboardRow struct {
 
 	History      []HistTick
 	HistoryLabel string
+	// MutedUntil is set while alerts are silenced. Empty means the monitor
+	// speaks normally.
+	MutedUntil string
 	// Repeats is how many incidents this monitor had in the last week. One
 	// outage is an event; the third in a week is a cause, and the row is the
 	// only place a person will notice the difference.
@@ -188,6 +191,18 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	sortRowsByAttention(rows)
 
 	outage := buildOutage(h.Store, rows, now)
+
+	// A muted monitor still shows its state; what it stops doing is shouting.
+	// Hiding the mute would make a silent alert look like a working one.
+	mutes, _ := h.Store.GetMutes()
+	for i := range rows {
+		if rows[i].Monitor == nil {
+			continue
+		}
+		if m := mutes[rows[i].Monitor.ID]; m != nil {
+			rows[i].MutedUntil = m.Until.Local().Format("15:04")
+		}
+	}
 
 	names := make(map[string]string, len(rows))
 	for _, r := range rows {

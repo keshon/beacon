@@ -154,10 +154,23 @@ func TestDashboardOutageBlock(t *testing.T) {
 	body := render(t, "dashboard/dashboard.html", ctx)
 	for _, want := range []string{
 		"inst-failure", "are not responding", "connection timeout",
-		"4 checks in a row failed", "it repeats", "/monitors/m1", "All incidents",
+		"4 checks in a row failed", "it repeats", "/monitors/m1",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("outage block is missing %q", want)
+		}
+	}
+	// The block exists so that something can be DONE about the outage from
+	// where it is read. It used to offer two links to other screens, which is
+	// the friction it was supposed to remove; the assertion is here so that a
+	// tidy-up does not quietly turn the actions back into navigation.
+	for _, want := range []string{
+		`data-action="check" data-monitor="m1"`,
+		`data-action="mute" data-minutes="60" data-monitor="m1"`,
+		`data-action="ack" data-monitor="m1"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("outage block is missing the action %q", want)
 		}
 	}
 

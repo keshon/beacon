@@ -113,6 +113,24 @@ func main() {
 			}
 		}
 
+		// A mute silences the ALERTS and keeps the CHECKS: the record of what
+		// happened during planned work is exactly what gets asked about
+		// afterwards, and disabling the monitor would throw it away.
+		//
+		// The suppression is recorded like any other, so the notifications
+		// screen can answer "why was I not told" with "you muted it until
+		// 03:00" instead of silence.
+		if mute, err := st.GetMute(m.ID); err == nil && mute.Active(time.Now()) {
+			_ = st.RecordDelivery(storage.Delivery{
+				At: time.Now(), MonitorID: m.ID, Channel: "all", Label: "muted",
+				Kind:   status,
+				Status: "skipped",
+				Reason: "muted until " + mute.Until.Local().Format("15:04") +
+					map[bool]string{true: "", false: " — " + mute.Note}[mute.Note == ""],
+			})
+			return
+		}
+
 		cfg := live.Load()
 		receivers := notify.BuildReceivers(cfg, m)
 		if len(receivers) == 0 {

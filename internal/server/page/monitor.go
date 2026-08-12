@@ -107,6 +107,28 @@ func (h *Monitor) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	certText, certTone := certLine(state, now)
+
+	mute, _ := h.Store.GetMute(id)
+	mutedUntil := ""
+	if mute.Active(now) {
+		mutedUntil = mute.Until.Local().Format("15:04")
+	}
+
+	// An acknowledgement only exists while an incident does: the note is about
+	// this outage, not about the monitor.
+	ackNote, ongoing := "", false
+	for _, inc := range incidents {
+		if inc.Ongoing() {
+			ongoing = true
+			if inc.Acknowledged() {
+				ackNote = inc.AckNote
+				if ackNote == "" {
+					ackNote = "acknowledged"
+				}
+			}
+			break
+		}
+	}
 	steps := buildSteps(state, mon.Target, now)
 
 	status := monitor.StatusUnknown
@@ -131,6 +153,9 @@ func (h *Monitor) Serve(w http.ResponseWriter, r *http.Request) {
 		"certText":     certText,
 		"certTone":     certTone,
 		"steps":        steps,
+		"mutedUntil":   mutedUntil,
+		"ongoing":      ongoing,
+		"ackNote":      ackNote,
 		"lastCheck":    lastCheckLabel(state),
 	})
 }

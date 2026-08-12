@@ -33,9 +33,17 @@
             {% for line in outage.Tried %}<li>{{ line }}</li>{% endfor %}
         </ul>
         {% endif %}
+        {# Actions first, navigation after. The block is read by someone who #}
+        {# wants to DO something about it; sending them to another screen to #}
+        {# find the button is the friction this whole screen exists to remove. #}
         <div class="inst-failure-actions">
-            <a class="inst-btn inst-btn--sm inst-btn--primary" href="/monitors/{{ outage.First }}">Open monitor</a>
-            <a class="inst-btn inst-btn--sm" href="/incidents">All incidents</a>
+            <button class="inst-btn inst-btn--sm inst-btn--primary" type="button"
+                    data-action="check" data-monitor="{{ outage.First }}">Check now</button>
+            <button class="inst-btn inst-btn--sm" type="button"
+                    data-action="mute" data-minutes="60" data-monitor="{{ outage.First }}">Mute for an hour</button>
+            <button class="inst-btn inst-btn--sm" type="button"
+                    data-action="ack" data-monitor="{{ outage.First }}">It is known</button>
+            <a class="inst-btn inst-btn--sm inst-btn--ghost" href="/monitors/{{ outage.First }}">Open monitor</a>
         </div>
     </div>
     {% endif %}
@@ -91,6 +99,7 @@
 </dialog>
 {% endblock %}
 {% block scripts %}
+<script src="/static/js/actions.js"></script>
 <script src="/static/js/notify.js"></script>
 <script src="/static/js/monitors.js"></script>
 <script src="/static/js/dashboard.js"></script>

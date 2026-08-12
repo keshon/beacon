@@ -21,6 +21,19 @@
         </div>
         <div class="inst-page-actions">
             <span class="beacon-detail-status">{% include "./shared/status.html" with status=status %}</span>
+            <button class="inst-btn inst-btn--sm" type="button"
+                    data-action="check" data-monitor="{{ mon.ID }}">Check now</button>
+            {% if mutedUntil %}
+            <button class="inst-btn inst-btn--sm" type="button"
+                    data-action="unmute" data-monitor="{{ mon.ID }}">Unmute (till {{ mutedUntil }})</button>
+            {% else %}
+            <button class="inst-btn inst-btn--sm" type="button"
+                    data-action="mute" data-minutes="60" data-monitor="{{ mon.ID }}">Mute for an hour</button>
+            {% endif %}
+            {% if ongoing and not ackNote %}
+            <button class="inst-btn inst-btn--sm" type="button"
+                    data-action="ack" data-monitor="{{ mon.ID }}">It is known</button>
+            {% endif %}
         </div>
     </div>
 
@@ -35,6 +48,11 @@
             </span>
             {% endif %}
         </div>
+        {% if ackNote %}
+        {# What somebody already worked out, said before the reader starts #}
+        {# working it out again. #}
+        <div class="inst-note" data-tone="neutral">Known: {{ ackNote }}</div>
+        {% endif %}
         <div class="inst-history beacon-history--wide" role="img" aria-label="{{ historyLabel }}">
             {% for tick in history %}<span class="inst-history-tick{% if tick.Gap %} beacon-tick--gap{% endif %}"{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
         </div>
@@ -177,4 +195,8 @@
     </div>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/actions.js"></script>
 {% endblock %}

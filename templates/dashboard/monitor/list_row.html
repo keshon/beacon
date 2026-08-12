@@ -13,6 +13,10 @@
             {# Three outages in a week is a pattern, and the row is the only #}
             {# place a person will see it before opening anything. #}
             {% if row.Repeats > 2 %}<span class="inst-badge" data-tone="warn">{{ row.Repeats }} this week</span>{% endif %}
+            {# A muted monitor still checks and still shows its state; what it #}
+            {# stopped doing is telling anyone. Saying so is the difference #}
+            {# between a quiet monitor and a silenced one. #}
+            {% if row.MutedUntil %}<span class="inst-badge">muted till {{ row.MutedUntil }}</span>{% endif %}
         </span>
         <span class="inst-task-sub inst-u-truncate">
             {% include "./shared/target_display.html" with target=row.Monitor.Target type=row.Monitor.Type %}

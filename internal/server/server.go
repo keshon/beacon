@@ -106,6 +106,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("DELETE /api/monitors/{id}", monAPI.Delete)
 	mux.HandleFunc("PATCH /api/monitors/{id}", monAPI.Update)
 	mux.HandleFunc("GET /api/monitors/{id}/uptime", monAPI.Uptime)
+
+	// The reverse channel: what a person can say back to the machine.
+	actionsAPI := &api.Actions{Store: d.Store, Scheduler: d.Scheduler}
+	mux.HandleFunc("POST /api/monitors/{id}/check", actionsAPI.CheckNow)
+	mux.HandleFunc("POST /api/monitors/{id}/mute", actionsAPI.Mute)
+	mux.HandleFunc("POST /api/monitors/{id}/ack", actionsAPI.Acknowledge)
 	mux.HandleFunc("GET /api/uptime", monAPI.UptimeBatch)
 
 	cfgAPI := &api.Config{Store: d.Store, Cfg: d.Cfg, Cluster: d.Cluster}
