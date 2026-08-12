@@ -168,3 +168,47 @@ func TestDashboardOutageBlock(t *testing.T) {
 		t.Fatal("the outage block shows up when nothing is down")
 	}
 }
+
+// Two horizons meet on the summary and neither branch is guaranteed to be on
+// screen when someone opens it, so both are rendered here.
+func TestSummaryScreenRendersBothBranches(t *testing.T) {
+	base := pongo2.Context{
+		"version": "test", "nav_active": "summary",
+		"window": "month", "windowLabel": "30 days",
+		"windows":   summaryWindows,
+		"clean":     13,
+		"tracked":   19,
+		"incidents": 31,
+		"median":    "6m",
+		"certs": []certRow{
+			{ID: "m1", Name: "shop", Left: "9d", Until: "20 Aug 2026", Tone: "warn"},
+			{ID: "m2", Name: "api", Left: "34d", Until: "14 Sep 2026"},
+		},
+	}
+
+	full := base
+	full["worst"] = []worstRow{
+		{ID: "m1", Name: "shop", Failed: 9, Total: 1200, Percent: "99.25%", Incidents: 3,
+			History: []HistTick{{Tone: "error", Title: "x"}, {Gap: true, Title: "y"}}},
+	}
+	body := render(t, "dashboard/summary.html", full)
+	for _, want := range []string{
+		"Where the failures were", "shop", "9 of 1200", "99.25%",
+		"13", "of 19", "Median incident", "6m", "Certificates", "20 Aug 2026",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("summary is missing %q", want)
+		}
+	}
+
+	quiet := base
+	quiet["worst"] = []worstRow{}
+	quiet["certs"] = []certRow{}
+	empty := render(t, "dashboard/summary.html", quiet)
+	if !strings.Contains(empty, "Nothing failed in this period") {
+		t.Fatal("a clean period lost its empty state")
+	}
+	if strings.Contains(empty, "Certificates") {
+		t.Fatal("the certificates panel shows with nothing to show")
+	}
+}

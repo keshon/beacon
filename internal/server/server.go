@@ -80,6 +80,9 @@ func (s *Server) Routes() http.Handler {
 	incidentsPage := &page.Incidents{Store: d.Store, Cfg: d.Cfg, TplDir: d.TplDir}
 	mux.HandleFunc("GET /incidents", incidentsPage.Serve)
 
+	summaryPage := &page.Summary{Store: d.Store, Cfg: d.Cfg, TplDir: d.TplDir}
+	mux.HandleFunc("GET /summary", summaryPage.Serve)
+
 	settingsPage := &page.Settings{TplDir: d.TplDir}
 	mux.HandleFunc("GET /settings", settingsPage.Serve)
 

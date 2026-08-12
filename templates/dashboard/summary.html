@@ -1,0 +1,115 @@
+{% extends "../base.html" %}
+{% block title %}Summary – Beacon{% endblock %}
+
+{% block content %}
+<div class="inst-container inst-container--full beacon-page">
+
+    <div class="inst-page-header">
+        <div class="inst-page-header-main">
+            <h1 class="inst-page-title">Summary</h1>
+            {# No fleet-wide availability figure, on purpose: averaging a CDN #}
+            {# with a staging box is true of nothing and reassuring about all. #}
+            <p class="inst-page-desc">What to fix first. Ranked, not averaged.</p>
+        </div>
+        <div class="inst-page-actions">
+            <nav class="inst-cluster inst-cluster--tight" aria-label="Period">
+                {% for w in windows %}
+                <a class="inst-btn inst-btn--sm{% if w.Key == window %} inst-btn--primary{% endif %}" href="?window={{ w.Key }}">{{ w.Label }}</a>
+                {% endfor %}
+            </nav>
+        </div>
+    </div>
+
+    <div class="inst-metric-row">
+        <div class="inst-metric">
+            <div class="inst-metric-label">Monitors without a single failure</div>
+            {# The unit slot is for what attaches to the number — %, ms — and #}
+            {# "of 19" is a sentence, not a unit. It goes on its own line. #}
+            <div class="inst-metric-value">{{ clean }}</div>
+            <div class="inst-metric-delta">of {{ tracked }} checked</div>
+        </div>
+        <div class="inst-metric">
+            <div class="inst-metric-label">Recorded incidents</div>
+            <div class="inst-metric-value">{{ incidents }}</div>
+        </div>
+        <div class="inst-metric">
+            <div class="inst-metric-label">Median incident</div>
+            <div class="inst-metric-value">{{ median }}</div>
+        </div>
+    </div>
+
+    <div class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">Where the failures were</span>
+            <span class="inst-panel-actions">
+                <span class="inst-u-dim">{{ windowLabel }} · only monitors that had any</span>
+            </span>
+        </div>
+        {% if worst %}
+        <div class="inst-panel-body inst-panel-body--flush">
+            <table class="inst-table">
+                <thead>
+                    <tr>
+                        <th>Monitor</th>
+                        <th class="inst-num">Failed</th>
+                        <th class="inst-num">Incidents</th>
+                        <th>Over the period</th>
+                        <th class="inst-num">Availability</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in worst %}
+                    <tr>
+                        <td><a href="/monitors/{{ m.ID }}">{{ m.Name }}</a></td>
+                        <td class="inst-num">{{ m.Failed }} of {{ m.Total }}</td>
+                        <td class="inst-num">{{ m.Incidents }}</td>
+                        <td>
+                            <span class="inst-history" role="img" aria-label="{{ m.Failed }} failed checks over the period">
+                                {% for tick in m.History %}<span class="inst-history-tick{% if tick.Gap %} beacon-tick--gap{% endif %}"{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
+                            </span>
+                        </td>
+                        <td class="inst-num">{{ m.Percent }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="inst-panel-body">
+            <div class="inst-empty">
+                <div class="inst-empty-title">Nothing failed in this period</div>
+                <div class="inst-empty-desc">All {{ tracked }} monitors that were checked came back clean.</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if certs %}
+    <div class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">Certificates</span>
+            <span class="inst-panel-actions"><span class="inst-u-dim">nearest deadline first</span></span>
+        </div>
+        <div class="inst-panel-body inst-panel-body--flush">
+            <table class="inst-table">
+                <thead>
+                    <tr><th>Monitor</th><th class="inst-num">Left</th><th>Valid until</th></tr>
+                </thead>
+                <tbody>
+                    {% for c in certs %}
+                    <tr>
+                        <td><a href="/monitors/{{ c.ID }}">{{ c.Name }}</a></td>
+                        <td class="inst-num">
+                            {% if c.Tone %}<span class="inst-badge" data-tone="{{ c.Tone }}">{{ c.Left }}</span>{% else %}{{ c.Left }}{% endif %}
+                        </td>
+                        <td class="inst-u-dim">{{ c.Until }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
