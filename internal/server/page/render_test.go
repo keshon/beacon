@@ -259,3 +259,47 @@ func TestPeersScreenRendersEveryState(t *testing.T) {
 		}
 	}
 }
+
+// The delivery trail is read after a bad night, and the suppression rows are
+// the reason it exists. Both faces of the screen are rendered here.
+func TestNotificationsScreenRendersBothBranches(t *testing.T) {
+	blank := render(t, "dashboard/notifications.html", pongo2.Context{
+		"version": "test", "nav_active": "notifications",
+		"anyConfig": false, "channels": []channelCard{}, "trail": []deliveryRow{},
+	})
+	if !strings.Contains(blank, "No channel is set up") {
+		t.Fatal("an install with no channels lost its explanation")
+	}
+	if !strings.Contains(blank, "nobody is being told") {
+		t.Fatal("the blank state stopped saying what it costs")
+	}
+
+	full := render(t, "dashboard/notifications.html", pongo2.Context{
+		"version": "test", "nav_active": "notifications", "anyConfig": true,
+		"channels": []channelCard{
+			{Name: "telegram", Configured: true, Targets: 2, Sent: 14, Skipped: 3,
+				LastAt: "11 Aug, 14:35", Tone: "ok", Verdict: "delivering"},
+			{Name: "email", Configured: true, Targets: 1, Failed: 4,
+				LastAt: "11 Aug, 14:35", LastError: "550 mailbox unavailable",
+				Tone: "error", Verdict: "every attempt failed"},
+			{Name: "discord", Verdict: "not configured"},
+			{Name: "webhook", Configured: true, Targets: 1, Verdict: "configured, never used"},
+		},
+		"trail": []deliveryRow{
+			{At: "11 Aug, 14:35:07", Monitor: "shop", Channel: "email", Label: "ops@example.com",
+				Kind: "down", Status: "failed", Reason: "550 mailbox unavailable", Tone: "error"},
+			{At: "11 Aug, 14:35:06", Monitor: "shop", Channel: "telegram", Label: "chat 42",
+				Kind: "down", Status: "skipped", Reason: "policy alerts once and it already did", Tone: "warn"},
+			{At: "11 Aug, 14:31:02", Monitor: "api", Channel: "telegram", Label: "chat 42",
+				Kind: "recovered", Status: "sent"},
+		},
+	})
+	for _, want := range []string{
+		"Delivery trail", "550 mailbox unavailable", "policy alerts once and it already did",
+		"ops@example.com", "chat 42", "configured, never used", "Suppressed",
+	} {
+		if !strings.Contains(full, want) {
+			t.Fatalf("notifications screen is missing %q", want)
+		}
+	}
+}

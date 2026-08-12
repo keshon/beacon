@@ -19,8 +19,12 @@ const (
 type ResolvedReceiver struct {
 	Notifier Notifier
 	Policy   ResolvedPolicy
-	Key      string
-	Channel  string
+	// Key identifies a receiver for deduplication. It is NOT display-safe:
+	// see label.go.
+	Key string
+	// Label is the display-safe name — the one that may be stored and shown.
+	Label   string
+	Channel string
 }
 
 // BuildReceivers returns notifiers and per-receiver policies for a monitor.
@@ -33,6 +37,7 @@ func BuildReceivers(cfg *config.Config, m *monitor.Monitor) []ResolvedReceiver {
 			Notifier: NewTelegram(t.Token, t.ChatID),
 			Policy:   pol,
 			Key:      fmt.Sprintf("telegram:%s", t.ChatID),
+			Label:    ReceiverLabel(ChannelTelegram, t.ChatID, "", ""),
 			Channel:  ChannelTelegram,
 		})
 	}
@@ -42,6 +47,7 @@ func BuildReceivers(cfg *config.Config, m *monitor.Monitor) []ResolvedReceiver {
 			Notifier: NewDiscord(d.Webhook),
 			Policy:   pol,
 			Key:      discordReceiverKey(d.Webhook),
+			Label:    ReceiverLabel(ChannelDiscord, "", "", d.Webhook),
 			Channel:  ChannelDiscord,
 		})
 	}
@@ -52,6 +58,7 @@ func BuildReceivers(cfg *config.Config, m *monitor.Monitor) []ResolvedReceiver {
 			Notifier: NewEmail(smtp, e.To),
 			Policy:   pol,
 			Key:      fmt.Sprintf("email:%s", strings.ToLower(strings.TrimSpace(e.To))),
+			Label:    ReceiverLabel(ChannelEmail, "", e.To, ""),
 			Channel:  ChannelEmail,
 		})
 	}
@@ -61,6 +68,7 @@ func BuildReceivers(cfg *config.Config, m *monitor.Monitor) []ResolvedReceiver {
 			Notifier: NewWebhook(w.URL, w.Headers),
 			Policy:   pol,
 			Key:      webhookReceiverKey(w.URL),
+			Label:    ReceiverLabel(ChannelWebhook, "", "", w.URL),
 			Channel:  ChannelWebhook,
 		})
 	}

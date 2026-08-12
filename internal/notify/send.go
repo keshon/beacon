@@ -50,20 +50,63 @@ func AlertText(a Alert) string {
 // recipients does not hit provider burst rate limits at once.
 const staggerDelay = 250 * time.Millisecond
 
-// SendResolved delivers an alert through resolved receivers with stagger and per-receiver dedup.
-func SendResolved(monitorID, status string, isRepeat bool, receivers []ResolvedReceiver, base Alert, tplCtx TemplateContext, emailGuard *EmailSendGuard, dedup *AlertDedup, dedupWindow time.Duration, logf func(string, ...any)) {
+// Delivery outcomes, as reported to the recorder.
+const (
+	DeliverySent    = "sent"
+	DeliveryFailed  = "failed"
+	DeliverySkipped = "skipped"
+)
+
+// DeliveryEvent is one decision about one receiver.
+//
+// Every decision is reported, not just the sends — and the skips are the point.
+// After an outage that nobody heard about, the question is "why was I not
+// told", and silence is not an answer. "Suppressed: the policy sends once and
+// it already had" is.
+//
+// Label is the display-safe name; the internal Key never travels here.
+type DeliveryEvent struct {
+	MonitorID string
+	Channel   string
+	Label     string
+	// Kind is "down" or "recovered".
+	Kind   string
+	Status string
+	Reason string
+}
+
+// SendResolved delivers an alert through resolved receivers with stagger and
+// per-receiver dedup, reporting every decision to record.
+func SendResolved(monitorID, status string, isRepeat bool, receivers []ResolvedReceiver, base Alert, tplCtx TemplateContext, emailGuard *EmailSendGuard, dedup *AlertDedup, dedupWindow time.Duration, logf func(string, ...any), record func(DeliveryEvent)) {
+	kind := "down"
+	if status == "recovered" {
+		kind = "recovered"
+	}
+	report := func(r ResolvedReceiver, outcome, reason string) {
+		if record == nil {
+			return
+		}
+		record(DeliveryEvent{
+			MonitorID: monitorID, Channel: r.Channel, Label: r.Label,
+			Kind: kind, Status: outcome, Reason: reason,
+		})
+	}
+
 	for i, r := range receivers {
 		if r.Channel == ChannelEmail && emailGuard != nil && !emailGuard.Allow(monitorID, r.Key) {
 			if logf != nil {
 				logf("email cooldown skip [%s]", r.Key)
 			}
+			report(r, DeliverySkipped, "email cooldown is still running")
 			continue
 		}
 		if status == "down" && !ShouldSendDown(r.Policy, isRepeat, r.Channel) {
+			report(r, DeliverySkipped, "policy alerts once and it already did")
 			continue
 		}
 		if dedup != nil && ((status == "down" && isRepeat) || status == "recovered") {
 			if !dedup.Allow(monitorID, status, r.Key, dedupWindow) {
+				report(r, DeliverySkipped, "the same alert went out moments ago")
 				continue
 			}
 		}
@@ -73,8 +116,10 @@ func SendResolved(monitorID, status string, isRepeat bool, receivers []ResolvedR
 			if logf != nil {
 				logf("notify error [%s]: %v", r.Key, err)
 			}
+			report(r, DeliveryFailed, err.Error())
 			continue
 		}
+		report(r, DeliverySent, "")
 		if r.Channel == ChannelEmail && emailGuard != nil {
 			emailGuard.RecordSuccess(monitorID, r.Key)
 		}

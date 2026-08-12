@@ -119,13 +119,15 @@ type Store struct {
 	marks    *datastore.Collection[*markRec]
 	rollups  *datastore.Collection[*Rollup]
 
-	incidents *datastore.Collection[*Incident]
+	incidents  *datastore.Collection[*Incident]
+	deliveries *datastore.Collection[*Delivery]
 
 	checksByMonitor    *datastore.Index[*CheckRecord]
 	checksByTime       *datastore.SortedIndex[*CheckRecord]
 	rollupsByHour      *datastore.SortedIndex[*Rollup]
 	incidentsByMonitor *datastore.Index[*Incident]
 	incidentsByStart   *datastore.SortedIndex[*Incident]
+	deliveriesByTime   *datastore.SortedIndex[*Delivery]
 
 	dataDir string
 }
@@ -146,6 +148,7 @@ func New(dataDir string) (*Store, error) {
 	s.marks = datastore.Register[*markRec](s.db, "marks")
 	s.rollups = datastore.Register[*Rollup](s.db, "rollups")
 	s.incidents = datastore.Register[*Incident](s.db, "incidents")
+	s.deliveries = datastore.Register[*Delivery](s.db, "deliveries")
 
 	// Collections and indexes must be declared before Open: replaying the log
 	// rebuilds the indexes, so it has to know they exist.
@@ -159,6 +162,8 @@ func New(dataDir string) (*Store, error) {
 		func(i *Incident) []string { return []string{i.MonitorID} })
 	s.incidentsByStart = datastore.AddSorted(s.incidents, "start",
 		func(i *Incident) int64 { return i.StartedAt.UnixNano() })
+	s.deliveriesByTime = datastore.AddSorted(s.deliveries, "at",
+		func(d *Delivery) int64 { return d.At.UnixNano() })
 
 	if err := s.db.Open(); err != nil {
 		return nil, fmt.Errorf("open store: %w", err)

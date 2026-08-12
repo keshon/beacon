@@ -136,9 +136,26 @@ func main() {
 			base.FailCount = state.FailCount
 		}
 		job := func() {
-			notify.SendResolved(m.ID, status, isRepeat, receivers, base, tplCtx, emailGuard, alertDedup, alertDedupWindow, func(format string, args ...any) {
-				log.Printf(format, args...)
-			})
+			notify.SendResolved(m.ID, status, isRepeat, receivers, base, tplCtx, emailGuard, alertDedup, alertDedupWindow,
+				func(format string, args ...any) {
+					log.Printf(format, args...)
+				},
+				// Every decision goes to the store, sends and suppressions
+				// alike: the screen exists to answer "was I told, and if not,
+				// why not".
+				func(ev notify.DeliveryEvent) {
+					if err := st.RecordDelivery(storage.Delivery{
+						At:        time.Now(),
+						MonitorID: ev.MonitorID,
+						Channel:   ev.Channel,
+						Label:     ev.Label,
+						Kind:      ev.Kind,
+						Status:    ev.Status,
+						Reason:    ev.Reason,
+					}); err != nil {
+						log.Printf("record delivery: %v", err)
+					}
+				})
 		}
 		select {
 		case alertQueue <- job:

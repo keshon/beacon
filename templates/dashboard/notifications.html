@@ -1,0 +1,115 @@
+{% extends "../base.html" %}
+{% block title %}Notifications – Beacon{% endblock %}
+
+{% block content %}
+<div class="inst-container inst-container--full beacon-page">
+
+    <div class="inst-page-header">
+        <div class="inst-page-header-main">
+            <h1 class="inst-page-title">Notifications</h1>
+            {# The screen leads with what happened, not with what is set: the #}
+            {# question is "will I be told", and after a bad night "why was I #}
+            {# not". Configuration answers a question asked far less often. #}
+            <p class="inst-page-desc">Whether alerts actually went out — and when they did not, why.</p>
+        </div>
+        <div class="inst-page-actions">
+            <a class="inst-btn inst-btn--sm" href="/settings">Configure channels</a>
+        </div>
+    </div>
+
+    {% if not anyConfig %}
+    <div class="inst-panel">
+        <div class="inst-panel-body">
+            <div class="inst-empty">
+                <div class="inst-empty-title">No channel is set up</div>
+                <div class="inst-empty-desc">
+                    Beacon is checking, but nobody is being told. Add a Telegram chat,
+                    an address or a webhook and outages will reach you.
+                </div>
+                <a class="inst-btn inst-btn--sm inst-btn--primary" href="/settings">Set up a channel</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+
+    <div class="inst-grid inst-grid--tight">
+        {% for c in channels %}
+        <div class="inst-card">
+            <div class="inst-card-head">
+                <span class="inst-card-title">{{ c.Name }}</span>
+                {% if c.Tone %}
+                <span class="inst-badge" data-tone="{{ c.Tone }}"><span class="inst-dot"></span>{{ c.Verdict }}</span>
+                {% else %}
+                <span class="inst-u-dim">{{ c.Verdict }}</span>
+                {% endif %}
+            </div>
+            {% if c.Configured %}
+            <dl class="inst-kv">
+                <dt>Targets</dt><dd>{{ c.Targets }}</dd>
+                <dt>Sent</dt><dd>{{ c.Sent }}</dd>
+                {% if c.Failed %}<dt>Failed</dt><dd>{{ c.Failed }}</dd>{% endif %}
+                {# Suppressed is shown even at zero for a configured channel: #}
+                {# it is the number people go looking for after a silent night. #}
+                <dt>Suppressed</dt><dd>{{ c.Skipped }}</dd>
+                {% if c.LastAt %}<dt>Last</dt><dd>{{ c.LastAt }}</dd>{% endif %}
+            </dl>
+            {% if c.LastError %}
+            <p class="inst-field-error">{{ c.LastError }}</p>
+            {% endif %}
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">Delivery trail</span>
+            <span class="inst-panel-actions"><span class="inst-u-dim">last 7 days · newest first</span></span>
+        </div>
+        {% if trail %}
+        <div class="inst-panel-body inst-panel-body--flush">
+            <table class="inst-table">
+                <thead>
+                    <tr>
+                        <th>When</th>
+                        <th>Monitor</th>
+                        <th>Went to</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in trail %}
+                    <tr>
+                        <td class="inst-u-mono">{{ d.At }}</td>
+                        <td>{{ d.Monitor }} <span class="inst-u-dim">{{ d.Kind }}</span></td>
+                        <td>{{ d.Channel }} <span class="inst-u-dim">{{ d.Label }}</span></td>
+                        <td>
+                            {% if d.Tone %}
+                            <span class="inst-cluster inst-cluster--tight">
+                                <span class="inst-badge" data-tone="{{ d.Tone }}">{{ d.Status }}</span>
+                                <span class="inst-u-dim">{{ d.Reason }}</span>
+                            </span>
+                            {% else %}<span class="inst-u-dim">sent</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="inst-panel-body">
+            <div class="inst-empty">
+                <div class="inst-empty-title">Nothing has been sent yet</div>
+                <div class="inst-empty-desc">
+                    Alerts appear here the first time a monitor changes state.
+                    Quiet here means quiet out there.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% endif %}
+
+</div>
+{% endblock %}
