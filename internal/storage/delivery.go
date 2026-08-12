@@ -26,8 +26,15 @@ import (
 type Delivery struct {
 	At        time.Time `json:"at"`
 	MonitorID string    `json:"monitor_id"`
-	Channel   string    `json:"channel"`
-	Label     string    `json:"label"`
+	// MonitorName is stored WITH the record, not looked up when it is read.
+	//
+	// The trail outlives the monitor: delete one and its history turned into
+	// rows saying "(deleted monitor) down", which is the moment a journal
+	// stops being a journal — it forgets what it is about exactly when someone
+	// needs it. A name costs a few bytes; the lookup cost the meaning.
+	MonitorName string `json:"monitor_name,omitempty"`
+	Channel     string `json:"channel"`
+	Label       string `json:"label"`
 	// Kind is "down" or "recovered".
 	Kind string `json:"kind"`
 	// Status is sent · failed · skipped.

@@ -65,6 +65,37 @@ func (i *Incident) Duration(now time.Time) time.Duration {
 	return i.EndedAt.Sub(i.StartedAt)
 }
 
+// incidentsSinceKey marks when this store started recording incidents.
+//
+// The summary shows a count of incidents next to a count of failed checks, and
+// the two have different birthdays: failed checks came with the imported
+// history, incidents only exist from the day the store learned to keep them.
+// A column of zeros beside a column of failures reads as "nothing went wrong",
+// which is the opposite of the truth. The screen can only say so if it knows
+// the date — so the date is written down the first time the store opens.
+const incidentsSinceKey = "incidents-since"
+
+// IncidentsSince is when incident recording began, or the zero time if the
+// store has not recorded that (an installation older than the marker).
+func (s *Store) IncidentsSince() time.Time {
+	m, ok := s.marks.Get(incidentsSinceKey)
+	if !ok {
+		return time.Time{}
+	}
+	return m.At
+}
+
+// markIncidentsStart writes the marker once, on first open.
+func (s *Store) markIncidentsStart() error {
+	if _, done := s.marks.Get(incidentsSinceKey); done {
+		return nil
+	}
+	return s.marks.Put(&markRec{
+		Name: incidentsSinceKey, At: time.Now(),
+		Note: "incidents are recorded from this moment, not backfilled",
+	})
+}
+
 // incidentMaxAge is how long a closed incident is kept. They are small and
 // rare; the horizon is generous on purpose, because "has this happened before"
 // is a question people ask about last season, not last week.

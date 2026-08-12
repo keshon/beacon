@@ -28,12 +28,12 @@
         var savedD = null;
         try { savedD = localStorage.getItem('beaconDensity'); } catch (e) { }
         dens.querySelectorAll('[role="radio"]').forEach(function (b) {
-            var on = (b.getAttribute('data-density') || '') === (savedD || '');
+            var on = (b.getAttribute('data-value') || '') === (savedD || '');
             b.setAttribute('aria-checked', String(on));
             b.tabIndex = on ? 0 : -1;
         });
         dens.addEventListener('inst:select', function (e) {
-            var v = e.target.getAttribute('data-density') || '';
+            var v = e.target.getAttribute('data-value') || '';
             if (v) { root.setAttribute('data-density', v); } else { root.removeAttribute('data-density'); }
             try { localStorage.setItem('beaconDensity', v); } catch (e2) { }
         });

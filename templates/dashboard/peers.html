@@ -60,8 +60,19 @@
             <div class="inst-task"{% if p.Self %} aria-selected="true"{% endif %}>
                 <span class="inst-task-gutter"><span class="inst-dot" data-tone="{{ p.Tone }}"></span></span>
                 <span class="inst-task-main">
-                    <span class="inst-task-title inst-u-truncate">
-                        <span class="inst-u-mono">{{ p.NodeIDShort|default:p.NodeID }}</span>
+                    {# The id in full, with a way to take it. #}
+                    {# "c76941e0…" is not an identifier, it is a promise of one: #}
+                    {# the node id is what goes into a config file on another #}
+                    {# machine, and eight characters cannot be pasted anywhere. #}
+                    {# Truncation saved width on the one screen where the id is #}
+                    {# the subject. #}
+                    <span class="inst-task-title">
+                        <span class="inst-copyable inst-u-mono">{{ p.NodeID }}
+                            <button class="inst-copy" type="button" data-copy="{{ p.NodeID }}"
+                                    aria-label="Copy node ID" data-copied-label="Node ID copied">
+                                <svg class="inst-icon inst-icon--sm" aria-hidden="true"><use href="#i-copy"/></svg>
+                            </button>
+                        </span>
                         {% if p.Self %}<span class="inst-badge">this node</span>{% endif %}
                     </span>
                     <span class="inst-task-sub inst-u-truncate">

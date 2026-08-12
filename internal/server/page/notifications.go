@@ -106,7 +106,13 @@ func (h *Notifications) Serve(w http.ResponseWriter, r *http.Request) {
 	trail, _ := h.Store.GetDeliveries(from, now, 100)
 	rows := make([]deliveryRow, 0, len(trail))
 	for _, d := range trail {
+		// The live name first — a monitor may have been renamed since — then
+		// the one stored with the record, which is the only thing left once
+		// the monitor is gone.
 		name := names[d.MonitorID]
+		if name == "" {
+			name = d.MonitorName
+		}
 		if name == "" {
 			name = "(deleted monitor)"
 		}

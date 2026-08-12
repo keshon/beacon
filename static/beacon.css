@@ -9,19 +9,6 @@
 
 /* ── Шапка ────────────────────────────────────────────────────────────── */
 
-.beacon-brand {
-  display: flex; align-items: center; gap: var(--space-3);
-  /* Clears the 24px tap minimum at every density: at comfortable the line
-     box alone came to 23.8px, and a logo is a link like any other. */
-  min-block-size: var(--control-h-md);
-  /* The column's own heading, so it stands ABOVE the sections rather than in
-     a row with them. */
-  margin-block-end: var(--space-5);
-  padding-inline: var(--space-3);
-  color: var(--text-primary); text-decoration: none;
-  font-size: var(--text-lg); font-weight: var(--weight-medium);
-  letter-spacing: var(--tracking-tight);
-}
 
 /* Разделы — пункты навигации кита, поставленные в строку. Не вкладки:
    вкладка садится на собственную линейку полосы (margin-block-end: -1px), и
@@ -110,7 +97,6 @@
   color: var(--text-muted);
   font-size: var(--text-xs);
 }
-
 
 /* Сетка карточек: минимум по ширине карточки монитора, дальше сколько
    поместится. Контейнерных запросов тут не нужно — сетка интринсик. */

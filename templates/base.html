@@ -17,7 +17,7 @@
     {# stacking both into one bar made every new section fight for width. #}
     <div class="inst-shell">
         <aside class="inst-shell-aside">
-            <a class="beacon-brand" href="/dashboard">
+            <a class="inst-shell-brand" href="/dashboard">
                 <span class="inst-dot" data-tone="ok" aria-hidden="true"></span>Beacon
             </a>
             <nav class="inst-nav" aria-label="Sections">
@@ -72,9 +72,14 @@
                     <div class="beacon-view-row">
                         <span class="inst-nav-label">Density</span>
                         <div class="inst-segmented" role="radiogroup" aria-label="Density" id="beaconDensity">
-                            <button type="button" role="radio" data-density="compact" aria-checked="false" tabindex="-1">Compact</button>
-                            <button type="button" role="radio" data-density="" aria-checked="true" tabindex="0">Default</button>
-                            <button type="button" role="radio" data-density="comfortable" aria-checked="false" tabindex="-1">Comfortable</button>
+                            {# data-VALUE, не data-density. Атрибут плотности МАСШТАБИРУЮЩИЙ: #}
+                            {# кит применяет его к любому поддереву, поэтому вариант с #}
+                            {# data-density="compact" масштабировал сам себя, и переключатель #}
+                            {# стоял тремя разными размерами сразу, ни один из которых не #}
+                            {# следовал выбранной плотности. #}
+                            <button type="button" role="radio" data-value="compact" aria-checked="false" tabindex="-1">Compact</button>
+                            <button type="button" role="radio" data-value="" aria-checked="true" tabindex="0">Default</button>
+                            <button type="button" role="radio" data-value="comfortable" aria-checked="false" tabindex="-1">Comfortable</button>
                         </div>
                     </div>
                     {# Row colouring belongs here, with theme and density: all #}

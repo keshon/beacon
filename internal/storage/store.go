@@ -175,6 +175,10 @@ func New(dataDir string) (*Store, error) {
 		s.db.Close()
 		return nil, err
 	}
+	if err := s.markIncidentsStart(); err != nil {
+		s.db.Close()
+		return nil, err
+	}
 	return s, nil
 }
 

@@ -143,6 +143,14 @@ func (h *Summary) Serve(w http.ResponseWriter, r *http.Request) {
 		return worst[i].Name < worst[j].Name
 	})
 
+	// The incident numbers are younger than the failure numbers, and saying
+	// so is the difference between "nothing went wrong" and "we have not been
+	// counting that long".
+	incidentsSince := ""
+	if since := h.Store.IncidentsSince(); !since.IsZero() && since.After(from) {
+		incidentsSince = "recorded since " + since.Local().Format("2 Jan")
+	}
+
 	incidents, _ := h.Store.GetIncidents(from, now, 0)
 	var durations []time.Duration
 	for i := range incidents {
@@ -158,17 +166,18 @@ func (h *Summary) Serve(w http.ResponseWriter, r *http.Request) {
 	certs := buildCertRows(states, names, now)
 
 	_ = httpx.Render(w, h.TplDir, "dashboard/summary.html", pongo2.Context{
-		"version":     buildVersion(),
-		"nav_active":  "summary",
-		"window":      win.Key,
-		"windowLabel": win.Label,
-		"windows":     summaryWindows,
-		"worst":       worst,
-		"certs":       certs,
-		"clean":       clean,
-		"tracked":     tracked,
-		"incidents":   len(incidents),
-		"median":      medianLabel(durations),
+		"version":        buildVersion(),
+		"nav_active":     "summary",
+		"window":         win.Key,
+		"incidentsSince": incidentsSince,
+		"windowLabel":    win.Label,
+		"windows":        summaryWindows,
+		"worst":          worst,
+		"certs":          certs,
+		"clean":          clean,
+		"tracked":        tracked,
+		"incidents":      len(incidents),
+		"median":         medianLabel(durations),
 	})
 }
 

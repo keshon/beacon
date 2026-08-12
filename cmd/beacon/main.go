@@ -122,7 +122,8 @@ func main() {
 		// 03:00" instead of silence.
 		if mute, err := st.GetMute(m.ID); err == nil && mute.Active(time.Now()) {
 			_ = st.RecordDelivery(storage.Delivery{
-				At: time.Now(), MonitorID: m.ID, Channel: "all", Label: "muted",
+				At: time.Now(), MonitorID: m.ID, MonitorName: m.Name,
+				Channel: "all", Label: "muted",
 				Kind:   status,
 				Status: "skipped",
 				Reason: "muted until " + mute.Until.Local().Format("15:04") +
@@ -163,13 +164,14 @@ func main() {
 				// why not".
 				func(ev notify.DeliveryEvent) {
 					if err := st.RecordDelivery(storage.Delivery{
-						At:        time.Now(),
-						MonitorID: ev.MonitorID,
-						Channel:   ev.Channel,
-						Label:     ev.Label,
-						Kind:      ev.Kind,
-						Status:    ev.Status,
-						Reason:    ev.Reason,
+						At:          time.Now(),
+						MonitorID:   ev.MonitorID,
+						MonitorName: m.Name,
+						Channel:     ev.Channel,
+						Label:       ev.Label,
+						Kind:        ev.Kind,
+						Status:      ev.Status,
+						Reason:      ev.Reason,
 					}); err != nil {
 						log.Printf("record delivery: %v", err)
 					}
