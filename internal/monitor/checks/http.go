@@ -31,6 +31,9 @@ type CheckResult struct {
 	// site down at a known moment in the future, which is the only kind of
 	// outage a monitor can warn about BEFORE it happens.
 	CertExpiry time.Time
+	// Phases is where the time went. Zero everywhere when nothing was measured
+	// — a reused connection, or a failure before the first packet.
+	Phases Phases
 }
 
 // HTTPOptions holds optional HTTP check settings.
@@ -132,6 +135,11 @@ func HTTPCheck(ctx context.Context, target string, timeout time.Duration, opts *
 		},
 	}
 
+	// httptrace rides along on the request that is being made anyway: the
+	// phase timings cost nothing beyond the callbacks.
+	tr := &tracer{}
+	ctx = withTrace(ctx, tr)
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		result.Success = false
@@ -144,6 +152,9 @@ func HTTPCheck(ctx context.Context, target string, timeout time.Duration, opts *
 
 	resp, err := client.Do(req)
 	result.Latency = time.Since(start)
+	// Collected even on failure: "TLS finished, the server never answered" is
+	// the useful half of a timeout.
+	result.Phases = tr.result()
 	if err != nil {
 		result.Success = false
 		if ctx.Err() != nil && strings.Contains(err.Error(), "context") {

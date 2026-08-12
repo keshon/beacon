@@ -305,6 +305,24 @@ type MonitorState struct {
 	// not an empty one — and a tag that reads as a promise it cannot keep is
 	// worse than no tag.
 	CertExpiry time.Time `json:"cert_expiry"`
+	// Phases is where the last check spent its time. On the state and not in
+	// the history for the same reason as the certificate: the question is
+	// "why is it slow now", and a month of breakdowns answers a different one.
+	Phases CheckPhases `json:"phases"`
+}
+
+// CheckPhases mirrors checks.Phases without importing it: package monitor is
+// what checks depends on, and the arrow must not point back.
+type CheckPhases struct {
+	DNS    time.Duration `json:"dns"`
+	TCP    time.Duration `json:"tcp"`
+	TLS    time.Duration `json:"tls"`
+	Server time.Duration `json:"server"`
+}
+
+// Any reports whether anything was measured.
+func (p CheckPhases) Any() bool {
+	return p.DNS > 0 || p.TCP > 0 || p.TLS > 0 || p.Server > 0
 }
 
 const (

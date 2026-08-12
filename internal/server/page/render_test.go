@@ -96,6 +96,13 @@ func TestMonitorScreenRendersBothBranches(t *testing.T) {
 		"repeats": 3,
 	}
 
+	base["steps"] = []stepRow{
+		{Name: "DNS", Sub: "name resolved", Meta: "12ms", State: "ok"},
+		{Name: "TLS", Sub: "certificate 5d left, until 16 August 2026", Meta: "210ms", State: "warn"},
+		{Name: "HTTP", Sub: "no response", Meta: "10.0s · timeout", State: "failed"},
+	}
+	base["lastCheck"] = "14:35:07"
+
 	full := base
 	full["incidents"] = []incidentRow{
 		{Started: "11 Aug, 14:35", Duration: "running 4m", Reason: "connection timeout", Ongoing: true, Tone: "error"},
@@ -106,7 +113,8 @@ func TestMonitorScreenRendersBothBranches(t *testing.T) {
 	}
 	body := render(t, "dashboard/monitor/detail.html", full)
 	for _, want := range []string{"shop.example.com", "connection timeout", "97.22%",
-		"2 of 72 checks failed", "3 incidents this week", "beacon-tick--gap", "10000ms"} {
+		"2 of 72 checks failed", "3 incidents this week", "beacon-tick--gap", "10000ms",
+		"inst-step", "name resolved", "10.0s · timeout", "14:35:07"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("monitor screen is missing %q", want)
 		}

@@ -81,6 +81,33 @@
                 {% endif %}
             </div>
 
+            {% if steps %}
+            {# A check is a chain, and the chain is where the answer lives: one #}
+            {# number says a request was slow and nothing about which part was. #}
+            <div class="inst-panel">
+                <div class="inst-panel-header">
+                    <span class="inst-panel-title">Last check</span>
+                    <span class="inst-panel-actions"><span class="inst-u-dim">{{ lastCheck }}</span></span>
+                </div>
+                <div class="inst-panel-body inst-panel-body--list">
+                    {% for s in steps %}
+                    <details class="inst-step" data-state="{{ s.State }}">
+                        <summary class="inst-step-head">
+                            <span class="inst-step-twist"></span>
+                            <span class="inst-dot"{% if s.State != 'ok' %} data-tone="{% if s.State == 'failed' %}error{% else %}{{ s.State }}{% endif %}"{% endif %}></span>
+                            <span class="inst-step-name">{{ s.Name }}</span>
+                            <span class="inst-step-sub inst-u-truncate">{{ s.Sub }}</span>
+                            <span class="inst-step-meta">{{ s.Meta }}</span>
+                        </summary>
+                        <div class="inst-step-body">
+                            <div class="inst-code">{{ mon.Target }}</div>
+                        </div>
+                    </details>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <div class="inst-panel">
                 <div class="inst-panel-header">
                     <span class="inst-panel-title">Recent checks</span>

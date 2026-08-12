@@ -107,6 +107,7 @@ func (h *Monitor) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	certText, certTone := certLine(state, now)
+	steps := buildSteps(state, mon.Target, now)
 
 	status := monitor.StatusUnknown
 	if state != nil && state.Status != "" {
@@ -129,6 +130,8 @@ func (h *Monitor) Serve(w http.ResponseWriter, r *http.Request) {
 		"repeats":      countWithin(incidents, now.Add(-7*24*time.Hour)),
 		"certText":     certText,
 		"certTone":     certTone,
+		"steps":        steps,
+		"lastCheck":    lastCheckLabel(state),
 	})
 }
 
@@ -199,4 +202,12 @@ func humanDuration(d time.Duration) string {
 	default:
 		return strconv.Itoa(int(d.Hours()/24)) + "d"
 	}
+}
+
+// lastCheckLabel names when the last check ran, or says there was none.
+func lastCheckLabel(st *monitor.MonitorState) string {
+	if st == nil || st.LastCheck.IsZero() {
+		return "no checks yet"
+	}
+	return st.LastCheck.Local().Format("15:04:05")
 }

@@ -39,6 +39,18 @@ func (e *StatusEvaluator) Process(result checks.CheckResult, state *MonitorState
 		state.CertExpiry = result.CertExpiry
 	}
 
+	// A reused connection measures nothing, and overwriting a real breakdown
+	// with four zeros would lose it. Only a check that measured something
+	// replaces what is there.
+	if result.Phases.Any() {
+		state.Phases = CheckPhases{
+			DNS:    result.Phases.DNS,
+			TCP:    result.Phases.TCP,
+			TLS:    result.Phases.TLS,
+			Server: result.Phases.Server,
+		}
+	}
+
 	if result.Success {
 		if state.Status == StatusDown {
 			state.Status = StatusUp
