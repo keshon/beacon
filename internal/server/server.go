@@ -83,6 +83,9 @@ func (s *Server) Routes() http.Handler {
 	summaryPage := &page.Summary{Store: d.Store, Cfg: d.Cfg, TplDir: d.TplDir}
 	mux.HandleFunc("GET /summary", summaryPage.Serve)
 
+	peersPage := &page.Peers{Store: d.Store, Cfg: d.Cfg, Cluster: d.Cluster, TplDir: d.TplDir}
+	mux.HandleFunc("GET /peers", peersPage.Serve)
+
 	settingsPage := &page.Settings{TplDir: d.TplDir}
 	mux.HandleFunc("GET /settings", settingsPage.Serve)
 

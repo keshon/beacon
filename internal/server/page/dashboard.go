@@ -115,7 +115,6 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rows []dashboardRow
-	var networkNodes any
 	if h.Cluster != nil {
 		view, err := h.Cluster.DashboardView(state, ownMonitors)
 		if err != nil {
@@ -129,7 +128,6 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 				SourceNodeID: cr.SourceNodeID, IsPeer: cr.IsPeer, Adopted: cr.Adopted,
 			})
 		}
-		networkNodes = view.NetworkNodes
 	} else {
 		for _, m := range ownMonitors {
 			st := state[m.ID]
@@ -199,15 +197,6 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 	cert := buildCertNote(state, names, now)
 
-	networkEnabled := h.Cfg.Load().Network.Enabled
-	hasNetwork := false
-	if networkEnabled && networkNodes != nil {
-		switch nodes := networkNodes.(type) {
-		case []cluster.NetworkNode:
-			hasNetwork = len(nodes) > 0
-		}
-	}
-
 	// Summary. The dashboard must answer "is anything broken" before a
 	// person starts reading cards; until now that answer required scanning
 	// every one of them by eye.
@@ -224,23 +213,20 @@ func (h *Dashboard) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = httpx.Render(w, h.TplDir, "dashboard/dashboard.html", pongo2.Context{
-		"version":        buildVersion(),
-		"nav_active":     "dashboard",
-		"rows":           rows,
-		"countUp":        up,
-		"countDown":      down,
-		"countPaused":    paused,
-		"countTotal":     len(rows),
-		"networkNodes":   networkNodes,
-		"networkEnabled": networkEnabled,
-		"hasNetwork":     hasNetwork,
-		"window":         win.Key,
-		"windowLabel":    win.Label,
-		"windows":        histWindows,
-		"fleetTone":      fleetTone(down, up),
-		"fleetLabel":     fleetLabel(down, up, paused),
-		"outage":         outage,
-		"cert":           cert,
+		"version":     buildVersion(),
+		"nav_active":  "dashboard",
+		"rows":        rows,
+		"countUp":     up,
+		"countDown":   down,
+		"countPaused": paused,
+		"countTotal":  len(rows),
+		"window":      win.Key,
+		"windowLabel": win.Label,
+		"windows":     histWindows,
+		"fleetTone":   fleetTone(down, up),
+		"fleetLabel":  fleetLabel(down, up, paused),
+		"outage":      outage,
+		"cert":        cert,
 	})
 }
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/keshon/beacon/internal/cluster"
 	"github.com/keshon/beacon/internal/monitor"
 	"github.com/keshon/beacon/internal/server/httpx"
 
@@ -210,5 +211,51 @@ func TestSummaryScreenRendersBothBranches(t *testing.T) {
 	}
 	if strings.Contains(empty, "Certificates") {
 		t.Fatal("the certificates panel shows with nothing to show")
+	}
+}
+
+// The peers screen has three faces and only one of them is on display at a
+// time: sync off, sync on with nothing configured, and a peer that is failing.
+func TestPeersScreenRendersEveryState(t *testing.T) {
+	off := render(t, "dashboard/peers.html", pongo2.Context{
+		"version": "test", "nav_active": "peers",
+		"enabled": false, "peers": []peerRow{}, "live": 0, "dead": 0, "warnings": 0,
+	})
+	if !strings.Contains(off, "Peer sync is off") {
+		t.Fatal("a single-node install lost its explanation")
+	}
+
+	none := render(t, "dashboard/peers.html", pongo2.Context{
+		"version": "test", "nav_active": "peers",
+		"enabled": true, "peers": []peerRow{}, "live": 0, "dead": 0, "warnings": 0,
+	})
+	if !strings.Contains(none, "No peers configured") {
+		t.Fatal("sync on with no addresses lost its state")
+	}
+
+	full := render(t, "dashboard/peers.html", pongo2.Context{
+		"version": "test", "nav_active": "peers", "enabled": true,
+		"live": 1, "dead": 1, "warnings": 2,
+		"peers": []peerRow{
+			{NetworkNode: cluster.NetworkNode{
+				NodeID: "aaaa", NodeIDShort: "aaaa", URL: "https://here",
+				Status: "self", MonitorsCount: 16, LastSeen: "just now",
+			}, Self: true, Tone: "running"},
+			{NetworkNode: cluster.NetworkNode{
+				NodeID: "bbbb", NodeIDShort: "bbbb", URL: "https://there",
+				Status: "dead", MonitorsCount: 1, LastSeen: "2h ago",
+				LastError:    "HTTP 401 — check sync_token matches on both nodes",
+				SyncWarnings: []string{"clock drift 4s", "schema is older"},
+			}, Tone: "error"},
+		},
+	})
+	for _, want := range []string{
+		"this node", "16 monitor", "https://there",
+		"Sync with https://there is failing", "check sync_token",
+		"clock drift 4s", "2 sync warnings", "1 live, 1 unreachable",
+	} {
+		if !strings.Contains(full, want) {
+			t.Fatalf("peers screen is missing %q", want)
+		}
 	}
 }

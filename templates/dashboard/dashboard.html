@@ -40,19 +40,8 @@
     </div>
     {% endif %}
 
-    {% if rows or hasNetwork %}
-
-    {% if networkEnabled and hasNetwork %}
-    <section class="inst-section">
-        <div class="inst-section-head"><h2 class="inst-section-title">Network</h2></div>
-        <div class="inst-panel"><div class="inst-panel-body inst-panel-body--list">
-            {% for n in networkNodes %}{% include "network/list_row.html" with n=n %}{% endfor %}
-        </div></div>
-    </section>
-    {% endif %}
-
     {% if rows %}
-        <div class="inst-panel">
+    <div class="inst-panel">
         <div class="inst-panel-header">
             <span class="inst-panel-title">{{ countTotal }} monitor{{ countTotal|pluralize }}</span>
             <span class="inst-panel-actions">
@@ -62,8 +51,7 @@
         <div class="inst-panel-body inst-panel-body--list" role="listbox" aria-label="Monitors">
             {% for row in rows %}{% include "monitor/list_row.html" with row=row %}{% endfor %}
         </div>
-        </div>
-    {% endif %}
+    </div>
 
     {% if cert %}
     {# The only outage a monitor can warn about before it happens: the date is #}

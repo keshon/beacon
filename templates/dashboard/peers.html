@@ -1,0 +1,100 @@
+{% extends "../base.html" %}
+{% block title %}Peers – Beacon{% endblock %}
+
+{% block content %}
+<div class="inst-container inst-container--full beacon-page">
+
+    <div class="inst-page-header">
+        <div class="inst-page-header-main">
+            <h1 class="inst-page-title">Peers</h1>
+            <p class="inst-page-desc">Who is alive, what they see, and what is wrong with the sync.</p>
+        </div>
+        {% if enabled and peers %}
+        <div class="inst-page-actions">
+            <span class="inst-badge" data-tone="{% if dead %}error{% else %}ok{% endif %}">
+                <span class="inst-dot"></span>{{ live }} live{% if dead %}, {{ dead }} unreachable{% endif %}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not enabled %}
+    {# Off is a state, not a failure: most installations are one node. #}
+    <div class="inst-panel">
+        <div class="inst-panel-body">
+            <div class="inst-empty">
+                <div class="inst-empty-title">Peer sync is off</div>
+                <div class="inst-empty-desc">
+                    Beacon runs as a single node. Turn sync on to have several nodes
+                    check the same targets and see each other's results.
+                </div>
+                <a class="inst-btn inst-btn--sm" href="/settings">Open settings</a>
+            </div>
+        </div>
+    </div>
+    {% elif not peers %}
+    <div class="inst-panel">
+        <div class="inst-panel-body">
+            <div class="inst-empty">
+                <div class="inst-empty-title">No peers configured</div>
+                <div class="inst-empty-desc">Sync is on, but no addresses have been added yet.</div>
+                <a class="inst-btn inst-btn--sm" href="/settings">Add a peer</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+
+    <div class="inst-panel">
+        <div class="inst-panel-header">
+            <span class="inst-panel-title">{{ peers|length }} node{{ peers|length|pluralize }}</span>
+            <span class="inst-panel-actions">
+                {% if warnings %}<span class="inst-badge" data-tone="warn">{{ warnings }} sync warning{{ warnings|pluralize }}</span>{% endif %}
+                <span class="inst-u-dim">this node first</span>
+            </span>
+        </div>
+        <div class="inst-panel-body inst-panel-body--list">
+            {% for p in peers %}
+            <div class="inst-task"{% if p.Self %} aria-selected="true"{% endif %}>
+                <span class="inst-task-gutter"><span class="inst-dot" data-tone="{{ p.Tone }}"></span></span>
+                <span class="inst-task-main">
+                    <span class="inst-task-title inst-u-truncate">
+                        <span class="inst-u-mono">{{ p.NodeIDShort|default:p.NodeID }}</span>
+                        {% if p.Self %}<span class="inst-badge">this node</span>{% endif %}
+                    </span>
+                    <span class="inst-task-sub inst-u-truncate">
+                        {% if p.Self %}{{ p.URL }}{% else %}<a href="{{ p.URL }}" target="_blank" rel="noopener">{{ p.URL }}</a>{% endif %}
+                    </span>
+                </span>
+                <span class="inst-task-meta inst-cluster">
+                    <span class="inst-u-dim">{{ p.MonitorsCount }} monitor{{ p.MonitorsCount|pluralize }}</span>
+                    <span class="beacon-when">{{ p.LastSeen|default:"—" }}</span>
+                </span>
+            </div>
+
+            {# A failing sync gets the three questions, not a dim line: what is #}
+            {# wrong, since when, and where to look. It is the whole reason this #}
+            {# screen exists. #}
+            {% if p.LastError %}
+            <div class="inst-failure" role="alert">
+                <div class="inst-failure-head">Sync with {{ p.URL }} is failing</div>
+                <div class="inst-failure-reason">{{ p.LastError }}</div>
+                <div class="inst-failure-actions">
+                    <a class="inst-btn inst-btn--sm" href="{{ p.URL }}" target="_blank" rel="noopener">Open the node</a>
+                    <a class="inst-btn inst-btn--sm" href="/settings">Check the address and token</a>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if p.SyncWarnings %}
+            <div class="inst-note" data-tone="warn">
+                {% for warn in p.SyncWarnings %}{{ warn }}{% if not forloop.Last %} · {% endif %}{% endfor %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    {% endif %}
+
+</div>
+{% endblock %}
