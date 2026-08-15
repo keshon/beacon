@@ -51,7 +51,7 @@ If you need metrics storage, distributed tracing, or deep infrastructure analyti
 git clone https://github.com/keshon/beacon.git
 cd beacon
 go run ./cmd/beacon
-````
+```
 
 Open [http://localhost:8080](http://localhost:8080). Default login is `admin` / `admin`. Change credentials before exposing Beacon to a network.
 
@@ -84,7 +84,8 @@ Settings can be managed via the web UI or `config.json`.
 | Webhook  | Up to 5 generic HTTP POST endpoints                |
 | Sync     | Multi-instance monitor/state synchronization       |
 
-Legacy configuration formats are automatically migrated.
+Configuration lives in the store. A `config.json` beside the binary is read
+only on first start, to seed a fresh install.
 
 Example minimal `config.json`:
 
@@ -201,7 +202,7 @@ For HTTP monitors, expand **HTTP options** to set Basic Auth credentials (stored
 
 Beacon supports optional synchronization between multiple instances for **visibility and opportunistic failover** — not full active/active HA.
 
-When enabled, instances poll peers via `GET /api/sync/export` and cache monitor definitions and state locally. Each node still owns its own monitor definitions in `data/monitors.json`; sync does not merge config into the local store automatically.
+When enabled, instances poll peers via `GET /api/sync/export` and cache monitor definitions and state locally. Each node still owns its own monitor definitions in its store; sync does not merge config into the local store automatically.
 
 **What sync provides:**
 
@@ -293,7 +294,6 @@ Docker Compose example is available in `docker/docker-compose.yml`.
 ## Development
 
 * Templates: `templates/`
-* Styles: [instrument](https://github.com/keshon/instrument-ui-kit) — один CSS-файл, без сборки
 * Static assets: `static/`
 
 Run tests:
@@ -301,6 +301,14 @@ Run tests:
 ```bash
 go test ./...
 ```
+
+### The UI kit
+
+Styling comes from [instrument](https://github.com/keshon/instrument-ui-kit):
+one CSS file and one ES module, no build step. Both are vendored under
+`static/` and are **copies of the kit's `dist/`** — never edit them here. To
+take a new version, copy both files over and keep them in step with each other:
+
 
 ## Project layout
 
@@ -322,12 +330,17 @@ internal/
   storage/               JSON persistence + data-dir flock
   netpolicy/             SSRF guard for outbound targets
 templates/
-  dashboard/             Dashboard page and row partials
-  monitors/              Monitors page and form partials
+  dashboard/             Monitors, incidents, summary, peers, notifications
+    monitor/             Monitor detail, row and form partials
   settings/              Settings page
-  partials/              Shared head fragments
+  shared/                Head fragments, sprite, reusable panels
   base.html, login.html  Root layouts
-static/                  beacon.js (Beacon.apiFetch, CSRF) + notify UI
+static/
+  instrument.min.css     Vendored kit — a copy of its dist, do not edit
+  beacon.css             This application's own layout rules
+  js/instrument.js       Vendored kit module — a copy of its dist
+  js/beacon.js           Beacon.apiFetch, CSRF, modal and confirm helpers
+  js/*.js                Per-screen behaviour (monitors, notify, settings…)
 ```
 
 ## License

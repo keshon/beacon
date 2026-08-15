@@ -50,7 +50,8 @@
             F.field(form, 'password').value = '';
             var hint = document.getElementById('restartHint');
             if (hint && saved.requires_restart) {
-                F.status(hint, 'error', 'Saved. Listen address or worker count changed — restart to apply.');
+                hint.hidden = false;
+                hint.textContent = 'Saved. Listen address or worker count changed — restart to apply.';
             }
         });
     });

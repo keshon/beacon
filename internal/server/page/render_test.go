@@ -85,9 +85,10 @@ func TestMonitorScreenRendersBothBranches(t *testing.T) {
 		"version": "test", "nav_active": "dashboard", "mon": mon,
 		"status": monitor.StatusDown, "enabled": true, "intervalSec": 60,
 		"history": []HistTick{
-			{Title: "10:00 — 120 checks"},
-			{Tone: "error", Title: "11:00 — 4 of 120 failed"},
-			{Gap: true, Title: "12:00 — no checks"},
+			{Tone: "ok", Axis: "09", AxisMajor: true, Title: "09:00 — 120 checks, all up"},
+			{Tone: "error", Axis: "10", Title: "10:00 — 4 of 120 failed"},
+			{Gap: true, Axis: "11", Title: "11:00 — no checks"},
+			{Tone: "ok", Axis: "12", AxisMajor: true, Title: "12:00 — 120 checks, all up"},
 		},
 		"historyLabel": "Last 24 hours: 1 hour with failures",
 		"windows": []uptimeWindow{
@@ -113,11 +114,30 @@ func TestMonitorScreenRendersBothBranches(t *testing.T) {
 		{Time: "14:34:07", Latency: "38ms", OK: true},
 	}
 	body := render(t, "dashboard/monitor/detail.html", full)
-	// An hour nobody checked keeps its place and carries no mark. It used to
-	// be outlined, and an outline reads as a change of TEXTURE — the eye takes
-	// it for a change of rhythm rather than of meaning, and the strip floats.
-	if !strings.Contains(body, "data-empty") {
-		t.Fatal("an hour without checks lost its place in the strip")
+	// Up is green, down is red, and an hour nobody checked stays UNTONED — the
+	// kit paints that as track. What must never happen is "it was up" and "we
+	// never looked" sharing a colour, which is what the untoned green case did
+	// before.
+	if strings.Contains(body, "data-empty") {
+		t.Fatal("an unchecked hour is drawn as a hole again instead of track")
+	}
+	if strings.Count(body, `data-tone="ok"`) == 0 {
+		t.Fatal("an hour that was up lost its green")
+	}
+	// The axis under the strip labels the hour, and it has to mirror the
+	// strip's own proportions — one cell per group, labelled or not.
+	if strings.Count(body, "beacon-strip-hour") != len(base["history"].([]HistTick)) {
+		t.Fatal("the hour axis stopped matching the strip it stands under")
+	}
+	// EVERY hour is labelled; which of them survive a narrow strip is decided
+	// in CSS, so the in-between hours must be in the markup with no data-major.
+	for _, h := range []string{">09<", ">10<", ">11<", ">12<"} {
+		if !strings.Contains(body, h) {
+			t.Fatalf("the hour axis is missing %s", h)
+		}
+	}
+	if strings.Count(body, "data-major") != 2 {
+		t.Fatal("the axis lost the marks that survive a narrow strip")
 	}
 	for _, want := range []string{"shop.example.com", "connection timeout", "97.22%",
 		"2 of 72 checks failed", "3 incidents this week", "10000ms",

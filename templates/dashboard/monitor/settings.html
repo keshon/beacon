@@ -19,7 +19,7 @@
     <div class="inst-field">
         <label class="inst-label">Target</label>
         <input type="text" class="inst-input" name="target" data-monitor-target {% if mode == "add" or mode == "modal" %}placeholder="https://example.com" required{% else %}placeholder="Target" {% endif %} />
-        <span class="inst-field-error" data-monitor-target-error role="alert"></span>
+        <span class="inst-field-error" data-monitor-target-error role="alert" hidden></span>
     </div>
     <div class="inst-field">
         <label class="inst-label">Interval (sec)</label>

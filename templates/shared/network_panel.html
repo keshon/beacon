@@ -7,28 +7,43 @@
         <div class="inst-panel-body inst-form">
             <label class="inst-checkbox"><input type="checkbox" name="network_enabled" id="network_enabled" /><span>Enable peer sync</span></label>
             <div class="inst-field inst-field--side">
-                <label class="inst-label">Self URL</label>
-                <input type="text" class="inst-input" name="network_self_url" placeholder="https://beacon1.example.com" />
+                <label class="inst-label" for="network_self_url">Self URL</label>
+                <input type="text" class="inst-input" id="network_self_url" name="network_self_url" placeholder="https://beacon1.example.com" />
+            </div>
+            {# Колонка подписей у бокового поля — 104px, тот же --label-col, что #}
+            {# у инспектора. Подпись в неё обязана помещаться в ОДНУ строку: #}
+            {# пояснение уходит в подсказку, единица измерения — в суффикс поля. #}
+            <div class="inst-field inst-field--side">
+                <label class="inst-label" for="network_peers">Peers</label>
+                <textarea class="inst-input" id="network_peers" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
+                <div class="inst-field-hint">One URL per line.</div>
             </div>
             <div class="inst-field inst-field--side">
-                <label class="inst-label">Peers (one URL per line)</label>
-                <textarea class="inst-input" name="network_peers" rows="3" placeholder="https://beacon2.example.com"></textarea>
+                <label class="inst-label" for="network_sync_interval">Sync every</label>
+                <span class="inst-input-group">
+                    <input type="number" class="inst-input" id="network_sync_interval" name="network_sync_interval" min="10" placeholder="60" />
+                    <span class="inst-input-affix">sec</span>
+                </span>
             </div>
             <div class="inst-field inst-field--side">
-                <label class="inst-label">Sync interval (sec)</label>
-                <input type="number" class="inst-input" name="network_sync_interval" min="10" placeholder="60" />
+                <label class="inst-label" for="network_dead_timeout">Dead after</label>
+                <span class="inst-input-group">
+                    <input type="number" class="inst-input" id="network_dead_timeout" name="network_dead_timeout" min="60" placeholder="300" />
+                    <span class="inst-input-affix">sec</span>
+                </span>
             </div>
             <div class="inst-field inst-field--side">
-                <label class="inst-label">Dead timeout (sec)</label>
-                <input type="number" class="inst-input" name="network_dead_timeout" min="60" placeholder="300" />
-            </div>
-            <div class="inst-field inst-field--side">
-                <label class="inst-label">Sync token</label>
-                <input type="password" class="inst-input" name="network_sync_token" autocomplete="new-password" placeholder="Shared secret for all nodes" />
+                <label class="inst-label" for="network_sync_token">Sync token</label>
+                <input type="password" class="inst-input" id="network_sync_token" name="network_sync_token" autocomplete="new-password" placeholder="Shared secret for all nodes" />
                 <div class="inst-field-hint">Same token on every node. Web login can differ per node.</div>
             </div>
-            <label class="inst-label inst-u-dim">Node ID</label>
-            <input type="text" class="inst-input app-readonly-control" name="network_node_id" readonly placeholder="Generated when enabled" />
+            {# Идентификатор узла — такое же поле, как остальные, и стоит в том #}
+            {# же ритме: без обёртки подпись выпадала из колонки, а for/id не #}
+            {# связывали её с полем вовсе. #}
+            <div class="inst-field inst-field--side">
+                <label class="inst-label" for="network_node_id">Node ID</label>
+                <input type="text" class="inst-input" id="network_node_id" name="network_node_id" readonly placeholder="Generated when enabled" />
+            </div>
             {# The bar lives with the fields it saves: inside the panel it #}
             {# is opaque against the panel's own surface, and it is the #}
             {# bottom of that area rather than a strip sliding over it. #}

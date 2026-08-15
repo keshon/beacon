@@ -299,8 +299,11 @@ func sortRowsByAttention(rows []dashboardRow) {
 		if r.Status == "down" {
 			return 0
 		}
+		// "error", not "any tone". Every hour carries a tone now — green for
+		// up, grey for unchecked — so a non-empty tone stopped meaning trouble
+		// the moment the strip started naming all three states.
 		for _, t := range r.History {
-			if t.Tone != "" {
+			if t.Tone == "error" {
 				return 1
 			}
 		}

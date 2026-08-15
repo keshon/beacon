@@ -76,7 +76,7 @@
     function ensureConfirmModal() {
         if (confirmModalEl) return;
         confirmModalEl = document.createElement('dialog');
-        confirmModalEl.className = 'inst-dialog inst-dialog--sm';
+        confirmModalEl.className = 'inst-dialog';
         confirmModalEl.id = 'beaconConfirmModal';
         confirmModalEl.setAttribute('aria-labelledby', 'beaconConfirmTitle');
         confirmModalEl.setAttribute('aria-describedby', 'beaconConfirmMessage');
@@ -88,7 +88,7 @@
                 '<svg class="inst-icon" aria-hidden="true"><use href="#i-close"/></svg></button>' +
             '</div>' +
             '<div class="inst-dialog-body"><p id="beaconConfirmMessage"></p></div>' +
-            '<div class="inst-dialog-foot inst-dialog-foot--end">' +
+            '<div class="inst-dialog-foot">' +
                 '<button type="button" class="inst-btn" data-beacon-confirm-cancel>Cancel</button>' +
                 '<button type="button" class="inst-btn inst-btn--primary" data-beacon-confirm-ok>Confirm</button>' +
             '</div>';
@@ -132,12 +132,15 @@
         var titleEl = confirmModalEl.querySelector('#beaconConfirmTitle');
         var messageEl = confirmModalEl.querySelector('#beaconConfirmMessage');
         var okBtn = confirmModalEl.querySelector('[data-beacon-confirm-ok]');
-        var cancelBtn = confirmModalEl.querySelector('[data-beacon-confirm-cancel].btn');
+        // Отмена — та, что в подвале, а не крестик в шапке: у обеих один
+        // маркер действия, и подпись меняется только у первой.
+        var cancelBtn = confirmModalEl.querySelector('.inst-dialog-foot [data-beacon-confirm-cancel]');
         if (titleEl) titleEl.textContent = options.title || 'Confirm';
         if (messageEl) messageEl.textContent = options.message || '';
         if (okBtn) {
             okBtn.textContent = options.confirmLabel || 'Confirm';
-            okBtn.className = 'btn ' + (options.destructive ? 'btn-danger' : 'btn-primary');
+            okBtn.className =
+                'inst-btn ' + (options.destructive ? 'inst-btn--danger' : 'inst-btn--primary');
         }
         if (cancelBtn) cancelBtn.textContent = options.cancelLabel || 'Cancel';
         return new Promise(function (resolve) {
@@ -149,41 +152,15 @@
         });
     }
 
-    function closeAllActionMenus(except) {
-        document.querySelectorAll('.app-action-menu__panel:not([hidden])').forEach(function (panel) {
-            if (except && except.contains(panel)) return;
-            panel.hidden = true;
-            var menu = panel.closest('.app-action-menu');
-            var trigger = menu && menu.querySelector('.app-action-menu__trigger');
-            if (trigger) trigger.setAttribute('aria-expanded', 'false');
-        });
-    }
+    /* Меню действий закрывается ДО того, как действие выполнится: действие
+       открывает модалку, и меню осталось бы висеть поверх неё.
 
-    function wireActionMenus(root) {
-        var scope = root || document;
-        scope.querySelectorAll('.app-action-menu').forEach(function (menu) {
-            if (menu._beaconActionMenuWired) return;
-            menu._beaconActionMenuWired = true;
-            var trigger = menu.querySelector('.app-action-menu__trigger');
-            var panel = menu.querySelector('.app-action-menu__panel');
-            if (!trigger || !panel) return;
-            trigger.addEventListener('click', function (e) {
-                e.stopPropagation();
-                var willOpen = panel.hidden;
-                closeAllActionMenus(menu);
-                panel.hidden = !willOpen;
-                trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-            });
-        });
-        if (!document._beaconActionMenuDocWired) {
-            document._beaconActionMenuDocWired = true;
-            document.addEventListener('click', function () {
-                closeAllActionMenus(null);
-            });
-            document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape') closeAllActionMenus(null);
-            });
-        }
+       Открытие, закрытие мимо, Escape и возврат фокуса — Popover API, скрипта
+       они не требуют. Приложению остаётся один случай, который платформа не
+       закрывает сама: щелчок ВНУТРИ поповера. */
+    function closeActionMenu(el) {
+        var popover = el && el.closest('[popover]');
+        if (popover && popover.matches(':popover-open')) popover.hidePopover();
     }
 
     if (!window.Beacon) {
@@ -199,8 +176,7 @@
             initCollapse: initCollapse,
             applyAppearancePrefs: applyAppearancePrefs,
             modal: { wire: wireModal, confirm: confirm },
-            wireActionMenus: wireActionMenus,
-            closeAllActionMenus: closeAllActionMenus,
+            closeActionMenu: closeActionMenu,
         };
     } else {
         window.Beacon.csrfToken = csrfToken;
@@ -211,12 +187,10 @@
         if (window.Beacon.modal && !window.Beacon.modal.confirm) {
             window.Beacon.modal.confirm = confirm;
         }
-        window.Beacon.wireActionMenus = wireActionMenus;
-        window.Beacon.closeAllActionMenus = closeAllActionMenus;
+        window.Beacon.closeActionMenu = closeActionMenu;
     }
 
     document.addEventListener('DOMContentLoaded', function () {
         initCollapse(document);
-        wireActionMenus(document);
     });
 })();

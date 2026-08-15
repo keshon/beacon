@@ -52,8 +52,17 @@ func TestHistoryPaintsGapsAfterCheckingStarted(t *testing.T) {
 		if !tk.Gap {
 			t.Fatalf("hour %d after the last check is not a gap", i+1)
 		}
+		// A gap carries NO tone: the kit paints an untoned tick as track, and a
+		// hole between coloured bricks reads as a hole without being announced.
+		// Spelling it as a solid grey gave "nobody looked" the same weight as
+		// "it broke", which is a louder claim than the fact deserves.
 		if tk.Tone != "" {
 			t.Fatalf("a gap must carry no tone, got %q", tk.Tone)
 		}
+	}
+	// And the hour that WAS checked is green, so "up" and "nobody looked"
+	// never share a colour.
+	if ticks[0].Tone != "ok" {
+		t.Fatalf("a checked hour with no failures must be ok, got %q", ticks[0].Tone)
 	}
 }

@@ -56,6 +56,19 @@
             <div class="inst-popover inst-popover--anchored" id="beacon-view" popover>
                 <div class="beacon-view-body">
                     <div class="beacon-view-row">
+                        <span class="inst-nav-label">Density</span>
+                        <div class="inst-segmented" role="radiogroup" aria-label="Density" id="beaconDensity">
+                            {# data-VALUE, не data-density. Атрибут плотности МАСШТАБИРУЮЩИЙ: #}
+                            {# кит применяет его к любому поддереву, поэтому вариант с #}
+                            {# data-density="compact" масштабировал сам себя, и переключатель #}
+                            {# стоял тремя разными размерами сразу, ни один из которых не #}
+                            {# следовал выбранной плотности. #}
+                            <button type="button" role="radio" data-value="compact" aria-checked="false" tabindex="-1">Compact</button>
+                            <button type="button" role="radio" data-value="" aria-checked="true" tabindex="0">Default</button>
+                            <button type="button" role="radio" data-value="comfortable" aria-checked="false" tabindex="-1">Comfortable</button>
+                        </div>
+                    </div>
+                    <div class="beacon-view-row">
                         <span class="inst-nav-label">Theme</span>
                         <span class="inst-select-wrap">
                             <select class="inst-select inst-select--sm" id="beaconTheme" aria-label="Colour theme">
@@ -69,18 +82,20 @@
                             </select>
                         </span>
                     </div>
+                    {# Акцент — третья ручка кита, ортогональная теме: он трогает #}
+                    {# только рампу --a-*, поэтому любой из четырёх сочетается с #}
+                    {# любой из шести тем. Петроль — база, и он выражен ОТСУТСТВИЕМ #}
+                    {# атрибута; своего data-accent="petrol" у кита нет намеренно. #}
                     <div class="beacon-view-row">
-                        <span class="inst-nav-label">Density</span>
-                        <div class="inst-segmented" role="radiogroup" aria-label="Density" id="beaconDensity">
-                            {# data-VALUE, не data-density. Атрибут плотности МАСШТАБИРУЮЩИЙ: #}
-                            {# кит применяет его к любому поддереву, поэтому вариант с #}
-                            {# data-density="compact" масштабировал сам себя, и переключатель #}
-                            {# стоял тремя разными размерами сразу, ни один из которых не #}
-                            {# следовал выбранной плотности. #}
-                            <button type="button" role="radio" data-value="compact" aria-checked="false" tabindex="-1">Compact</button>
-                            <button type="button" role="radio" data-value="" aria-checked="true" tabindex="0">Default</button>
-                            <button type="button" role="radio" data-value="comfortable" aria-checked="false" tabindex="-1">Comfortable</button>
-                        </div>
+                        <span class="inst-nav-label">Accent</span>
+                        <span class="inst-select-wrap">
+                            <select class="inst-select inst-select--sm" id="beaconAccent" aria-label="Accent colour">
+                                <option value="">Petrol</option>
+                                <option value="graphite">Graphite</option>
+                                <option value="indigo">Indigo</option>
+                                <option value="clay">Clay</option>
+                            </select>
+                        </span>
                     </div>
                     {# Row colouring belongs here, with theme and density: all #}
                     {# three are this browser's preferences, kept in local #}

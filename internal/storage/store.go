@@ -93,6 +93,18 @@ func (r *configRec) Key() string { return configKey }
 
 const configKey = "config"
 
+// markRec records that something one-off has already happened, so that it does
+// not happen twice. A marker rather than an "is the collection empty" test:
+// emptiness is a state a user can reach on purpose, and re-running on it would
+// undo their work.
+type markRec struct {
+	Name string    `json:"name"`
+	At   time.Time `json:"at"`
+	Note string    `json:"note"`
+}
+
+func (m *markRec) Key() string { return m.Name }
+
 // uptimeIndexLimit is how many outcomes are kept PER MONITOR.
 //
 // The old store kept two limits at once — five hundred per monitor and ten
@@ -167,14 +179,14 @@ func New(dataDir string) (*Store, error) {
 	s.deliveriesByTime = datastore.AddSorted(s.deliveries, "at",
 		func(d *Delivery) int64 { return d.At.UnixNano() })
 
+	if err := s.guardUnconverted(); err != nil {
+		return nil, err
+	}
+
 	if err := s.db.Open(); err != nil {
 		return nil, fmt.Errorf("open store: %w", err)
 	}
 
-	if err := s.importLegacy(); err != nil {
-		s.db.Close()
-		return nil, err
-	}
 	if err := s.markIncidentsStart(); err != nil {
 		s.db.Close()
 		return nil, err
@@ -453,8 +465,13 @@ func (s *Store) GetUptimeSamplesBatch(monitorIDs []string, limit int) (map[strin
 }
 
 func (s *Store) samples(monitorID string, limit int) []CheckRecord {
+	// limit <= 0 means "everything kept", which is uptimeIndexLimit — not a
+	// second, smaller number invented here. It used to default to 120, and the
+	// monitor screen paid for it: its strip asks for the whole 24-hour window
+	// with limit 0 and silently got the last 120 outcomes, so a monitor checked
+	// every thirty seconds drew one hour under a heading that said twenty-four.
 	if limit <= 0 {
-		limit = 120
+		limit = uptimeIndexLimit
 	}
 	if limit > uptimeIndexLimit {
 		limit = uptimeIndexLimit

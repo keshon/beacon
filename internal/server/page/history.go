@@ -19,15 +19,38 @@ import (
 // hour on every row. What the strip shows and what it claims to show agree.
 
 // HistTick is one hour of one monitor.
+//
+// Three outcomes, three tones, and the third one is the absence of a tone:
+//
+//	ok      the hour was checked and nothing failed
+//	error   the hour had at least one failure
+//	(none)  nobody checked — the kit paints an untoned tick as --track
+//
+// The third one stays UNSPOKEN on purpose. A gap between coloured bricks is
+// already legible as a gap: the eye finds a hole in a dense row without being
+// told, and reads it as absence rather than as a verdict. Painting it a solid
+// grey gave "nobody looked" the same visual weight as "it broke", which is a
+// louder claim than the fact deserves.
+//
+// The kit's own strip leaves "up" untoned on the argument that a wall of green
+// stops being a signal. That argument is about strips where most of the width
+// is routine and the exception is what you came for. An uptime monitor is the
+// other case: "it was up" IS the answer, and while it was untoned a healthy
+// hour and an unchecked one were the same grey brick — the one confusion this
+// screen must not have. Green resolves it, and the gap keeps the track it
+// always had.
 type HistTick struct {
-	// Tone is the kit's tone: empty means an hour without remarks.
+	// Tone is the kit's tone: "ok", "error", or empty for an hour nobody
+	// checked — the kit paints an untoned tick as track.
 	Tone string
 	// Gap marks an hour that had no checks although this monitor was already
-	// being checked. Nobody looked — which is a fact about US, not about the
-	// target, so the tick keeps its place and carries no mark. The alarm, when
-	// it is due, is the badge on the row: "no check since 07:14".
-	Gap   bool
-	Title string
+	// being checked. Nobody looked — a fact about US, not about the target.
+	Gap bool
+	// Axis is the hour written under the strip. AxisMajor marks the hours
+	// that keep their label when the strip is too narrow for all of them.
+	Axis      string
+	AxisMajor bool
+	Title     string
 }
 
 // historyHours is how many hours a row's strip covers.
@@ -63,11 +86,19 @@ func buildHistory(rollups []storage.Rollup, now time.Time) []HistTick {
 			if !started {
 				continue
 			}
-			out = append(out, HistTick{Gap: true, Title: label + " — no checks"})
+			out = append(out, HistTick{
+				Gap: true, Axis: axisLabel(hour), AxisMajor: axisMajor(hour),
+				Title: label + " — no checks",
+			})
 			continue
 		}
 		started = true
-		tick := HistTick{Title: fmt.Sprintf("%s — %s", label, plural(r.Total, "check", "checks"))}
+		tick := HistTick{
+			Tone:      "ok",
+			Axis:      axisLabel(hour),
+			AxisMajor: axisMajor(hour),
+			Title:     fmt.Sprintf("%s — %s, all up", label, plural(r.Total, "check", "checks")),
+		}
 		if r.Failed > 0 {
 			tick.Tone = "error"
 			tick.Title = fmt.Sprintf("%s — %d of %d failed", label, r.Failed, r.Total)
@@ -85,7 +116,7 @@ func historyLabel(ticks []HistTick) string {
 		switch {
 		case t.Gap:
 			gaps++
-		case t.Tone != "":
+		case t.Tone == "error":
 			bad++
 		}
 	}

@@ -74,7 +74,7 @@
                         <td class="inst-num">{{ m.Incidents }}</td>
                         <td>
                             <span class="inst-history" role="img" aria-label="{{ m.Failed }} failed checks over the period">
-                                {% for tick in m.History %}<span class="inst-history-tick"{% if tick.Gap %} data-empty{% endif %}{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
+                                {% for tick in m.History %}<span class="inst-history-tick"{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
                             </span>
                         </td>
                         <td class="inst-num">{{ m.Percent }}</td>

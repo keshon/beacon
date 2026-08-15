@@ -1,9 +1,6 @@
 package storage_test
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -86,52 +83,6 @@ func TestMonitorSurvivesReopen(t *testing.T) {
 	}
 	if got == nil || got.Name != "t" || got.Target != "example.com:80" {
 		t.Fatalf("монитор не пережил перезапуск: %#v", got)
-	}
-}
-
-// Legacy JSON files must be picked up on the first open, and a second
-// open must not resurrect what was deleted in between.
-func TestLegacyImportRunsOnceAndDoesNotResurrect(t *testing.T) {
-	dir := t.TempDir()
-	legacy := map[string]any{"monitors": map[string]any{
-		"old1": map[string]any{
-			"id": "old1", "name": "legacy", "type": "tcp",
-			"target": "example.com:80", "enabled": true,
-		},
-	}}
-	raw, err := json.Marshal(legacy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "monitors.json"), raw, 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	st, err := storage.New(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := st.GetMonitor("old1")
-	if err != nil || got == nil {
-		t.Fatalf("старый монитор не перенёсся: %v %#v", err, got)
-	}
-	if err := st.DeleteMonitor("old1"); err != nil {
-		t.Fatal(err)
-	}
-	st.Close()
-
-	// The file is still there — the import must not run twice.
-	again, err := storage.New(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer again.Close()
-	back, err := again.GetMonitor("old1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if back != nil {
-		t.Fatal("удалённый монитор вернулся: перенос повторился")
 	}
 }
 

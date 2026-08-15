@@ -73,7 +73,12 @@ func buildWindowHistory(rollups []storage.Rollup, w histWindow, now time.Time) [
 			continue
 		}
 		started = true
-		tick := HistTick{Title: label + " — " + strconv.Itoa(total) + " checks"}
+		// Same three tones as the hourly strip, for the same reason: a slice
+		// that was up must not look like a slice nobody checked. See HistTick.
+		tick := HistTick{
+			Tone:  "ok",
+			Title: label + " — " + strconv.Itoa(total) + " checks, all up",
+		}
 		if failed > 0 {
 			tick.Tone = "error"
 			tick.Title = label + " — " + strconv.Itoa(failed) + " of " + strconv.Itoa(total) + " failed"

@@ -20,7 +20,7 @@
             </p>
         </div>
         <div class="inst-page-actions">
-            <span class="beacon-detail-status">{% include "./shared/status.html" with status=status %}</span>
+            {% include "./shared/status.html" with status=status %}
             <button class="inst-btn inst-btn--sm" type="button"
                     data-action="check" data-monitor="{{ mon.ID }}">Check now</button>
             {% if mutedUntil %}
@@ -58,18 +58,38 @@
         {# that twenty rows line up; on this screen there is no column to line #}
         {# up with, and the hourly tick threw away how much stood behind each #}
         {# hour — one check looked exactly like a hundred. #}
-        {% if strip %}
-        <div class="inst-history beacon-history--wide" role="img" aria-label="{{ stripLabel }}">
-            {% for g in strip %}<span class="inst-history-group inst-tooltip" style="--n:{{ g.N }}">{% if g.Empty %}<span class="inst-history-tick" data-empty></span><span class="inst-tooltip-text">{{ g.Summary }}</span>{% else %}{% for t in g.Ticks %}<span class="inst-history-tick"{% if t.Tone %} data-tone="{{ t.Tone }}"{% endif %}></span>{% endfor %}<span class="inst-tooltip-text{% if g.Wide %} inst-tooltip-text--wide{% endif %}">{{ g.Summary }}</span>{% endif %}</span>{% endfor %}
+        {# #}
+        {# Под полосой — ось часов. Она ПОВТОРЯЕТ раскладку групп теми же #}
+        {# долями --n, поэтому подпись стоит ровно под своим часом при любой #}
+        {# густоте проверок. Подписан КАЖДЫЙ час; сколько подписей поместится, #}
+        {# решает контейнерный запрос по ширине самой полосы. #}
+        <div class="beacon-strip">
+            {% if strip %}
+            <div class="inst-history beacon-history--wide" role="img" aria-label="{{ stripLabel }}">
+                {% for g in strip %}<span class="inst-history-group inst-tooltip" style="--n:{{ g.N }}">{% if g.Empty %}<span class="inst-history-tick"></span><span class="inst-tooltip-text">{{ g.Summary }}</span>{% else %}{% for t in g.Ticks %}<span class="inst-history-tick"{% if t.Tone %} data-tone="{{ t.Tone }}"{% endif %}></span>{% endfor %}<span class="inst-tooltip-text{% if g.Wide %} inst-tooltip-text--wide{% endif %}">{{ g.Summary }}</span>{% endif %}</span>{% endfor %}
+            </div>
+            <div class="beacon-strip-axis" aria-hidden="true">
+                {% for g in strip %}<span class="beacon-strip-hour"{% if g.AxisMajor %} data-major{% endif %} style="--n:{{ g.N }}">{{ g.Axis }}</span>{% endfor %}
+            </div>
+            {% else %}
+            {# Older than a week: raw checks are gone and only the hourly rollups #}
+            {# are left. Same strip, groups of one — so the layout is the kit's in #}
+            {# both branches and the screen does not change shape with age. #}
+            <div class="inst-history beacon-history--wide" role="img" aria-label="{{ historyLabel }}">
+                {% for tick in history %}<span class="inst-history-group inst-tooltip" style="--n:1"><span class="inst-history-tick"{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %}></span><span class="inst-tooltip-text">{{ tick.Title }}</span></span>{% endfor %}
+            </div>
+            <div class="beacon-strip-axis" aria-hidden="true">
+                {% for tick in history %}<span class="beacon-strip-hour"{% if tick.AxisMajor %} data-major{% endif %} style="--n:1">{{ tick.Axis }}</span>{% endfor %}
+            </div>
+            {% endif %}
+            {# Легенда: цвет обязан быть назван словом хотя бы раз на экране, #}
+            {# иначе зелёное и серое различает только тот, кто уже знает. #}
+            <p class="beacon-strip-legend">
+                <span class="inst-badge" data-tone="ok"><span class="inst-dot"></span>up</span>
+                <span class="inst-badge" data-tone="error"><span class="inst-dot"></span>down</span>
+                <span class="inst-badge" data-tone="neutral"><span class="inst-dot"></span>not checked</span>
+            </p>
         </div>
-        {% else %}
-        {# Older than a week: raw checks are gone and only the hourly rollups #}
-        {# are left. Same strip, groups of one — so the layout is the kit's in #}
-        {# both branches and the screen does not change shape with age. #}
-        <div class="inst-history beacon-history--wide" role="img" aria-label="{{ historyLabel }}">
-            {% for tick in history %}<span class="inst-history-group inst-tooltip" style="--n:1"><span class="inst-history-tick"{% if tick.Gap %} data-empty{% endif %}{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %}></span><span class="inst-tooltip-text">{{ tick.Title }}</span></span>{% endfor %}
-        </div>
-        {% endif %}
     </div>
 
     <div class="inst-split">

@@ -77,7 +77,10 @@
         var typeEl = form.querySelector('[data-monitor-type]');
         var wrap = form.querySelector('[data-http-options]');
         if (!typeEl || !wrap) return;
-        wrap.classList.toggle('d-none', typeEl.value !== 'http');
+        // Скрытие — атрибутом hidden. Это единственный способ, который кит
+        // называет своим: `[hidden] { display: none !important }` в base.css —
+        // и единственный !important, который он себе позволяет.
+        wrap.hidden = typeEl.value !== 'http';
     }
 
     function wireHttpOptionsForm(form) {
@@ -122,14 +125,19 @@
         form._monitorTargetWired = true;
         function showTargetError(msg) {
             if (!errEl) return;
+            // Негодность поля кит читает с aria-invalid — того же атрибута,
+            // который её озвучивает. Своего класса состояния у поля нет
+            // намеренно: два источника одной правды разошлись бы.
+            // Порядок важен: живая область обязана быть в дереве доступности
+            // ДО того, как в неё попадёт текст, иначе сообщение не озвучится.
             if (msg) {
+                errEl.hidden = false;
                 errEl.textContent = msg;
-                errEl.classList.remove('d-none');
-                targetEl.classList.add('is-invalid');
+                targetEl.setAttribute('aria-invalid', 'true');
             } else {
                 errEl.textContent = '';
-                errEl.classList.add('d-none');
-                targetEl.classList.remove('is-invalid');
+                errEl.hidden = true;
+                targetEl.removeAttribute('aria-invalid');
             }
         }
         function syncPlaceholder() {
@@ -263,7 +271,9 @@
             if (!actionBtn) return;
             e.preventDefault();
             e.stopPropagation();
-            if (window.Beacon.closeAllActionMenus) window.Beacon.closeAllActionMenus(null);
+            // Меню закрывается до действия, а не после: Edit открывает
+            // модалку, и кебаб остался бы висеть поверх неё.
+            window.Beacon.closeActionMenu(actionBtn);
 
             var root = monitorRootFromAction(actionBtn);
             if (!root) return;
@@ -326,7 +336,6 @@
         });
 
         wireActionMenus();
-        if (window.Beacon.wireActionMenus) window.Beacon.wireActionMenus(document);
     }
 
     fetch('/api/config')

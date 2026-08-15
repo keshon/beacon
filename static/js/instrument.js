@@ -632,10 +632,23 @@ function onAxisDown(e, axis) {
   axis.addEventListener('pointercancel', onUp);
 }
 
-/* ── Значение слайдера в <output> ────────────────────────────────────────
-   Связь уже объявлена атрибутом for. Синхронизировать её вручную — писать
-   одну и ту же строку в каждом приложении. */
-function syncOutputs(input) {
+/* ── Значение слайдера: в <output> и в заполнение дорожки ────────────────
+   Связь с <output> уже объявлена атрибутом for. Синхронизировать её вручную —
+   писать одну и ту же строку в каждом приложении.
+
+   --fill — то же самое для ЗАЛИВКИ: дорожка красится до бегунка, и доля
+   считается здесь, потому что CSS не умеет прочитать value у input. Разметка
+   объявляет начальное значение сама (канал данных), а скрипт держит его в
+   согласии при перетаскивании: без скрипта заливка остаётся на том значении,
+   с которым страница пришла, и это правда, а не ноль. */
+function syncSlider(input) {
+  const min = Number(input.min === '' ? 0 : input.min);
+  const max = Number(input.max === '' ? 100 : input.max);
+  // Вырожденный диапазон: max === min. Деление дало бы NaN, и заливка
+  // пропала бы вовсе вместо того, чтобы честно показать край.
+  const share = max > min ? (Number(input.value) - min) / (max - min) : 0;
+  input.style.setProperty('--fill', `${Math.min(1, Math.max(0, share)) * 100}%`);
+
   if (!input.id) return;
   for (const out of input.ownerDocument.querySelectorAll(`output[for~="${CSS.escape(input.id)}"]`)) {
     out.textContent = input.value;
@@ -765,7 +778,7 @@ function onChange(e) {
 
 function onInput(e) {
   const t = e.target;
-  if (t instanceof HTMLElement && t.matches?.('.inst-slider')) syncOutputs(t);
+  if (t instanceof HTMLElement && t.matches?.('.inst-slider')) syncSlider(t);
 }
 
 function onPointerDown(e) {
@@ -781,7 +794,7 @@ export function refresh(root = document) {
   }
   // Начальное состояние: <output> и «выбрать всё» обязаны совпадать с
   // разметкой ДО первого взаимодействия, иначе первый же кадр врёт.
-  for (const s of root.querySelectorAll?.('.inst-slider') || []) syncOutputs(s);
+  for (const s of root.querySelectorAll?.('.inst-slider') || []) syncSlider(s);
   for (const t of root.querySelectorAll?.('.inst-table') || []) syncSelectAll(t);
 }
 

@@ -1,10 +1,11 @@
 {# Check history strip: one tick is one HOUR, the same hours on every row. #}
 {# Expects: row #}
 {# #}
-{# An hour without remarks carries no tone on purpose. The kit paints an #}
-{# untoned tick as track, so colour is left for the exception — on a screen of #}
-{# hundreds of ticks a green one stops being a signal by the tenth. #}
+{# Three states, three colours: up is green, down is red, and an hour nobody #}
+{# checked is the kit's untoned tick — grey track. Grey is not an outcome, and #}
+{# that is the point: on an uptime monitor "it was up" IS the answer, and it #}
+{# must not look like "we have no idea". #}
 <span class="inst-history" role="img" aria-label="{{ row.HistoryLabel }}"
       data-monitor-id="{{ row.Monitor.ID }}">
-    {% for tick in row.History %}<span class="inst-history-tick"{% if tick.Gap %} data-empty{% endif %}{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
+    {% for tick in row.History %}<span class="inst-history-tick"{% if tick.Tone %} data-tone="{{ tick.Tone }}"{% endif %} title="{{ tick.Title }}"></span>{% endfor %}
 </span>

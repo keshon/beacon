@@ -7,7 +7,7 @@
         <span class="inst-dot" data-tone="{% if row.Status == 'up' %}ok{% elif row.Status == 'down' %}error{% else %}neutral{% endif %}"></span>
     </span>
     <span class="inst-task-main">
-        <span class="inst-task-title inst-u-truncate monitor-title">
+        <span class="inst-task-title inst-u-truncate">
             {% if not row.IsPeer %}<a href="/monitors/{{ row.Monitor.ID }}">{{ row.Monitor.Name }}</a>{% else %}{{ row.Monitor.Name }}{% endif %}
             {% if not row.IsPeer and not row.Enabled %}<span class="inst-badge">Paused</span>{% endif %}
             {# Three outages in a week is a pattern, and the row is the only #}

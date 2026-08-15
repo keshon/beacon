@@ -8,7 +8,7 @@ internal/monitor/              domain types + status transitions
 internal/monitor/checks        how probes execute
 internal/monitor/scheduler     when checks run (the loop)
 internal/monitor/runner        monitor mutations (add/update/delete/list)
-internal/storage               JSON persistence + data-dir flock
+internal/storage               datastore persistence + data-dir flock
 internal/notify                alert delivery
 internal/config                settings
 internal/server                HTTP wiring (Routes)
@@ -126,7 +126,7 @@ Keep tests next to the code they exercise.
 
 Multi-instance mode is **visibility + opportunistic failover**, not full HA:
 
-- Pull-only peer cache in `peer_data.json`
+- Pull-only peer cache in the `peers` collection
 - Dead-peer adoption via sorted ring (one adopter per dead node)
 - Export includes adopted monitors for downstream peers
 - State merge by latest `LastCheck`

@@ -20,9 +20,15 @@
                 <span class="inst-panel-title">Server</span>
             </div>
             <div class="inst-panel-body inst-form">
-                <p class="inst-field-hint" id="restartHint">
+                <p class="inst-field-hint">
                     Changes to listen address or worker count require a process restart to take effect.
                 </p>
+                {# Сохранилось, но ещё не действует — это предупреждение, а не #}
+                {# ошибка и не подсказка. Сноска кита несёт тон ЗНАЧКОМ, а не #}
+                {# только цветом, и потому имеет право говорить об исходе. #}
+                {# Отдельным элементом, чтобы не затирать пояснение выше: оно #}
+                {# нужно и после сохранения. #}
+                <p class="inst-note" data-tone="warn" id="restartHint" role="status" hidden></p>
                 <div class="inst-field inst-field--side">
                     <label class="inst-label" for="set_listen">Listen address</label>
                     <input type="text" class="inst-input" id="set_listen" name="listen" placeholder=":8080" />
@@ -32,8 +38,13 @@
                     <input type="number" class="inst-input" id="set_workers" name="workers" min="1" placeholder="10" />
                 </div>
                 <div class="inst-field inst-field--side">
-                    <label class="inst-label" for="set_interval">Default check interval (sec)</label>
-                    <input type="number" class="inst-input" id="set_interval" name="default_interval" min="0" placeholder="30" />
+                    {# Единица — суффиксом поля, а не хвостом подписи: колонка #}
+                    {# подписей бокового поля рассчитана на одну строку. #}
+                    <label class="inst-label" for="set_interval">Check every</label>
+                    <span class="inst-input-group">
+                        <input type="number" class="inst-input" id="set_interval" name="default_interval" min="0" placeholder="30" />
+                        <span class="inst-input-affix">sec</span>
+                    </span>
                 </div>
             </div>
         </section>

@@ -27,22 +27,19 @@
         return (root && root.globalDefaults) || { alert_mode: 'repeat', templates: {} };
     }
 
-    function statusClass(kind) {
-        switch (kind) {
-            case 'success':
-                return 'small text-success';
-            case 'error':
-                return 'small text-danger';
-            case 'warn':
-                return 'small text-warning';
-            default:
-                return 'small text-muted';
-        }
-    }
+    /* Исход проверки — тон кита, а не свой цвет текста. Словарь тонов один на
+       весь кит (`data-tone`), объявлен один раз и едет вместе с темой; пара
+       собственных классов на цвет разошлась бы с ним на первой же теме.
+
+       Тон стоит АТРИБУТОМ, а размер — классом: разделение не косметическое.
+       Класс задаётся разметкой один раз, тон меняется на каждой проверке, и
+       перезапись className стирала бы первое вторым. */
+    var STATUS_TONES = { success: 'ok', error: 'error', warn: 'warn' };
 
     function setStatus(node, kind, text) {
         if (!node) return;
-        node.className = statusClass(kind);
+        node.classList.add('inst-field-hint');
+        node.setAttribute('data-tone', STATUS_TONES[kind] || 'neutral');
         node.textContent = text || '';
     }
 
@@ -245,14 +242,13 @@
         initial = initial || {};
 
         var modeSelect = root.querySelector('[data-policy-alert-mode]');
-        var modeRow =
-            modeSelect &&
-            (modeSelect.closest('[data-policy-alert-mode-row]') ||
-                modeSelect.closest('[data-policy-alert-mode-row]'));
-        if (modeRow) {
-            modeRow.classList.toggle('invisible', hideAlertMode);
-            modeRow.setAttribute('aria-hidden', hideAlertMode ? 'true' : 'false');
-        }
+        var modeRow = modeSelect && modeSelect.closest('[data-policy-alert-mode-row]');
+        // У почты режима повтора нет. Строка убирается ЦЕЛИКОМ, а не гасится
+        // до невидимости: пустое место на её позиции обещало бы настройку,
+        // которой у канала не существует. hidden прячет и от глаза, и от
+        // скринридера сразу — отдельный aria-hidden был бы вторым источником
+        // той же правды.
+        if (modeRow) modeRow.hidden = hideAlertMode;
         if (modeSelect) modeSelect.disabled = hideAlertMode;
         var tplDown = root.querySelector('[data-policy-template="down"]');
         var tplRecovered = root.querySelector('[data-policy-template="recovered"]');
@@ -309,7 +305,9 @@
 })();
 
 
-// Modal editor for per-receiver alert mode and templates (Beacon shell, not Bootstrap).
+// Modal editor for per-receiver alert mode and templates. The shell is the
+// kit's <dialog>: top layer, backdrop, Escape and focus return are the
+// platform's, and nothing here re-implements them.
 (function () {
     'use strict';
 
@@ -388,7 +386,7 @@
                 '</div>' +
                 '</div>' +
 
-                '<div class="inst-dialog-foot inst-dialog-foot--end">' +
+                '<div class="inst-dialog-foot">' +
                     '<button type="button" class="inst-btn" data-beacon-modal-close>' +
                         'Cancel' +
                     '</button>' +
@@ -575,22 +573,20 @@
     function updateRowMeta(row, channel) {
         var meta = row.querySelector('[data-notify-meta]');
         if (!meta) return;
-        var inherited = !rowHasPolicy(row);
         effectivePolicy(readRowPolicy(row)).then(function (eff) {
             var modeLabel = channel === 'email' ? 'Once' : eff.mode === 'once' ? 'Once' : 'Repeat';
             var tplLabel = eff.custom ? 'Custom' : 'Standard';
-            var tplClass = eff.custom ? ' notify-row-meta__templates--custom' : '';
-            meta.classList.toggle('notify-row-meta--inherited', inherited && !eff.custom);
+            // Своя настройка у получателя звучит громче унаследованной: строка
+            // целиком приглушена, и «Custom» возвращается к основному тону.
+            // Больше здесь ничего не красится — три обёртки с классами,
+            // которым нечего было применить, остались от прежней таблицы
+            // стилей и вводили в заблуждение при чтении.
             meta.innerHTML =
-                '<span class="notify-row-meta__mode">' +
                 modeLabel +
-                '</span>' +
-                '<span class="notify-row-meta__sep" aria-hidden="true">·</span>' +
-                '<span class="notify-row-meta__templates' +
-                tplClass +
-                '">' +
-                tplLabel +
-                '</span>';
+                '<span aria-hidden="true"> · </span>' +
+                (eff.custom
+                    ? '<span class="notify-row-meta__custom">' + tplLabel + '</span>'
+                    : tplLabel);
         });
     }
 
@@ -614,7 +610,6 @@
         displayValue = (displayValue || '').trim();
         if (!displayValue) return;
 
-        input.classList.add('notify-secret-field');
         input.type = 'password';
         input.autocomplete = 'off';
         input.value = displayValue;
@@ -623,9 +618,11 @@
 
         var pinned = false;
 
+        // Раскрытие несёт сам type поля — это и есть состояние, а не его
+        // отражение. Класса тут не было и не нужно: второй источник той же
+        // правды разошёлся бы с первым.
         function setRevealed(on) {
             input.type = on ? 'text' : 'password';
-            input.classList.toggle('is-revealed', on);
         }
 
         input.addEventListener('mouseenter', function () {
@@ -660,7 +657,7 @@
                 var row = el(
                     '<div class="notify-row notify-row--telegram">' +
                         '<div class="notify-row__fields">' +
-                        '<input type="password" class="inst-input notify-secret-field" data-notify-field="token" placeholder="Bot token" autocomplete="off" />' +
+                        '<input type="password" class="inst-input" data-notify-field="token" placeholder="Bot token" autocomplete="off" />' +
                         '<input type="text" class="inst-input" data-notify-field="chat_id" placeholder="Chat ID" />' +
                         '</div>' +
                         rowActionsHtml() +
@@ -700,7 +697,7 @@
                 var row = el(
                     '<div class="notify-row notify-row--discord">' +
                         '<div class="notify-row__fields">' +
-                        '<input type="password" class="inst-input notify-secret-field" data-notify-field="webhook" placeholder="Webhook URL" autocomplete="off" />' +
+                        '<input type="password" class="inst-input" data-notify-field="webhook" placeholder="Webhook URL" autocomplete="off" />' +
                         '</div>' +
                         rowActionsHtml() +
                         '</div>'
@@ -923,14 +920,20 @@
         mode = MODES.indexOf(mode) >= 0 ? mode : 'inherit';
         var seg = panel.querySelector('[data-notify-mode]');
         if (seg) {
+            // Отметку в radiogroup несёт aria-checked, а бегущий фокус —
+            // tabindex. По ЩЕЛЧКУ их переставляет kit.js сам; сюда мы приходим
+            // ещё и программно — открывая монитор, у которого режим уже
+            // выбран, — и тогда отметку обязано поставить приложение.
             seg.querySelectorAll('[data-mode]').forEach(function (btn) {
-                btn.classList.toggle('is-active', btn.dataset.mode === mode);
+                var on = btn.dataset.mode === mode;
+                btn.setAttribute('aria-checked', String(on));
+                btn.tabIndex = on ? 0 : -1;
             });
         }
         panel.dataset.notifyCurrentMode = mode;
         var body = panel.querySelector('[data-notify-channel-body]');
         var hint = panel.querySelector('[data-notify-mode-hint]');
-        if (body) body.classList.toggle('d-none', mode !== 'custom');
+        if (body) body.hidden = mode !== 'custom';
         if (hint) {
             if (mode === 'inherit') hint.textContent = 'Uses global settings for this channel.';
             else if (mode === 'off') hint.textContent = 'Disabled for this monitor.';

@@ -25,7 +25,9 @@ import (
 // be pointed at, so it carries the detail — including WHAT failed, not only
 // how many did.
 type CheckTick struct {
-	// Tone is the kit's tone: empty for a check that passed without remark.
+	// Tone is the kit's tone: "ok" for a check that passed, "error" for one
+	// that did not. Never empty — a check always has an outcome, and grey is
+	// reserved for the hour nobody checked (see HistTick).
 	Tone string
 }
 
@@ -35,6 +37,10 @@ type CheckGroup struct {
 	// makes the group's width proportional to it.
 	N     int
 	Label string
+	// Axis is the hour written under the strip. AxisMajor marks the hours
+	// that keep their label when the strip is too narrow for all of them.
+	Axis      string
+	AxisMajor bool
 	// Summary is what the hour says as a whole, for its own tooltip.
 	Summary string
 	Ticks   []CheckTick
@@ -69,17 +75,21 @@ func buildCheckStrip(records []storage.CheckRecord, hours int, now time.Time) []
 				continue
 			}
 			out = append(out, CheckGroup{
-				N: 1, Label: label, Empty: true,
+				N: 1, Label: label, Axis: axisLabel(hour), AxisMajor: axisMajor(hour), Empty: true,
 				Summary: label + " — no checks",
 			})
 			continue
 		}
 		started = true
 
-		g := CheckGroup{N: len(recs), Label: label, Ticks: make([]CheckTick, 0, len(recs))}
+		g := CheckGroup{
+			N: len(recs), Label: label,
+			Axis: axisLabel(hour), AxisMajor: axisMajor(hour),
+			Ticks: make([]CheckTick, 0, len(recs)),
+		}
 		failed := 0
 		for _, r := range recs {
-			t := CheckTick{}
+			t := CheckTick{Tone: "ok"}
 			if !r.Success {
 				failed++
 				t.Tone = "error"
@@ -132,6 +142,32 @@ func checkStripLabel(groups []CheckGroup, hours int) string {
 	default:
 		return head + ", none failed"
 	}
+}
+
+// axisMajorEvery marks the hours that survive on a narrow strip.
+//
+// EVERY hour is labelled — the axis exists so nobody has to hover a brick to
+// learn it is 13:00. But 24 labels need width: a bare hour number is about
+// 16px, so all of them want ~480px and only the major ones want ~160px. Which
+// set is shown is decided by the STRIP, in a container query, because the
+// server cannot know how wide the reader's window is. The server's job is to
+// say which hours are major; three divides 24 evenly, so the row keeps its
+// first and last label either way.
+//
+// The exact minute stays in the tooltip. The axis answers "when", the tooltip
+// answers "what happened".
+const axisMajorEvery = 3
+
+// axisLabel returns the hour to print under a group. It reads the LOCAL hour,
+// because the axis is read by a person in their own timezone, not by the store
+// in UTC.
+func axisLabel(hour time.Time) string {
+	return fmt.Sprintf("%02d", hour.Local().Hour())
+}
+
+// axisMajor reports whether the hour keeps its label on a narrow strip.
+func axisMajor(hour time.Time) bool {
+	return hour.Local().Hour()%axisMajorEvery == 0
 }
 
 func plural(n int, one, many string) string {

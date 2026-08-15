@@ -21,6 +21,22 @@
         try { localStorage.setItem('beaconTheme', v); } catch (e) { }
     });
 
+    // Accent is the kit's third knob and is independent of the theme: it
+    // redefines only the --a-* ramp, so any of the four works with any of the
+    // six themes. Petrol is the base and is expressed by REMOVING the
+    // attribute — the kit has no data-accent="petrol" on purpose.
+    var acc = document.getElementById('beaconAccent');
+    if (acc) {
+        var savedA = null;
+        try { savedA = localStorage.getItem('beaconAccent'); } catch (e) { }
+        acc.value = savedA || '';
+        acc.addEventListener('change', function () {
+            var v = acc.value;
+            if (v) { root.setAttribute('data-accent', v); } else { root.removeAttribute('data-accent'); }
+            try { localStorage.setItem('beaconAccent', v); } catch (e2) { }
+        });
+    }
+
     // Density is a document attribute. The kit runs the mark and the arrow
     // keys through role="radiogroup"; the application only records the choice.
     var dens = document.getElementById('beaconDensity');
