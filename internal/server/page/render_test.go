@@ -118,7 +118,13 @@ func TestMonitorScreenRendersBothBranches(t *testing.T) {
 	// kit paints that as track. What must never happen is "it was up" and "we
 	// never looked" sharing a colour, which is what the untoned green case did
 	// before.
-	if strings.Contains(body, "data-empty") {
+	//
+	// The guard names the TICK rather than the whole page, and the narrowing is
+	// load-bearing: the kit's legend swatch takes the same data-empty for the
+	// same statement and draws it as the TRACK, because a swatch that paints
+	// nothing is a missing swatch rather than an entry about absence. A blanket
+	// search for the attribute fails on the legend while the strip is correct.
+	if strings.Contains(body, `class="inst-history-tick" data-empty`) {
 		t.Fatal("an unchecked hour is drawn as a hole again instead of track")
 	}
 	if strings.Count(body, `data-tone="ok"`) == 0 {
@@ -126,18 +132,20 @@ func TestMonitorScreenRendersBothBranches(t *testing.T) {
 	}
 	// The axis under the strip labels the hour, and it has to mirror the
 	// strip's own proportions — one cell per group, labelled or not.
-	if strings.Count(body, "beacon-strip-hour") != len(base["history"].([]HistTick)) {
+	if strings.Count(body, "inst-history-axis-cell") != len(base["history"].([]HistTick)) {
 		t.Fatal("the hour axis stopped matching the strip it stands under")
 	}
 	// EVERY hour is labelled; which of them survive a narrow strip is decided
-	// in CSS, so the in-between hours must be in the markup with no data-major.
+	// in CSS, so the in-between hours must be in the markup carrying data-minor.
 	for _, h := range []string{">09<", ">10<", ">11<", ">12<"} {
 		if !strings.Contains(body, h) {
 			t.Fatalf("the hour axis is missing %s", h)
 		}
 	}
-	if strings.Count(body, "data-major") != 2 {
-		t.Fatal("the axis lost the marks that survive a narrow strip")
+	// The mark is inverted against what it used to be: the kit drops the cells
+	// it is told may go, so the fixture's two NON-major hours carry it.
+	if strings.Count(body, "data-minor") != 2 {
+		t.Fatal("the axis lost the marks that say which labels may be dropped")
 	}
 	for _, want := range []string{"shop.example.com", "connection timeout", "97.22%",
 		"2 of 72 checks failed", "3 incidents this week", "10000ms",

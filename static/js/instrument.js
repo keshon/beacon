@@ -1,55 +1,96 @@
-/* instrument — поведение. Опционально.
+/* instrument — behaviour. Optional.
 
-   Кит рисует состояние и объявляет роли. Роль — это обещание: `role="listbox"`
-   говорит вспомогательной технологии, что стрелки работают. Пока обещание не
-   выполнено, компонент не «не доделан», он ОБМАНЫВАЕТ — и это хуже, чем не
-   объявлять роль вовсе.
+   The kit draws state and declares roles. A role is a promise: `role="listbox"`
+   tells assistive technology that the arrow keys work. Until the promise is
+   kept, the component is not "unfinished", it LIES — and that is worse than
+   never declaring the role at all.
 
-   Этот файл выполняет обещание и больше ничего не делает.
+   This file keeps the promise and does nothing else.
 
-   ── Что он НЕ делает ──────────────────────────────────────────────────────
+   ── What it does NOT do ───────────────────────────────────────────────────
 
-   Не рисует. Ни одного присвоения style, ни одного добавления класса
-   оформления. Он ставит атрибуты, которые УЖЕ есть в разметочном контракте —
-   tabindex, aria-selected, aria-checked, aria-expanded, — а как они выглядят,
-   решает CSS. Как только скрипт начнёт красить, кит потеряет главное своё
-   свойство: приложение перестанет иметь возможность переопределить вид, не
-   трогая поведение.
+   It does not choose appearance. It sets attributes that are ALREADY in the
+   markup contract — tabindex, aria-selected, aria-checked, aria-expanded —
+   and what they look like is for CSS to decide. The moment the script starts
+   painting, the kit loses its main property: the application can no longer
+   override the look without touching the behaviour.
 
-   Не обязателен. Без него всё, что не требует клавиатуры, работает как
-   работало: раскрытие на <details>, поповер на Popover API, модалка на
-   <dialog>, валидация на :user-invalid.
+   There are exactly two exceptions, and both are named where they stand:
+   `--fill` on the slider is a data channel rather than styling (syncSlider),
+   and the markup of a toast is built by JS, because a queue and a timer are
+   beyond CSS (toast). Nowhere else does the kit write to style or className.
 
-   ── Подключение ───────────────────────────────────────────────────────────
+   It is not required. Without it everything that needs no keyboard works as
+   before: disclosure on <details>, the popover on the Popover API, the modal
+   on <dialog>, validation on :user-invalid.
+
+   ── Including it ──────────────────────────────────────────────────────────
 
      <script type="module" src="src/kit.js"></script>
 
-   Модуль, а не классический скрипт: у него есть именованные экспорты, и на
-   них потом сядут обёртки Svelte и React. Сборки по-прежнему нет.
+   A module rather than a classic script: it has named exports, and Svelte and
+   React wrappers will sit on them later. There is still no build step.
 
-   ── Почему делегирование, а не инициализация ──────────────────────────────
+   An application that drives the markup itself opts out of the self-start
+   with `data-instrument="manual"` on <html> and calls start() by hand — the
+   explanation is at the end of the file. Three handles, and all three exist
+   for one purpose: so that an attribute never has two owners.
 
-   Слушатели висят на документе, а элементы ищутся в момент нажатия. Для
-   агентного интерфейса это не оптимизация, а единственный рабочий вариант:
-   строки очереди, шаги и узлы дерева ПРИБЫВАЮТ во время работы, и любой
-   init(el) при старте промахнулся бы мимо всего, что появилось позже.
+     data-instrument="manual"   on <html> — do not start by yourself
+     start(root, {observe})     do not raise an observer
+     data-roving="manual"       on a group — the application drives tabindex
 
-   Единственное, что нельзя сделать лениво, — начальный tabindex: группа без
-   него не достижима по Tab вообще. Поэтому за появлением групп следит
-   MutationObserver, а не человек.
+   ── Why delegation rather than initialisation ─────────────────────────────
+
+   The listeners sit on the document and the elements are looked up at the
+   moment of a keypress. For an agent interface that is not an optimisation
+   but the only workable option: queue rows, steps and tree nodes ARRIVE while
+   the work runs, and any init(el) at startup would miss everything that
+   appeared later.
+
+   The one thing that cannot be done lazily is the initial tabindex: a group
+   without it is not reachable by Tab at all. So a MutationObserver watches
+   for groups appearing, rather than a human.
    ========================================================================= */
 
-/* Роли, у которых есть контракт клавиатуры, и всё, что о них надо знать.
+/* Everything the kit SAYS to a human is collected here and only here.
+ *
+ * Four phrases wired into the code mean a library declared framework-agnostic
+ * speaks to a screen reader in one language with nothing to reach in and
+ * change it. Two of the four have an attribute override on the button, two
+ * have none at all.
+ *
+ * The attribute stays and still wins: it has a different job — to say
+ * something else for ONE button. What changes here is the language of the
+ * whole screen:
+ *
+ *     import { strings } from '@keshon/instrument/js';
+ *     strings.copied = 'Copié';
+ *
+ * An object rather than a translation function: a four-string dictionary that
+ * needs substitution in one place. A full i18n here would be machinery
+ * heavier than the task, and a key nobody translates is a promise the kit
+ * does not keep.
+ */
+export const strings = {
+  toasts: 'Notifications',
+  copied: 'Copied',
+  copyFailed: 'Could not copy',
+  tagRemoved: (label) => `Tag ${label} removed`,
+};
 
-   Список закрыт. Он совпадает с таблицей разметочного контракта в
-   конституции — если там появится строка, она обязана появиться и здесь,
-   иначе кит снова начнёт обещать невыполнимое. */
+/* The roles that carry a keyboard contract, and everything worth knowing
+   about them.
+
+   The list is closed. It matches the markup-contract table in the design
+   principles — if a row appears there, it has to appear here too, or the kit
+   starts promising the unkeepable again. */
 const GROUPS = {
   listbox: {
     item: '[role="option"]',
     axis: 'vertical',
-    // Выделение следует за фокусом: одиночный listbox по APG ведёт себя так,
-    // и очередь задач — ровно этот случай.
+    // Selection follows focus: a single-select listbox behaves that way per
+    // APG, and a task queue is exactly that case.
     follows: 'aria-selected',
   },
   tree: {
@@ -60,7 +101,7 @@ const GROUPS = {
   menu: {
     item: '[role^="menuitem"]',
     axis: 'vertical',
-    // У пункта меню выделения нет: он действие, а не выбор.
+    // A menu item has no selection: it is an action, not a choice.
     follows: null,
   },
   radiogroup: {
@@ -77,62 +118,161 @@ const GROUPS = {
 
 const GROUP_SELECTOR = Object.keys(GROUPS).map((r) => `[role="${r}"]`).join(',');
 
-/* Ось берётся из aria-orientation, если он есть: горизонтальное дерево и
-   вертикальные вкладки существуют, и разметка вправе так сказать. */
+/* Multi-select removes "selection follows focus".
+ *
+ * Per APG a single-select listbox selects whatever focus lands on — and a task
+ * queue is exactly that case. A multi-select one behaves differently: an arrow
+ * ONLY moves focus, and Space toggles. Otherwise walking a filter bar with the
+ * arrows would switch on everything walked past.
+ *
+ * The flag is looked for on the group rather than on the item:
+ * aria-multiselectable is the group's attribute, and it does not change the
+ * role — a listbox stays a listbox. So the role dictionary needed no change:
+ * multiplicity is a layer over an entry, not a sixth line in it.
+ *
+ * `follows` moves into `multi` rather than being dropped: the toggle needs the
+ * attribute name to know what to write. Menus never get here — there `follows`
+ * is empty, there is no selection at all, and nothing to layer over. */
+function specOf(group) {
+  const spec = GROUPS[group.getAttribute('role')];
+  if (!spec || !spec.follows) return spec || null;
+  if (group.getAttribute('aria-multiselectable') !== 'true') return spec;
+  return { ...spec, follows: null, multi: spec.follows };
+}
+
+/* The axis comes from aria-orientation when it is there: horizontal trees
+   and vertical tab lists exist, and markup is entitled to say so. */
 function axisOf(group, spec) {
   return group.getAttribute('aria-orientation') || spec.axis;
 }
 
-/* Элементы группы.
+/* The items of a group.
  *
- * closest() обязателен: вложенные группы существуют (подменю внутри меню,
- * группа внутри дерева), и без него стрелка в родителе прыгала бы по чужим
- * пунктам. Отключённые и невидимые выбрасываются — фокус на них не ставится
- * ни платформой, ни нами. */
+ * closest() is mandatory: nested groups exist (a submenu inside a menu, a
+ * group inside a tree), and without it an arrow in the parent would hop across
+ * somebody else's items. Invisible ones are dropped — neither the platform nor
+ * we put focus on them.
+ *
+ * `aria-disabled` is NOT dropped, and that is no oversight. An item declared
+ * unavailable has to stay discoverable: a person walking with the arrows must
+ * learn that the action exists and why it does not work right now. An item
+ * dropped from the list is never learned about at all — it is simply absent,
+ * and the difference between "you cannot" and "there is none" disappears.
+ *
+ * It follows that the roving tabindex has to be written to it: an item absent
+ * from the list never receives `-1`, while a native `<button>` holds `0` — and
+ * the result is the exact inverse of the promise: the arrows skip it and Tab
+ * stops on it.
+ *
+ * `disabled` is another matter: the platform removes it from the tab order
+ * itself and refuses it focus, and there is nothing here to argue about. */
 function itemsOf(group, spec, withHidden) {
   return [...group.querySelectorAll(spec.item)].filter(
     (el) =>
       el.closest(GROUP_SELECTOR) === group &&
-      el.getAttribute('aria-disabled') !== 'true' &&
       !el.disabled &&
       (withHidden || el.offsetParent !== null),
   );
 }
 
-/* Бегущий tabindex: ровно один элемент группы достижим по Tab.
+/** The item is declared unavailable: walk to it, but do nothing on it. */
+function isDisabled(el) {
+  return el.getAttribute('aria-disabled') === 'true';
+}
+
+/* Who drives the roving tabindex.
  *
- * Это и есть весь смысл. Список из двухсот строк, у каждой tabindex="0",
- * заставляет двести раз нажать Tab, чтобы уйти дальше; список, где ни у одной
- * его нет, недостижим вовсе — так кит и жил до сих пор. */
+ * Of the seven attributes the kit writes, six leave through a cancellable
+ * event: the application calls preventDefault and the markup is left alone.
+ * The seventh, tabindex, written unconditionally, is the one place an
+ * attribute could end up with two owners: React, having rendered tabIndex
+ * from state, and the kit, rewriting it in the next microtask.
+ *
+ * An event is the wrong tool here, and that is worth recording so it is not
+ * proposed again. roving() is called from refresh(), that is on EVERY batch of
+ * document mutations — an event per group per update would be noise, and the
+ * application would answer the same thing every time. The answer here is not
+ * about one particular move but about ownership as a whole, which makes it a
+ * declaration rather than a decision: an attribute on the group, like
+ * everything else in this kit.
+ *
+ * The kit does not stop moving focus because of it: the application took the
+ * attribute, it did not forbid a human to walk with the arrows. A cancelled
+ * inst:select behaves in exactly the same way. */
+function rovingOwned(group) {
+  return group.dataset.roving !== 'manual';
+}
+
+/* The roving tabindex: exactly one item of a group is reachable by Tab.
+ *
+ * That is the whole of it. A list of two hundred rows each with tabindex="0"
+ * costs two hundred presses to get past; a list where none of them has it is
+ * unreachable altogether. */
 function roving(group, spec, current) {
   const items = itemsOf(group, spec);
   if (!items.length) return;
+  /* The anchor of the tab order prefers an available item.
+   *
+   * Walking to an unavailable one with the arrows is promised behaviour, but
+   * making it the ONLY Tab stop would greet somebody entering the group for
+   * the first time with the news that nothing here can be done. A selected
+   * item still outranks it: if the markup says `aria-selected="true"`, there
+   * is nothing to argue about. */
   const active = current && items.includes(current)
     ? current
-    : items.find((el) => el.getAttribute(spec.follows || 'aria-selected') === 'true') || items[0];
-  for (const el of items) el.tabIndex = el === active ? 0 : -1;
+    : items.find((el) => el.getAttribute(spec.follows || 'aria-selected') === 'true')
+      || items.find((el) => !isDisabled(el))
+      || items[0];
+  if (rovingOwned(group)) {
+    for (const el of items) el.tabIndex = el === active ? 0 : -1;
+  }
   return active;
 }
 
-/* Перевести фокус и, если роль этого требует, состояние выбора.
+/* Move focus and, if the role calls for it, the selection with it.
  *
- * Выбор снимается со ВСЕЙ группы, а не переключается на цели: два выделенных
- * пункта в одиночном списке — состояние, из которого разметка уже не выйдет. */
+ * The selection is cleared from the WHOLE group rather than toggled on the
+ * target: two selected items in a single-select list is a state the markup
+ * cannot get back out of. */
 function move(group, spec, to) {
-  for (const el of itemsOf(group, spec)) el.tabIndex = el === to ? 0 : -1;
-  select(group, spec, to);
+  if (rovingOwned(group)) {
+    for (const el of itemsOf(group, spec)) el.tabIndex = el === to ? 0 : -1;
+  }
+  /* In a multi-select group an arrow does NOT select. Otherwise walking a
+     filter bar would switch on every filter walked past, and "selection
+     follows focus" from a single-select list would turn into "everything gets
+     selected". There it is Space that toggles, and it arrives here by another
+     road: through click.                                                    */
+  if (!spec.multi) select(group, spec, to);
   to.focus();
 }
 
-/* Перенести выбор на пункт и сказать об этом.
+/* Move the selection onto an item and say so.
  *
- * Отдельно от move, потому что мышь и клавиатура приходят сюда по-разному:
- * стрелка двигает фокус и выбор вместе, щелчок — только выбор.
+ * Separate from move, because mouse and keyboard arrive here differently: an
+ * arrow moves focus and selection together, a click moves selection only.
  *
- * Отменённое событие оставляет разметку нетронутой, но фокус всё равно уходит
- * куда шёл: приложение отказалось вести состояние само, а не запретило
- * человеку перемещаться. */
+ * A cancelled event leaves the markup untouched, but focus still goes where it
+ * was going: the application declined to drive the state itself, it did not
+ * forbid a human to move. */
 function select(group, spec, to) {
+  /* An unavailable item moves focus and does not move state. The check sits
+     here rather than in two handlers: both roads arrive through select() —
+     arrow-and-Space and the mouse click — so this fork belongs where the
+     multi-select fork already is. */
+  if (isDisabled(to)) return;
+
+  /* Multi-select toggles ONE item and leaves its neighbours alone — that is
+     what makes it different. The branch sits here rather than in the key
+     handler because both roads arrive through select(): arrow-and-Space and
+     the mouse click alike. One fork, one place for it.                    */
+  if (spec.multi) {
+    const on = to.getAttribute(spec.multi) === 'true';
+    const value = to.dataset.value ?? to.textContent.trim();
+    if (!emit(to, 'select', { value, selected: !on })) return;
+    to.setAttribute(spec.multi, String(!on));
+    return;
+  }
   if (!spec.follows || to.getAttribute(spec.follows) === 'true') return;
   if (!emit(to, 'select', { value: to.dataset.value ?? to.textContent.trim() })) return;
   const items = itemsOf(group, spec);
@@ -142,13 +282,13 @@ function select(group, spec, to) {
   panels(group, spec, items, to);
 }
 
-/* Панель выбранной вкладки.
+/* The panel of the selected tab.
  *
- * Показывается та, на которую указывает aria-controls, остальные прячутся.
- * Гадать не о чем: связь названа в разметке, и без этой строки вкладка
- * переключалась на вид, а содержимое оставалось прежним.
+ * The one named by aria-controls is shown and the rest are hidden. There is
+ * nothing to guess: the link is stated in the markup, and without this line a
+ * tab switches to the eye while the content stays as it was.
  *
- * Только для вкладок: у строки списка и пункта меню панели нет. */
+ * Tabs only: a list row and a menu item have no panel. */
 function panels(group, spec, items, to) {
   if (spec.item !== '[role="tab"]') return;
   const doc = group.ownerDocument;
@@ -163,21 +303,21 @@ function panels(group, spec, items, to) {
 function step(items, from, delta) {
   const i = items.indexOf(from);
   if (i < 0) return items[0];
-  // По кругу: у списка нет «конца», после которого некуда деться. APG
-  // допускает оба поведения, но в очереди задач заворот избавляет от
-  // тупика на последней строке.
+  // Wrapping: a list has no "end" past which there is nowhere to go. APG
+  // allows either behaviour, but in a task queue wrapping saves the person
+  // from a dead end on the last row.
   return items[(i + delta + items.length) % items.length];
 }
 
-/* Разворот и сворачивание узла дерева.
+/* Expanding and collapsing a tree node.
  *
- * Стрелка «вперёд» на свёрнутом узле раскрывает его, на раскрытом — уходит к
- * первому потомку. «Назад» симметрично. Это контракт роли treeitem, и без
- * него aria-expanded в разметке — украшение. */
-/* Потомки узла в плоском дереве: всё, что идёт следом с бо́льшим уровнем,
- * до первой строки того же или меньшего. Вложенность здесь живёт в
- * aria-level, а не в разметке: дерево на десять тысяч узлов иначе не
- * построить. */
+ * The forward arrow opens a collapsed node and, on an open one, goes to the
+ * first child. The back arrow is symmetrical. This is the contract of the
+ * treeitem role, and without it aria-expanded in the markup is decoration. */
+/* The descendants of a node in a flat tree: everything that follows with a
+ * greater level, up to the first row at the same level or lower. Nesting here
+ * lives in aria-level rather than in the markup: a tree of ten thousand nodes
+ * cannot be built any other way. */
 function descendants(group, spec, item) {
   const items = itemsOf(group, spec, true);
   const level = Number(item.getAttribute('aria-level') || 1);
@@ -189,11 +329,11 @@ function descendants(group, spec, item) {
   return out;
 }
 
-/* Свернуть или раскрыть узел.
+/* Collapse or expand a node.
  *
- * Кит не рисует — он ставит hidden, то есть состояние, которое и так есть в
- * платформе. Событие отменяемо: приложение, которое рисует дерево из данных,
- * снимет строки само, и вторая рука ему не нужна. */
+ * The kit does not draw — it sets hidden, that is a state the platform already
+ * has. The event is cancellable: an application that renders its tree from
+ * data will remove the rows itself and does not need a second hand. */
 function setExpanded(group, spec, item, open) {
   if (!emit(item, 'expand', { open })) return;
   item.setAttribute('aria-expanded', String(open));
@@ -206,10 +346,18 @@ function setExpanded(group, spec, item, open) {
       d.hidden = true;
     }
   }
+  /* The roving tabindex is reset HERE, not by the observer.
+   *
+   * The observer is subscribed to childList, and collapsing a node means
+   * setting the hidden attribute — an edit it does not see. Without this line
+   * the anchor of the tab order stays on a hidden descendant: it holds
+   * tabindex="0", every visible node holds -1, and the whole tree drops out of
+   * the tab order — precisely the state roving() was written against. */
+  roving(group, spec, item);
 }
 
-/* Ближайший предок строки по уровню — нужен, чтобы при раскрытии не показать
- * потомков узла, свёрнутого глубже. */
+/* The nearest ancestor of a row by level — needed so that expanding does not
+ * reveal the descendants of a node collapsed deeper down. */
 function closestParent(group, spec, item, level) {
   const items = itemsOf(group, spec, true);
   for (let i = items.indexOf(item) - 1; i >= 0; i--) {
@@ -241,8 +389,8 @@ function treeArrow(group, spec, item, forward) {
     setExpanded(group, spec, item, false);
     return true;
   }
-  // Свёрнутый узел уводит фокус к родителю: уровень берётся из aria-level,
-  // потому что вложенность в разметке может быть плоской.
+  // A collapsed node sends focus to its parent: the level comes from
+  // aria-level, because the nesting in the markup may be flat.
   const level = Number(item.getAttribute('aria-level') || 1);
   const items = itemsOf(group, spec);
   for (let i = items.indexOf(item) - 1; i >= 0; i--) {
@@ -252,6 +400,38 @@ function treeArrow(group, spec, item, forward) {
     }
   }
   return false;
+}
+
+/* Moving between the columns of a cascader.
+ *
+ * A column is an ordinary listbox: one Tab stop, the arrows along it,
+ * selection following focus. What a listbox has no notion of is the column
+ * BESIDE it, and the cross-axis arrows are free there — a vertical group
+ * gives ArrowLeft and ArrowRight no meaning at all.
+ *
+ * Scoped by CLASS rather than by role, and that distinction matters. Teaching
+ * every listbox in the kit to walk sideways would be changing a role's
+ * promise for the sake of one component; a listbox that happens to stand
+ * inside `.inst-cascader` gains a behaviour of the cascader instead. The role
+ * dictionary is untouched, and a listbox anywhere else answers the arrows
+ * exactly as it did.
+ *
+ * Forward lands on what the next column already has selected, or on its first
+ * item; back does the same. Nothing is opened and nothing is rendered here:
+ * the column beside is the application's, and if it is empty there is nowhere
+ * to go and the key falls through to the platform. */
+function cascadeArrow(group, forward) {
+  const set = group.closest('.inst-cascader');
+  if (!set) return false;
+  const cols = [...set.querySelectorAll('.inst-cascader-col')];
+  const next = cols[cols.indexOf(group) + (forward ? 1 : -1)];
+  if (!next) return false;
+  const spec = specOf(next);
+  if (!spec) return false;
+  const items = itemsOf(next, spec);
+  if (!items.length) return false;
+  move(next, spec, items.find((n) => n.getAttribute('aria-selected') === 'true') || items[0]);
+  return true;
 }
 
 const NEXT = { vertical: 'ArrowDown', horizontal: 'ArrowRight' };
@@ -267,18 +447,27 @@ function onKeydown(e) {
 
   const group = item.closest(GROUP_SELECTOR);
   if (!group) return;
-  const spec = GROUPS[group.getAttribute('role')];
+  const spec = specOf(group);
   if (!spec) return;
 
   const axis = axisOf(group, spec);
   const items = itemsOf(group, spec);
   if (!items.length) return;
 
-  // Дерево забирает поперечные стрелки под раскрытие — но только их.
+  // A tree takes the cross-axis arrows for expansion — but only those.
   if (group.getAttribute('role') === 'tree') {
     const forward = e.key === 'ArrowRight';
     if (forward || e.key === 'ArrowLeft') {
       if (treeArrow(group, spec, item, forward)) e.preventDefault();
+      return;
+    }
+  }
+
+
+  // A column of a cascader takes them for the column beside it.
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    if (cascadeArrow(group, e.key === 'ArrowRight')) {
+      e.preventDefault();
       return;
     }
   }
@@ -302,47 +491,52 @@ function onKeydown(e) {
       return;
     case ' ':
     case 'Enter':
-      // Радио и вкладка уже выбраны стрелкой — нажимать нечего. Остальным
-      // клик отдаётся платформе: обработчик приложения висит на нём, и
-      // выдумывать второе событие незачем.
+      // A radio and a tab were already selected by the arrow — there is
+      // nothing left to press. For the rest the click is handed to the
+      // platform: the application's handler is on it, and inventing a second
+      // event would be pointless.
       if (spec.follows && group.getAttribute('role') !== 'radiogroup') {
         move(group, spec, item);
       }
       if (e.key === ' ') e.preventDefault();
-      item.click();
+      // Synthesising a click on an unavailable item would call the
+      // application's handler on behalf of a person who pressed "you cannot".
+      if (!isDisabled(item)) item.click();
       return;
     default:
   }
 }
 
-/* Фокус, пришедший мышью, тоже обязан перевесить tabindex: иначе следующий
- * Tab уйдёт не оттуда, куда человек только что ткнул. */
+/* Focus arriving by mouse has to move the tabindex too: otherwise the next
+ * Tab leaves from somewhere other than where the person just pointed. */
 function onFocusin(e) {
   const group = e.target.closest?.(GROUP_SELECTOR);
   if (!group) return;
-  const spec = GROUPS[group.getAttribute('role')];
+  const spec = specOf(group);
   if (!spec) return;
   const item = e.target.closest(spec.item);
   if (item) roving(group, spec, item);
 }
 
-/* ── Тосты ──────────────────────────────────────────────────────────────────
+/* ── Toasts ────────────────────────────────────────────────────────────────
 
-   Здесь скрипт делает то, чего CSS не может в принципе: считает время и
-   держит очередь. Вид по-прежнему целиком в CSS — ни одного присвоения style.
+   Here the script does what CSS cannot do in principle: it counts time and
+   holds a queue. The look is still entirely in CSS — not one assignment to
+   style.
 
-   Область открывается popover'ом ОДИН раз и не закрывается. Причина не в
-   удобстве: закрытый popover это display: none, а живой регион в display:
-   none не озвучивается — скринридер не услышал бы ни одного тоста.
+   The region is opened as a popover ONCE and never closed. The reason is not
+   convenience: a closed popover is display: none, and a live region in
+   display: none is not announced — a screen reader would hear no toast at
+   all.
    ───────────────────────────────────────────────────────────────────────── */
 
 const TOAST_LIMIT = 4;
 const TOAST_DURATION = 5000;
 
 function toastRegion(doc) {
-  // Своя область — та, что живёт в верхнем слое. Без [popover] под руку
-  // попадала любая разметка с этим классом: страница, ПОКАЗЫВАЮЩАЯ область
-  // примером, получала в неё настоящие уведомления.
+  // Our own region is the one living in the top layer. Without [popover] any
+  // markup carrying this class is picked up: a page SHOWING the region as an
+  // example would receive real notifications into it.
   let region = doc.querySelector('.inst-toasts[popover]');
   if (region) {
     ensureOpen(region);
@@ -351,38 +545,41 @@ function toastRegion(doc) {
   region = doc.createElement('div');
   region.className = 'inst-toasts';
   region.setAttribute('popover', 'manual');
-  // Живой регион вежливый: тост сообщает результат, а не прерывает работу.
-  // Ошибка перебивает — на ней самой стоит role="alert".
+  // The live region is polite: a toast reports a result rather than
+  // interrupting the work. An error does interrupt — role="alert" sits on the
+  // error itself.
   region.setAttribute('aria-live', 'polite');
-  region.setAttribute('aria-label', 'Уведомления');
+  region.setAttribute('aria-label', strings.toasts);
   doc.body.append(region);
   ensureOpen(region);
   return region;
 }
 
-/* Открыть область один раз.
+/* Open the region once.
  *
- * Перевести её НАВЕРХ верхнего слоя нельзя, и это проверено: hidePopover() с
- * последующим showPopover() — и в одной задаче, и через задачу — не поднимает
- * область над модалкой, открытой showModal(). Модальный диалог остаётся выше.
+ * It cannot be moved to the TOP of the top layer, and that was checked:
+ * hidePopover() followed by showPopover() — both within one task and across a
+ * task — does not raise the region above a modal opened with showModal(). The
+ * modal dialog stays higher.
  *
- * Значит и притворяться незачем: тост живёт выше любого z-index и любого
- * overflow: hidden, но НЕ выше модалки. Ограничение записано в справочнике
- * вместе с тем, что делать вместо.                                        */
+ * So there is no point pretending otherwise: a toast lives above any z-index
+ * and any overflow: hidden, but NOT above a modal. The limitation is recorded
+ * in the reference along with what to do instead.                         */
 function ensureOpen(region) {
   try {
     if (!region.matches(':popover-open')) region.showPopover();
   } catch {
-    // Область без атрибута popover — приложение решило иначе, и это его
-    // право: тосты будут работать, просто не в верхнем слое.
+    // A region with no popover attribute means the application decided
+    // otherwise, and that is its right: the toasts will work, just not in the
+    // top layer.
   }
 }
 
-/* Убрать с доигранным переходом.
+/* Remove once the transition has played out.
  *
- * transitionend со страховкой по таймеру: под prefers-reduced-motion переход
- * схлопывается до 0.01ms и событие может не прийти вовсе — без страховки
- * тост остался бы на экране навсегда. */
+ * transitionend with a timer as backstop: under prefers-reduced-motion the
+ * transition collapses to 0.01ms and the event may not arrive at all — without
+ * the backstop the toast would stay on screen forever. */
 function removeToast(el) {
   if (el.dataset.state === 'leaving') return;
   el.dataset.state = 'leaving';
@@ -397,11 +594,12 @@ function removeToast(el) {
 }
 
 /**
- * Показать тост.
+ * Show a toast.
  *
- * Разметку строит кит, но она вся описана в справочнике: если стандартной не
- * хватает, соберите свой узел и положите в `.inst-toasts` сами — очередь и
- * таймер подхватят его так же.
+ * The kit builds the markup, but all of it is described in the reference: if
+ * the standard one is not enough, assemble your own node and put it into
+ * `.inst-toasts` yourself — the queue and the timer will pick it up the same
+ * way.
  */
 export function toast(options = {}) {
   const {
@@ -418,7 +616,7 @@ export function toast(options = {}) {
   const el = doc.createElement('div');
   el.className = 'inst-toast';
   if (tone) el.dataset.tone = tone;
-  // Ошибка обязана перебить: она сообщает, что действие НЕ выполнено.
+  // An error has to interrupt: it reports that the action did NOT happen.
   el.setAttribute('role', tone === 'error' ? 'alert' : 'status');
 
   const body = doc.createElement('div');
@@ -454,8 +652,8 @@ export function toast(options = {}) {
 
   region.append(el);
 
-  // Потолок очереди. Двадцать тостов подряд — не сообщение, а стена: самые
-  // старые уходят, чтобы новое было видно.
+  // The ceiling of the queue. Twenty toasts in a row are not a message but a
+  // wall: the oldest leave so that the newest can be seen.
   const live = [...region.children].filter((x) => x.dataset.state !== 'leaving');
   for (const old of live.slice(0, Math.max(0, live.length - TOAST_LIMIT))) {
     removeToast(old);
@@ -463,9 +661,9 @@ export function toast(options = {}) {
 
   if (duration > 0) {
     let timer = setTimeout(() => removeToast(el), duration);
-    /* Таймер замирает под курсором и на фокусе. Тост, исчезнувший ровно
-       тогда, когда его начали читать, — это потерянное сообщение, и WCAG
-       2.2.1 требует ровно этого: у времени должна быть пауза. */
+    /* The timer freezes under the cursor and on focus. A toast that vanishes
+       exactly as it starts being read is a lost message, and WCAG 2.2.1 asks
+       for precisely this: time must be pausable. */
     const hold = () => clearTimeout(timer);
     const resume = () => { timer = setTimeout(() => removeToast(el), duration); };
     el.addEventListener('pointerenter', hold);
@@ -478,31 +676,30 @@ export function toast(options = {}) {
 }
 
 /* ==========================================================================
-   Нарисованные обещания
+   Drawn promises
 
-   Тот же закон, что у ролей, применённый к оформлению: если кит НАРИСОВАЛ
-   affordance, он обязан её выполнить. Кнопка копирования, крестик снятия,
-   курсор ew-resize на подписи оси — это обещания, данные пользователю
-   картинкой. Невыполненное обещание не «не доделано», оно обманывает.
+   The same law as for roles, applied to appearance: if the kit DREW an
+   affordance, it has to keep it. The copy button, the remove cross, the
+   ew-resize cursor on an axis label — these are promises made to the user in
+   pictures. A promise not kept is not "unfinished", it lies.
 
-   Каждое поведение здесь:
-   · ничего не рисует — ставит атрибуты из разметочного контракта;
-   · шлёт отменяемое событие, чтобы приложение могло вмешаться или взять
-     работу на себя;
-   · работает через делегирование, поэтому узлы могут прибывать во время
-     работы.
+   Every behaviour here:
+   · draws nothing — it sets attributes from the markup contract;
+   · sends a cancellable event, so the application can step in or take the
+     work over;
+   · works by delegation, so nodes may arrive while the work runs.
    ========================================================================== */
 
-/** Отменяемое событие кита. false — приложение перехватило работу. */
+/** A cancellable event of the kit. false means the application took over. */
 function emit(el, name, detail) {
   return el.dispatchEvent(
     new CustomEvent('inst:' + name, { bubbles: true, cancelable: true, detail }),
   );
 }
 
-/* ── Живая область для коротких сообщений ────────────────────────────────
-   Отдельная от тостов: «скопировано» — это подтверждение действия, а не
-   уведомление, и вставать в очередь ему незачем. */
+/* ── The live region for short messages ──────────────────────────────────
+   Separate from the toasts: "copied" is a confirmation of an action rather
+   than a notification, and it has no business queueing. */
 function announce(doc, text) {
   let live = doc.querySelector('[data-inst-live]');
   if (!live) {
@@ -513,22 +710,22 @@ function announce(doc, text) {
     doc.body.append(live);
   }
   live.textContent = '';
-  // Пустая строка и сразу текст: повтор того же сообщения иначе не
-  // объявляется — регион считает, что ничего не изменилось.
+  // An empty string and then the text: a repeat of the same message is not
+  // announced otherwise — the region decides nothing has changed.
   //
-  // Таймер, а не requestAnimationFrame: кадров в скрытой вкладке нет, и
-  // объявление не состоялось бы вовсе.
+  // A timer rather than requestAnimationFrame: a hidden tab gets no frames,
+  // and the announcement would never happen at all.
   setTimeout(() => { live.textContent = text; }, 0);
 }
 
-/* ── Копирование ─────────────────────────────────────────────────────────
+/* ── Copying ─────────────────────────────────────────────────────────────
 
-   Источник: data-copy у кнопки, иначе текст ближайшего inst-copyable или
-   inst-code без текста самой кнопки.
+   The source: data-copy on the button, otherwise the text of the nearest
+   inst-copyable or inst-code minus the text of the button itself.
 
-   textContent, а не innerText: второй зависит от раскладки и у скрытого
-   содержимого возвращает пустую строку — свёрнутый блок кода копировался бы
-   в ничто. */
+   textContent rather than innerText: the latter depends on layout and returns
+   an empty string for hidden content — a collapsed code block would be copied
+   into nothing. */
 function copySource(btn) {
   if (btn.dataset.copy !== undefined && btn.dataset.copy !== '') return btn.dataset.copy;
   const host = btn.closest('.inst-copyable, .inst-code, .inst-copy-host');
@@ -546,18 +743,18 @@ async function onCopy(btn) {
   try {
     await navigator.clipboard.writeText(text);
   } catch {
-    // Незащищённый origin отклоняет запись молча. Молчать в ответ — значит
-    // соврать: кнопка выглядела бы сработавшей.
+    // An insecure origin rejects the write silently. Answering with silence
+    // would be a lie: the button would look as though it had worked.
     ok = false;
   }
 
   btn.dataset.copied = ok ? 'true' : 'false';
-  // Удача и неудача берут РАЗНЫЕ подписи: одна на двоих объявляла бы
-  // «скопировано» там, где запись отклонена, — то есть ровно то враньё,
-  // ради устранения которого неудача вообще отслеживается.
+  // Success and failure take DIFFERENT labels: one shared between them would
+  // announce "copied" where the write was rejected — exactly the lie that
+  // tracking the failure exists to remove.
   const said = ok
-    ? btn.dataset.copiedLabel || 'Скопировано'
-    : btn.dataset.failedLabel || 'Не удалось скопировать';
+    ? btn.dataset.copiedLabel || strings.copied
+    : btn.dataset.failedLabel || strings.copyFailed;
   announce(btn.ownerDocument, said);
   clearTimeout(+btn.dataset.instTimer || 0);
   btn.dataset.instTimer = setTimeout(() => {
@@ -565,10 +762,10 @@ async function onCopy(btn) {
   }, 1400);
 }
 
-/* ── Снятие тега ─────────────────────────────────────────────────────────
+/* ── Removing a tag ──────────────────────────────────────────────────────
 
-   Фокус обязан уйти на соседа: удалённый элемент уводит его в никуда, и
-   человек с клавиатуры оказывается в начале документа. */
+   Focus has to move to a neighbour: a removed element takes it nowhere, and a
+   keyboard user ends up at the start of the document. */
 function onTagRemove(btn) {
   const tag = btn.closest('.inst-tag');
   if (!tag) return;
@@ -583,15 +780,15 @@ function onTagRemove(btn) {
     if (!next.matches('.inst-tag-remove') && next.tabIndex < 0) next.tabIndex = -1;
     next.focus();
   }
-  announce(btn.ownerDocument, `Метка ${label} снята`);
+  announce(btn.ownerDocument, strings.tagRemoved(label));
 }
 
-/* ── Перетаскивание подписи оси ──────────────────────────────────────────
+/* ── Dragging an axis label ──────────────────────────────────────────────
 
-   Курсор ew-resize на inst-num-axis означает «отсюда тянут». Шаг берётся из
-   самого поля, ускорение — из модификаторов: Shift ×10, Alt ×0.1. Значение
-   уходит событиями input и change, как у нативного ввода, поэтому фреймворки
-   видят его без единой строки клея. */
+   The ew-resize cursor on inst-num-axis means "drag from here". The step comes
+   from the field itself, the acceleration from modifiers: Shift ×10, Alt ×0.1.
+   The value leaves through input and change events, as with native input, so
+   frameworks see it without a line of glue. */
 function onAxisDown(e, axis) {
   const field = axis.closest('.inst-num-field');
   const input = field?.querySelector('input[type="number"]');
@@ -613,7 +810,8 @@ function onAxisDown(e, axis) {
     let v = startValue + delta;
     if (input.min !== '') v = Math.max(Number(input.min), v);
     if (input.max !== '') v = Math.min(Number(input.max), v);
-    // Хвост float съедается шагом: 0.1 + 0.2 иначе даёт 0.30000000000000004.
+    // The float tail is eaten by the step: 0.1 + 0.2 gives
+    // 0.30000000000000004 otherwise.
     const decimals = (String(step).split('.')[1] || '').length;
     input.value = decimals ? v.toFixed(decimals) : String(v);
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -632,32 +830,48 @@ function onAxisDown(e, axis) {
   axis.addEventListener('pointercancel', onUp);
 }
 
-/* ── Значение слайдера: в <output> и в заполнение дорожки ────────────────
-   Связь с <output> уже объявлена атрибутом for. Синхронизировать её вручную —
-   писать одну и ту же строку в каждом приложении.
+/* ── The slider value: into <output> and into the fill of the track ──────
+   The link to <output> is already declared by the for attribute. Synchronising
+   it by hand means writing the same line in every application.
 
-   --fill — то же самое для ЗАЛИВКИ: дорожка красится до бегунка, и доля
-   считается здесь, потому что CSS не умеет прочитать value у input. Разметка
-   объявляет начальное значение сама (канал данных), а скрипт держит его в
-   согласии при перетаскивании: без скрипта заливка остаётся на том значении,
-   с которым страница пришла, и это правда, а не ноль. */
+   --fill is the same thing for the FILL: the track is painted up to the thumb,
+   and the fraction is computed here because CSS cannot read the value of an
+   input. The markup declares the initial value itself (a data channel), and
+   the script keeps it in agreement while dragging: without the script the fill
+   stays at the value the page arrived with, and that is the truth rather than
+   zero.
+
+   The style is INLINE, and this is the one place the kit writes to style —
+   that is, the one thing an application cannot override without !important.
+   That is deliberate: the property has one owner, and the markup declares it
+   the same way. There is nowhere to move to a class — the fraction is
+   continuous. */
 function syncSlider(input) {
   const min = Number(input.min === '' ? 0 : input.min);
   const max = Number(input.max === '' ? 100 : input.max);
-  // Вырожденный диапазон: max === min. Деление дало бы NaN, и заливка
-  // пропала бы вовсе вместо того, чтобы честно показать край.
+  // A degenerate range: max === min. The division would give NaN and the fill
+  // would disappear entirely instead of honestly showing the edge.
   const share = max > min ? (Number(input.value) - min) / (max - min) : 0;
   input.style.setProperty('--fill', `${Math.min(1, Math.max(0, share)) * 100}%`);
 
   if (!input.id) return;
   for (const out of input.ownerDocument.querySelectorAll(`output[for~="${CSS.escape(input.id)}"]`)) {
-    out.textContent = input.value;
+    // Comparing before writing is not a micro-optimisation but a termination
+    // condition.
+    //
+    // Assigning textContent replaces the text node EVEN when the text is the
+    // same, that is it makes a childList edit. The observer wakes on it and
+    // calls refresh(), refresh() writes the same text again — and a page with
+    // a slider never goes idle again. Measured: the tab stops responding, and
+    // the pixel sweep hung dead on that page.
+    if (out.textContent !== input.value) out.textContent = input.value;
   }
 }
 
-/* ── «Выбрать всё» в таблице ─────────────────────────────────────────────
-   Чекбокс в шапке колонки выбора. Промежуточное состояние — indeterminate:
-   «часть строк выбрана» невыразимо ни через checked, ни через его отсутствие. */
+/* ── "Select all" in a table ─────────────────────────────────────────────
+   The checkbox in the header of the selection column. The in-between state is
+   indeterminate: "some rows are selected" cannot be said with checked, nor
+   with its absence. */
 function rowBoxes(table) {
   return [...table.querySelectorAll('tbody .inst-col-select input[type="checkbox"], tbody td:first-child input[type="checkbox"]')];
 }
@@ -690,14 +904,15 @@ function onTableToggle(box) {
   syncSelectAll(table);
 }
 
-/* ── Вставка подстановки в поле ──────────────────────────────────────────
+/* ── Inserting a substitution into a field ───────────────────────────────
 
-   Кнопка с надписью «{{name}}», которая ничего не кладёт в поле, — то же
-   невыполненное обещание, что роль без клавиатуры.
+   A button labelled "{{name}}" that puts nothing into the field is the same
+   unkept promise as a role without a keyboard.
 
-   Вставляется НА МЕСТО КАРЕТКИ, а не в конец: человек ставит курсор туда,
-   где нужна подстановка, и ждёт её там. Выделенное заменяется. После
-   вставки фокус возвращается в поле — иначе следующую букву некуда набрать. */
+   It is inserted AT THE CARET rather than at the end: a person puts the cursor
+   where the substitution is wanted and expects it there. A selection is
+   replaced. After the insert focus returns to the field — otherwise there is
+   nowhere to type the next letter. */
 function onInsert(btn) {
   const doc = btn.ownerDocument;
   const sel = btn.dataset.insertInto;
@@ -713,22 +928,24 @@ function onInsert(btn) {
   field.focus();
   const caret = start + text.length;
   field.setSelectionRange?.(caret, caret);
-  // Нативное событие, а не своё: рамки видят изменение без единой строки клея.
+  // A native event rather than one of ours: frameworks see the change without
+  // a line of glue.
   field.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-/* ── Раскрыть все / свернуть все ─────────────────────────────────────────
+/* ── Expand all / collapse all ───────────────────────────────────────────
 
-   Список из шести <details> — это шесть нажатий, чтобы прочитать его целиком,
-   и ещё шесть, чтобы вернуть как было. Кнопка есть у каждого файлового
-   менеджера и почтового клиента ровно поэтому.
+   A list of six <details> costs six presses to read in full and six more to
+   put back. Every file manager and every mail client has this button for
+   exactly that reason.
 
-   Состояние определяется по СОДЕРЖИМОМУ, а не запоминается: если хоть один
-   узел закрыт, нажатие раскрывает всё. Кнопка, которая помнит своё «сейчас
-   сверну», рано или поздно расходится с тем, что человек открыл руками.
+   The state is read off the CONTENT rather than remembered: if even one node
+   is closed, a press opens everything. A button that remembers its own "I am
+   collapsing next" sooner or later disagrees with what the person opened by
+   hand.
 
-   Область — ближайшая панель, либо элемент, названный в `data-details-all`
-   селектором. */
+   The scope is the nearest panel, or the element named by a selector in
+   `data-details-all`. */
 function onDetailsAll(btn) {
   const doc = btn.ownerDocument;
   const sel = btn.dataset.detailsAll;
@@ -760,12 +977,35 @@ function onClick(e) {
   const insert = e.target.closest?.('.inst-insert');
   if (insert) { onInsert(insert); return; }
 
-  // Щелчок по вкладке или варианту. Без этого кит рисовал выбранную вкладку,
-  // стрелки её переключали, а мышь — нет: focusin переставляет только
-  // бегущий tabindex.
+  /* A click on a tree twist expands the node.
+   *
+   * The twist is drawn pressable — `cursor: pointer` and a 90° turn on
+   * `aria-expanded` — and with no branch under it a click only selects,
+   * leaving the tree impossible to open with a mouse at all. A drawn promise
+   * has to be kept, or the styling lies about the behaviour.
+   *
+   * The selection is NOT moved with it: the twist and the row are two
+   * different targets, and being neighbours is no reason to glue their
+   * meanings together. `inst:expand` is cancellable, as it is on the keyboard:
+   * an application that renders its tree from data will remove the rows
+   * itself. */
+  const twist = e.target.closest?.('.inst-tree-twist');
+  if (twist) {
+    const node = twist.closest('[role="treeitem"]');
+    const tree = node?.closest('[role="tree"]');
+    const treeSpec = tree && specOf(tree);
+    if (node && treeSpec && node.hasAttribute('aria-expanded')) {
+      setExpanded(tree, treeSpec, node, node.getAttribute('aria-expanded') !== 'true');
+      return;
+    }
+  }
+
+  // A click on a tab or an option. Without this the kit draws the selected
+  // tab, the arrows switch it and the mouse does not: focusin only moves the
+  // roving tabindex.
   const group = e.target.closest?.(GROUP_SELECTOR);
   if (!group) return;
-  const spec = GROUPS[group.getAttribute('role')];
+  const spec = specOf(group);
   const item = spec && e.target.closest(spec.item);
   if (item && itemsOf(group, spec).includes(item)) select(group, spec, item);
 }
@@ -781,54 +1021,119 @@ function onInput(e) {
   if (t instanceof HTMLElement && t.matches?.('.inst-slider')) syncSlider(t);
 }
 
+/* A popover opened — items appeared in the layout that were not in it.
+ *
+ * Opening a popover does not edit childList, so the observer does not wake on
+ * it, and itemsOf() filters closed items out by offsetParent. Without this
+ * subscription the menu items hold their native tabIndex 0 until the first
+ * focusin: Tab stops on every one of them, and the group stops being a single
+ * control exactly where the registry granted it an exemption on the promise
+ * of the opposite.
+ *
+ * The listener is installed in the CAPTURE phase: toggle does not bubble, and
+ * there is no other way to catch it on the root. This is cheaper than
+ * attributes: true across the whole document — such an observer would wake on
+ * every tabindex the kit writes itself, that is on its own edits.
+ *
+ * Guarded by tools/behavior.js, the popover section: it opens the popover and
+ * reads the group WITHOUT setting focus. The first Tab inside repairs the
+ * items by itself, so a check that focuses first would see an order where
+ * there is none. */
+function onToggle(e) {
+  const el = e.target;
+  if (!(el instanceof Element)) return;
+  // newState comes from the popover; on <details> toggle is still a plain
+  // event in some browsers — there openness is asked of the element itself.
+  if (e.newState === 'open' || (!e.newState && el.open === true)) refresh(el);
+}
+
 function onPointerDown(e) {
   const axis = e.target.closest?.('.inst-num-axis');
   if (axis && e.button === 0) onAxisDown(e, axis);
 }
 
-/** Расставить бегущий tabindex и привести к данным то, что от них зависит. */
+/** Place the roving tabindex and bring whatever depends on data into line. */
 export function refresh(root = document) {
   for (const group of root.querySelectorAll?.(GROUP_SELECTOR) || []) {
-    const spec = GROUPS[group.getAttribute('role')];
+    const spec = specOf(group);
     if (spec) roving(group, spec);
   }
-  // Начальное состояние: <output> и «выбрать всё» обязаны совпадать с
-  // разметкой ДО первого взаимодействия, иначе первый же кадр врёт.
+  // The initial state: <output> and "select all" have to agree with the
+  // markup BEFORE the first interaction, or the very first frame lies.
   for (const s of root.querySelectorAll?.('.inst-slider') || []) syncSlider(s);
   for (const t of root.querySelectorAll?.('.inst-table') || []) syncSelectAll(t);
 }
 
-let observer = null;
+/* An observer per EVERY root, not one per module.
+ *
+ * start(root) is declared as an API over an arbitrary root, and two live roots
+ * happen: a dialog with a subtree of its own, a preview pane, a test harness.
+ * One observer per module would mean the second start() takes the reference
+ * away from the first: the callback of the first root calls disconnect() on
+ * SOMEBODY ELSE'S observer and subscribes it to its own target, the first root
+ * stops updating silently, and stop() cannot reach the orphan — nothing holds
+ * it any more.
+ *
+ * The key is the root itself, so a repeated start() on the same root does not
+ * breed a second observer: the old one is removed where the new one is made.
+ *
+ * Guarded by tools/behavior.js, the roots section. */
+const observers = new Map();
 
-/** Подключить поведение. Вызывается сам при загрузке модуля. */
-export function start(root = document) {
+/** Connect the behaviour. Called by itself when the module loads.
+ *
+ * observe switches the MutationObserver off. It is justified where nodes
+ * arrive on their own — a task queue fills one row at a time — and redundant
+ * where the new nodes are known about anyway: a framework knows about its own
+ * commit, and a second observer over the whole document means a full
+ * querySelectorAll sweep on every render of it. Then refresh() is called from
+ * a hook after painting.
+ */
+export function start(root = document, { observe = true } = {}) {
   root.addEventListener('keydown', onKeydown);
   root.addEventListener('focusin', onFocusin);
   root.addEventListener('click', onClick);
   root.addEventListener('change', onChange);
   root.addEventListener('input', onInput);
   root.addEventListener('pointerdown', onPointerDown);
+  root.addEventListener('toggle', onToggle, true);
   refresh(root);
 
-  // Группы прибывают во время работы — это агентный интерфейс, в нём строки
-  // очереди появляются по одной. Наблюдатель дешевле, чем требование звать
-  // refresh() руками после каждого рендера, и не забывается.
+  // Groups arrive while the work runs — this is an agent interface, and its
+  // queue rows appear one at a time. An observer is cheaper than a demand to
+  // call refresh() by hand after every render, and it is never forgotten.
   const target = root.body || root;
-  if (target && typeof MutationObserver === 'function') {
+  if (observe && target && typeof MutationObserver === 'function') {
+    observers.get(root)?.disconnect();
     let queued = false;
-    observer = new MutationObserver(() => {
+    let mo;
+    const watch = () => mo.observe(target, { childList: true, subtree: true });
+    mo = new MutationObserver(() => {
       if (queued) return;
       queued = true;
       queueMicrotask(() => {
         queued = false;
+        // The observer is DISCONNECTED for the duration of the sweep, and
+        // that is a latch rather than an optimisation. refresh() writes to the
+        // markup — the roving tabindex, the "select all" answer, the slider
+        // value — and every such write can wake the observer again. The queued
+        // flag does not save it: the flag is cleared BEFORE the sweep, so an
+        // edit made by the sweep itself honestly starts the next round, and
+        // the page never goes idle at all.
+        //
+        // disconnect() also discards the queue of records, so after
+        // resubscribing the earlier edits do not surface.
+        mo.disconnect();
         refresh(root);
+        watch();
       });
     });
-    observer.observe(target, { childList: true, subtree: true });
+    observers.set(root, mo);
+    watch();
   }
 }
 
-/** Отключить. Нужно тестам и горячей перезагрузке, а не приложению. */
+/** Disconnect. Wanted by tests and by hot reload, not by an application. */
 export function stop(root = document) {
   root.removeEventListener('keydown', onKeydown);
   root.removeEventListener('focusin', onFocusin);
@@ -836,11 +1141,34 @@ export function stop(root = document) {
   root.removeEventListener('change', onChange);
   root.removeEventListener('input', onInput);
   root.removeEventListener('pointerdown', onPointerDown);
-  observer?.disconnect();
-  observer = null;
+  root.removeEventListener('toggle', onToggle, true);
+  observers.get(root)?.disconnect();
+  observers.delete(root);
 }
 
-if (typeof document !== 'undefined') {
+/* The self-start — and the way to decline it.
+ *
+ * Exactly one consumer needs to decline: whoever drives the markup themselves.
+ * Importing the module in a framework application raises an observer over the
+ * whole document and a subscription to six events the application never asked
+ * for — and the only way to undo that is to call stop() after it has all
+ * already happened.
+ *
+ * The refusal is declared by an attribute rather than by an import option,
+ * because the import is already too late: by the time the application gets
+ * control the listeners are in place. The attribute is read as the module
+ * runs, before the first subscription.
+ *
+ *     <html data-instrument="manual">
+ *
+ *     import { start, refresh } from '@keshon/instrument/js';
+ *     start(document, { observe: false });   // and refresh() after painting
+ *
+ * With no attribute the behaviour is unchanged: <script type="module"> and an
+ * incidental import work as before, and the promise "include the module once
+ * per page" stays true. */
+if (typeof document !== 'undefined' &&
+    document.documentElement?.dataset.instrument !== 'manual') {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => start(), { once: true });
   } else {
