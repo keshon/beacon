@@ -1,4 +1,3 @@
-
 # Beacon
 
 **Lightweight self-hosted uptime monitor for HTTP and TCP endpoints**
@@ -7,7 +6,8 @@ Beacon is a lightweight uptime monitoring tool for HTTP and TCP services.
 
 It runs as a single Go binary, periodically checks your targets, sends alerts on failures and recovery, and provides a simple web dashboard with recent uptime history.
 
-No agents, no Prometheus stack, no external dependencies. Point it at a URL or `host:port` and it works.
+Checks HTTP URLs and TCP `host:port` targets without installing agents on the
+monitored services. Templates and static assets ship with the server.
 
 ![Dashboard](static/example.png)
 
@@ -45,7 +45,7 @@ If you need metrics storage, distributed tracing, or deep infrastructure analyti
 
 ## Quick start
 
-**Requirements:** Go 1.24+ (see `go.mod`)
+Use Go 1.25+ as declared by [go.mod](go.mod):
 
 ```bash
 git clone https://github.com/keshon/beacon.git
@@ -53,295 +53,30 @@ cd beacon
 go run ./cmd/beacon
 ```
 
-Open [http://localhost:8080](http://localhost:8080). Default login is `admin` / `admin`. Change credentials before exposing Beacon to a network.
-
-Data is stored under `./data/`. On first run, if `config.json` is missing, default configuration is written automatically.
-
-### Custom config path
-
-```bash
-go run ./cmd/beacon /path/to/config.json
-```
-
-### Build binary
-
-```bash
-go build -o beacon ./cmd/beacon
-./beacon
-```
-
-## Configuration
-
-Settings can be managed via the web UI or `config.json`.
-
-| Area     | Notes                                              |
-| -------- | -------------------------------------------------- |
-| Server   | Listen address, worker pool size, default interval |
-| Auth     | HTTP basic auth for UI and API                     |
-| Telegram | Up to 5 bot token + chat ID pairs                  |
-| Discord  | Up to 5 webhook URLs                               |
-| Email    | Global SMTP + up to 5 recipient addresses          |
-| Webhook  | Up to 5 generic HTTP POST endpoints                |
-| Sync     | Multi-instance monitor/state synchronization       |
-
-Configuration lives in the store. A `config.json` beside the binary is read
-only on first start, to seed a fresh install.
-
-Example minimal `config.json`:
-
-```json
-{
-  "listen": ":8080",
-  "workers": 10,
-  "default_interval": 30,
-  "auth": {
-    "username": "admin",
-    "password": "change-me"
-  },
-  "telegram": {
-    "enabled": true,
-    "targets": [
-      { "token": "YOUR_BOT_TOKEN", "chat_id": "YOUR_CHAT_ID" }
-    ]
-  },
-  "discord": {
-    "enabled": false,
-    "webhooks": [
-      { "webhook": "https://discord.com/api/webhooks/..." }
-    ]
-  },
-  "email": {
-    "enabled": false,
-    "smtp": {
-      "host": "smtp.example.com",
-      "port": 587,
-      "username": "user",
-      "password": "secret",
-      "from": "beacon@example.com",
-      "tls": "starttls"
-    },
-    "targets": [
-      { "to": "ops@example.com" }
-    ]
-  },
-  "webhook": {
-    "enabled": false,
-    "webhooks": [
-      { "url": "https://hooks.example.com/beacon" }
-    ]
-  },
-  "notifications": {
-    "alert_mode": "repeat",
-    "templates": {
-      "down": "DOWN\\n{{message}}\\nTime: {{time}}\\nFrom: {{node}}\\n{{name}}",
-      "recovered": "Service RECOVERED\\n{{message}}\\nTime: {{time}}\\nFrom: {{node}}\\n{{name}}"
-    }
-  },
-  "network": {
-    "enabled": false
-  }
-}
-```
-
-## Notifications
-
-### Global defaults (Settings → Notifications)
-
-Set the default **alert mode** and **message templates** for all receivers. Empty fields in a receiver’s policy (gear icon on each row) inherit these values.
-
-| Mode | Behavior |
-|------|----------|
-| **Repeat while down** (default) | Sends an alert on every failed check while the monitor is down |
-| **Once on down + recovery** | One alert when the monitor goes down, one when it recovers |
-
-### Per-receiver policy
-
-Each Telegram, Discord, and webhook receiver row has a **gear** button to configure:
-
-- Alert mode (`repeat` / `once`) for that destination only
-- Custom **down** and **recovered** templates (per field; empty = use global default)
-
-Row badges show the effective mode (**Repeat** / **Once**) and whether templates are **Standard** (built-in) or **Custom** (differs from built-in defaults).
-
-Different receivers on the same monitor can use different modes (for example, ops channel `repeat`, management `once`).
-
-### Message templates
-
-Customize plain-text bodies for **down** and **recovered** using `{{placeholders}}`. In the receiver policy modal (gear icon), use **Test** next to each template field to send a preview with sample placeholder values to that receiver (works before Save).
-
-| Placeholder | Value |
-|-------------|--------|
-| `name` | Monitor name |
-| `target` | URL or host:port |
-| `type` | `http` or `tcp` |
-| `status` | `down`, `recovered`, or `test` |
-| `error` | Check error text |
-| `latency` | Response latency |
-| `status_code` | HTTP status code (`0` if N/A) |
-| `time` | Event time |
-| `message` | Detail line (error or latency summary) |
-| `fail_count` | Failed checks before marking down |
-
-Use **Reset** on a field (or **Reset all**) to restore built-in defaults. `GET /api/notify/defaults` returns built-in templates and the placeholder list for the UI.
-
-### Global receivers
-
-Configure Telegram, Discord, email, and webhook receivers in Settings (up to 5 per channel). Each row supports Test, remove, and per-receiver policy. Email alerts are always sent once on down and once on recovery (no repeat mode).
-
-### Per-monitor overrides
-
-For each channel (Telegram, Discord, email, webhook), choose **Global** (follow Settings), **Off** (disable for this monitor), or **Custom** (monitor-specific receiver list). Custom lists replace global receivers for that channel only.
-
-Legacy flat `notify_override` arrays (e.g. `{ "telegram": [...] }`) are migrated to **Custom** mode on load.
-
-### HTTP monitor options
-
-For HTTP monitors, expand **HTTP options** to set Basic Auth credentials (stored server-side; password is never shown in the UI after save) and an optional response **keyword** (must appear in the body, or enable **Must not contain** to invert). Multi-word keywords match when all words appear in order; spacing and HTML between words is ignored (e.g. `hello world` matches `hello <b>world</b>`).
-
-## Multi-instance sync
-
-Beacon supports optional synchronization between multiple instances for **visibility and opportunistic failover** — not full active/active HA.
-
-When enabled, instances poll peers via `GET /api/sync/export` and cache monitor definitions and state locally. Each node still owns its own monitor definitions in its store; sync does not merge config into the local store automatically.
-
-**What sync provides:**
-
-* Dashboard view of peer monitors and status
-* Dead-peer adoption: if a peer stops responding to sync polls for longer than `dead_timeout`, one live node in the ring runs that peer's cached monitors
-* Re-export of adopted monitors so indirect peers can discover them downstream
-* State merge by latest `LastCheck` timestamp when imports conflict
-
-**Important limitations:**
-
-* A node can only adopt monitors it has previously synced from the dead peer
-* Network partitions can cause duplicate checks and duplicate alerts until connectivity is restored
-* Monitor definitions are not automatically replicated to every node — plan peer topology so each node syncs from every monitor owner, or accept failover only for previously cached peers
-* Indirect nodes (e.g. C peers with B only) display status from their direct peer's export; mesh sync from every owner is recommended for visibility-only nodes
-* There is no distributed quorum or leader election; each node decides liveness independently from its own sync success
-
-Configuration:
-
-* self URL
-* peer list
-* **sync token** — same shared secret on every node (required for reliable sync)
-* sync interval
-* dead timeout settings
-
-Each node uses the sync token for outbound peer requests (`Authorization: Bearer …` or `X-Beacon-Sync-Token`). Web UI login credentials can differ per node. If no sync token is configured, legacy web Basic Auth is used (all nodes must share the same username and password, and outbound auth breaks after restart when only `password_hash` is stored).
-
-Export endpoint:
-
-```
-GET /api/sync/export
-```
-
-Requires sync to be enabled on the exporting node and a valid sync token (when configured). The export includes local monitors plus monitors this node has adopted from dead peers.
-
-## Web UI
-
-| Route        | Purpose                                          |
-| ------------ | ------------------------------------------------ |
-| `/dashboard` | Status overview, live updates, and monitor CRUD  |
-| `/monitors`  | Redirects to `/dashboard` (legacy bookmark)      |
-| `/settings`  | Configuration and sync                           |
-| `/login`     | Authentication                                   |
-
-## HTTP API
-
-All endpoints require authentication (HTTP Basic or session cookie). Cookie-authenticated `POST`/`PUT`/`PATCH`/`DELETE` requests must include the `X-CSRF-Token` header matching the `beacon_csrf` cookie (see `static/beacon.js`).
-
-Example with Basic auth:
-
-```bash
-curl -u admin:admin http://localhost:8080/api/monitors
-curl -u admin:admin -H 'Content-Type: application/json' \
-  -d '{"name":"API","type":"http","target":"https://example.com"}' \
-  http://localhost:8080/api/monitors
-```
-
-**Target format:** HTTP monitors need a full URL (`http://` or `https://`). TCP monitors need `host:port` with no scheme (e.g. `db.local:5432`). The API and UI validate targets on create/update.
-
-| Method | Path                      | Description            |
-| ------ | ------------------------- | ---------------------- |
-| GET    | /api/health               | Health check           |
-| GET    | /api/monitors             | List monitors          |
-| POST   | /api/monitors             | Create monitor         |
-| PATCH  | /api/monitors/{id}        | Update monitor         |
-| DELETE | /api/monitors/{id}        | Delete monitor         |
-| GET    | /api/monitors/{id}/uptime | Uptime samples         |
-| GET    | /api/state                | Current state          |
-| GET    | /api/check-records        | Check history records  |
-| GET    | /api/config               | Get config             |
-| PUT    | /api/config               | Update config          |
-| POST   | /api/notify/test          | Send test notification |
-| GET    | /api/notify/defaults      | Default alert mode, templates, placeholders |
-| GET    | /api/stream/checks        | Live check stream      |
-| GET    | /api/sync/export          | Sync export            |
-| GET    | /api/network/status       | Sync status            |
-
-## Docker
-
-Docker support is provided via a multi-stage build in `docker/`.
-
-Build example:
-
-```bash
-docker build -f docker/Dockerfile -t beacon .
-```
-
-Docker Compose example is available in `docker/docker-compose.yml`.
-
-## Development
-
-* Templates: `templates/`
-* Static assets: `static/`
-
-Run tests:
-
-```bash
-go test ./...
-```
-
-### The UI kit
-
-Styling comes from [instrument](https://github.com/keshon/instrument-ui-kit):
-one CSS file and one ES module, no build step. Both are vendored under
-`static/` and are **copies of the kit's `dist/`** — never edit them here. To
-take a new version, copy both files over and keep them in step with each other:
-
-
-## Project layout
-
-```
-cmd/beacon/              Entry point
-internal/
-  cluster/               Optional peer sync + adoption
-  monitor/               Domain types, StatusEvaluator, validation
-    checks/              HTTP and TCP probes
-    scheduler/           Check scheduling loop
-    runner/              Monitor mutations (add/update/delete/list)
-  notify/                Alert delivery (Telegram, Discord, email, webhook)
-  server/                HTTP wiring
-    api/                 REST JSON handlers
-    page/                HTML pages
-    middleware/          Auth + CSRF
-    stream/              Live check SSE hub
-  config/                Configuration and credentials
-  storage/               JSON persistence + data-dir flock
-  netpolicy/             SSRF guard for outbound targets
-templates/
-  dashboard/             Monitors, incidents, summary, peers, notifications
-    monitor/             Monitor detail, row and form partials
-  settings/              Settings page
-  shared/                Head fragments, sprite, reusable panels
-  base.html, login.html  Root layouts
-static/
-  instrument.min.css     Vendored kit — a copy of its dist, do not edit
-  beacon.css             This application's own layout rules
-  js/instrument.js       Vendored kit module — a copy of its dist
-  js/beacon.js           Beacon.apiFetch, CSRF, modal and confirm helpers
-  js/*.js                Per-screen behaviour (monitors, notify, settings…)
-```
+Open `http://localhost:8080`. A fresh install without bootstrap credentials uses
+`admin` / `admin`; keep the listener private and change credentials before
+exposing it. Run from the repository root so templates/static assets are found.
+
+Configuration and monitor state live in `data/`. A `config.json` only seeds a
+store without saved configuration. See [Running](docs/running.md) for setup,
+verification, notification settings and backups.
+
+## Peer mode
+
+Optional synchronization adds peer visibility and adoption of previously cached
+monitors after a peer outage. It has no quorum or distributed alert deduplication;
+network partitions can duplicate checks and alerts. Read [Sync](docs/sync.md)
+before relying on it for recovery.
+
+## Documentation
+
+| Guide | Contents |
+|---|---|
+| [Running](docs/running.md) | Setup, configuration, notifications, deployment and state recovery |
+| [HTTP API](docs/api.md) | Authentication, routes and automation |
+| [Peer synchronization](docs/sync.md) | Topology, credentials, adoption and partition limits |
+| [Architecture](ARCHITECTURE.md) | Components, startup, persistence and check/alert flows |
+| [Conventions](docs/conventions.md) | Development, package ownership and verification |
 
 ## License
 
